@@ -3,7 +3,7 @@ import React from "react";
 const Navbar = () => {
   return (
     <div className="flex items-center justify-between px-6 py-3 bg-white shadow-md">
-      <div className="text-lg font-bold">API Tester</div>
+      <div className="text-lg font-bold">Test Automation </div>
       <input
         type="text"
         placeholder="Search..."
