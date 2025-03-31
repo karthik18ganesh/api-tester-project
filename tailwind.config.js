@@ -3,12 +3,16 @@ export default {
     "./index.html",
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
-  theme: {
-    extend: {
-      fontFamily: {
-        inter: ['Inter', 'sans-serif'],
-      },
+  // tailwind.config.js
+theme: {
+  extend: {
+    colors: {
+      primary: "#4F46E5",
+      sidebar: "#F9FAFB",
+      active: "#EEF4FF",
     },
   },
+}
+,
   plugins: [],
 };
