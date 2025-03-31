@@ -10,6 +10,7 @@ import {
   FaUserCog,
   FaChevronDown,
   FaChevronUp,
+  FaUsersCog,
 } from "react-icons/fa";
 
 const Sidebar = () => {
@@ -33,25 +34,14 @@ const Sidebar = () => {
       route: "/environment-setup",
       icon: <FaCogs />,
     },
-    {
-      label: "Project Setup",
-      route: "/project-setup",
-      icon: <FaCogs />,
-    },
-    {
-      label: "User Settings",
-      route: "/user-settings",
-      icon: <FaUserCog />,
-    },
+    { label: "Project Setup", route: "/project-setup", icon: <FaCogs /> },
+    { label: "User Settings", route: "/user-settings", icon: <FaUserCog /> },
   ];
 
   return (
     <div
-      className={`bg-[#F9FAFB] h-screen border-r shadow-sm transition-all duration-300 ease-in-out ${
-        collapsed ? "w-20" : "w-64"
-      }`}
+      className={`bg-[#F9FAFB] h-screen border-r shadow-sm transition-all duration-300 ease-in-out ${collapsed ? "w-20" : "w-64"}`}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-4">
         {!collapsed && (
           <span className="text-lg font-bold text-[#111827]">Automation</span>
@@ -64,32 +54,39 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* Menu List */}
       <div className="px-2 text-sm text-gray-700">
         {mainMenus.map(({ label, icon, route }) => (
           <div
             key={label}
-            className={`flex items-center gap-3 px-3 py-2 mb-1 rounded cursor-pointer transition-colors ${
-              isActive(route) ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]" : "hover:bg-gray-100"
-            }`}
             onClick={() => route && navigate(route)}
+            className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center"} gap-3 px-3 py-2 mb-1 rounded cursor-pointer transition-all duration-200 ease-in-out ${
+              isActive(route)
+                ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]"
+                : "hover:bg-gray-100"
+            }`}
           >
-            <div className="text-[16px]">{icon}</div>
-            {!collapsed && <span>{label}</span>}
+            <div className="text-xl">{icon}</div>
+            {!collapsed && <span className="text-sm">{label}</span>}
           </div>
         ))}
 
         {/* Admin Settings */}
-        <div className="mt-4">
+        <div
+          className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}
+        >
           <div
             onClick={() => setAdminOpen(!adminOpen)}
-            className={`flex items-center justify-between px-3 py-2 cursor-pointer rounded ${
-              collapsed ? "justify-center" : "hover:bg-gray-100"
+            className={`flex ${collapsed ? "flex-col items-center" : "flex-row justify-between"} px-3 py-2 rounded cursor-pointer transition-colors ${
+              isActive("/environment-setup")
+                ? "bg-[#EEF4FF] text-[#1E40AF]"
+                : "hover:bg-gray-100"
             }`}
           >
-            <div className="flex items-center gap-3">
-              <FaCogs className="text-[16px]" />
-              {!collapsed && <span>Admin Settings</span>}
+            <div
+              className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
+            >
+              <FaUsersCog className="text-[16px]" />
+              {!collapsed && <span className="text-sm">Admin Settings</span>}
             </div>
             {!collapsed &&
               (adminOpen ? (
@@ -99,25 +96,26 @@ const Sidebar = () => {
               ))}
           </div>
 
-          {/* Submenu */}
-          {adminOpen && (
-            <div className="ml-6 mt-1">
-              {adminSubMenus.map(({ label, route, icon }) => (
+          {/* Submenus */}
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${adminOpen && !collapsed ? "max-h-60" : "max-h-0"}`}
+          >
+            {!collapsed &&
+              adminSubMenus.map(({ label, route, icon }) => (
                 <div
                   key={label}
                   onClick={() => navigate(route)}
-                  className={`flex items-center gap-3 px-3 py-2 mb-1 rounded cursor-pointer transition-colors text-sm ${
+                  className={`flex items-center gap-3 px-5 py-2 ml-3 mb-1 rounded cursor-pointer transition-colors text-sm ${
                     isActive(route)
                       ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]"
                       : "hover:bg-gray-100"
                   }`}
                 >
                   <div className="text-[14px]">{icon}</div>
-                  {!collapsed && <span>{label}</span>}
+                  <span>{label}</span>
                 </div>
               ))}
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,42 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mockLogin } from '../utils/mockApi';
-import Logo from '../assets/Logo.svg'; // You can replace this with your actual logo path
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { mockLogin } from "../utils/mockApi";
+import Logo from "../assets/Logo.svg"; // You can replace this with your actual logo path
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const navigate = useNavigate();
-  
+
   useEffect(() => {
-    const rememberedUsername = localStorage.getItem('rememberedUsername');
+    const rememberedUsername = localStorage.getItem("rememberedUsername");
     if (rememberedUsername) {
       setUsername(rememberedUsername);
       setRememberMe(true);
     }
   }, []);
-  
+
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
-  
+    setError("");
+
     try {
       await mockLogin({ username, password });
-  
+
       if (rememberMe) {
-        localStorage.setItem('rememberedUsername', username);
+        localStorage.setItem("rememberedUsername", username);
       } else {
-        localStorage.removeItem('rememberedUsername');
+        localStorage.removeItem("rememberedUsername");
       }
-  
-      navigate('/dashboard');
+
+      navigate("/dashboard");
     } catch (err) {
       setError(err.message);
     }
   };
-  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 font-inter">
@@ -54,7 +53,9 @@ const Login = () => {
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Username
+            </label>
             <input
               type="text"
               placeholder="Enter username"
@@ -65,7 +66,9 @@ const Login = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
             <input
               type="password"
               placeholder="Enter password"

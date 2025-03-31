@@ -10,8 +10,12 @@ const Navbar = () => {
         className="border rounded px-4 py-2 w-1/3"
       />
       <div className="space-x-3">
-        <button className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">+ Create</button>
-        <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">Run</button>
+        <button className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded">
+          + Create
+        </button>
+        <button className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
+          Run
+        </button>
       </div>
     </div>
   );
