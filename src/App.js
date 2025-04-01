@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import EnvironmentSetup from "./components/EnvironmentSetup";
+import ProjectSetup from "./components/ProjectSetup";
 import Layout from "./components/Layout";
 
 function App() {
@@ -25,6 +26,14 @@ function App() {
           element={
             <Layout>
               <EnvironmentSetup />
+            </Layout>
+          }
+        />
+        <Route
+          path="/project-setup"
+          element={
+            <Layout>
+              <ProjectSetup />
             </Layout>
           }
         />
