@@ -8,8 +8,7 @@ import Dashboard from "./components/Dashboard";
 import EnvironmentSetup from "./components/EnvironmentSetup";
 import ProjectSetup from "./components/ProjectSetup";
 import Layout from "./components/Layout";
-import TestSuiteDetails from './components/TestSuiteDetails';
-
+import TestSuiteDetails from "./components/TestSuiteDetails";
 
 function App() {
   return (
@@ -32,7 +31,10 @@ function App() {
             </Layout>
           }
         />
-        <Route path="/test-design/test-suite/create" element={<TestSuiteDetails />} />
+        <Route
+          path="/test-design/test-suite/create"
+          element={<TestSuiteDetails />}
+        />
         <Route
           path="/environment-setup"
           element={

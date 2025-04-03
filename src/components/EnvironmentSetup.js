@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { FaHome, FaEdit, FaTrash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -17,22 +16,30 @@ const mockData = Array.from({ length: 60 }, (_, i) => ({
 const EnvironmentSetup = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(mockData);
-  const [formData, setFormData] = useState({ id: null, name: "", url: "", description: "" });
+  const [formData, setFormData] = useState({
+    id: null,
+    name: "",
+    url: "",
+    description: "",
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [selectedEnv, setSelectedEnv] = useState(null);
 
   const isUpdateMode = formData.id !== null;
   const totalPages = Math.ceil(data.length / pageSize);
-  const currentData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const currentData = data.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isUpdateMode) {
       setData((prev) =>
         prev.map((item) =>
-          item.id === formData.id ? { ...formData, date: item.date } : item
-        )
+          item.id === formData.id ? { ...formData, date: item.date } : item,
+        ),
       );
       toast.success(`"${formData.name}" updated successfully`);
     } else {
@@ -90,7 +97,10 @@ const EnvironmentSetup = () => {
   return (
     <div className="p-6 text-gray-800 font-inter">
       <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-        <FaHome className="cursor-pointer text-gray-600" onClick={() => navigate("/dashboard")} />
+        <FaHome
+          className="cursor-pointer text-gray-600"
+          onClick={() => navigate("/dashboard")}
+        />
         <span>/</span>
         <span className="text-gray-700 font-medium">Environment setup</span>
       </div>
@@ -99,7 +109,10 @@ const EnvironmentSetup = () => {
 
       <h2 className="text-xl font-semibold mb-4">Environment setup</h2>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 border rounded-md mb-6 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 border rounded-md mb-6 shadow-sm"
+      >
         <h3 className="text-md font-semibold mb-4">
           {isUpdateMode ? "Update environment" : "Create new environment"}
         </h3>
@@ -110,7 +123,9 @@ const EnvironmentSetup = () => {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
               className="w-full border rounded px-3 py-2 bg-gray-50"
               required
             />
@@ -120,7 +135,9 @@ const EnvironmentSetup = () => {
             <input
               type="text"
               value={formData.url}
-              onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, url: e.target.value }))
+              }
               className="w-full border rounded px-3 py-2 bg-gray-50"
               required
             />
@@ -132,7 +149,9 @@ const EnvironmentSetup = () => {
           <textarea
             rows={3}
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, description: e.target.value }))
+            }
             className="w-full border rounded px-3 py-2 bg-gray-50"
           />
         </div>
@@ -152,7 +171,9 @@ const EnvironmentSetup = () => {
           <button
             type="submit"
             className={`px-6 py-2 rounded font-medium text-white ${
-              isUpdateMode ? "bg-blue-600 hover:bg-blue-700" : "bg-[#4F46E5] hover:bg-indigo-700"
+              isUpdateMode
+                ? "bg-blue-600 hover:bg-blue-700"
+                : "bg-[#4F46E5] hover:bg-indigo-700"
             }`}
           >
             {isUpdateMode ? "Update" : "Create"}
@@ -175,12 +196,23 @@ const EnvironmentSetup = () => {
             {currentData.map((env) => (
               <tr key={env.id} className="border-b">
                 <td className="py-3 px-4">{env.name}</td>
-                <td className="py-3 px-4 text-blue-600 underline cursor-pointer">{env.url}</td>
+                <td className="py-3 px-4 text-blue-600 underline cursor-pointer">
+                  {env.url}
+                </td>
                 <td className="py-3 px-4">{env.description}</td>
                 <td className="py-3 px-4">{env.date}</td>
                 <td className="py-3 px-4 text-right flex justify-end gap-3 pr-4">
-                  <FaEdit className="cursor-pointer text-blue-600 hover:text-blue-500" onClick={() => handleEdit(env)} />
-                  <FaTrash className="text-blue-600 cursor-pointer hover:text-blue-700" onClick={() => { setSelectedEnv(env); setShowModal(true); }} />
+                  <FaEdit
+                    className="cursor-pointer text-blue-600 hover:text-blue-500"
+                    onClick={() => handleEdit(env)}
+                  />
+                  <FaTrash
+                    className="text-blue-600 cursor-pointer hover:text-blue-700"
+                    onClick={() => {
+                      setSelectedEnv(env);
+                      setShowModal(true);
+                    }}
+                  />
                 </td>
               </tr>
             ))}
@@ -189,70 +221,89 @@ const EnvironmentSetup = () => {
 
         {/* Pagination */}
         <div className="flex justify-end items-center px-4 py-3 text-sm text-gray-600 gap-1">
-          <button onClick={() => setCurrentPage(p => Math.max(p - 1, 1))} disabled={currentPage === 1}
-            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
+          >
             Prev
           </button>
           {getPaginationRange().map((item, idx) => (
-            <button key={idx}
+            <button
+              key={idx}
               disabled={item === "..."}
               onClick={() => item !== "..." && setCurrentPage(item)}
               className={`px-3 py-1 border rounded ${
-                item === currentPage ? "bg-indigo-600 text-white" : "hover:bg-gray-100"
+                item === currentPage
+                  ? "bg-indigo-600 text-white"
+                  : "hover:bg-gray-100"
               }`}
             >
               {item}
             </button>
           ))}
-          <button onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}
-            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40">
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
+          >
             Next
           </button>
         </div>
       </div>
 
       {/* Delete Confirmation Modal */}
-{showModal && (
-  <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center transition-all duration-300 animate-fadeIn">
-    <div className="bg-white rounded shadow-lg w-[90%] max-w-md animate-scaleIn overflow-hidden">
-      {/* Header with icon and light blue background */}
-      <div className="bg-blue-50 p-4 flex items-center gap-3 border-b">
-        <div className="bg-blue-100 text-blue-600 rounded-full p-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none"
-            viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z" />
-          </svg>
+      {showModal && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center transition-all duration-300 animate-fadeIn">
+          <div className="bg-white rounded shadow-lg w-[90%] max-w-md animate-scaleIn overflow-hidden">
+            {/* Header with icon and light blue background */}
+            <div className="bg-blue-50 p-4 flex items-center gap-3 border-b">
+              <div className="bg-blue-100 text-blue-600 rounded-full p-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-blue-800">
+                Delete Environment:{" "}
+                <span className="text-blue-700">"{selectedEnv?.name}"</span>
+              </h3>
+            </div>
+
+            {/* Message Body */}
+            <div className="p-5 text-sm text-gray-700">
+              Are you sure you want to delete this environment? <br />
+              <strong>This action is permanent and cannot be reversed.</strong>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
-        <h3 className="text-lg font-semibold text-blue-800">
-          Delete Environment: <span className="text-blue-700">"{selectedEnv?.name}"</span>
-        </h3>
-      </div>
-
-      {/* Message Body */}
-      <div className="p-5 text-sm text-gray-700">
-        Are you sure you want to delete this environment? <br />
-        <strong>This action is permanent and cannot be reversed.</strong>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t">
-        <button
-          onClick={() => setShowModal(false)}
-          className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleDelete}
-          className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };

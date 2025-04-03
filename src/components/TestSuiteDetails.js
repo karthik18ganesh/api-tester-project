@@ -4,8 +4,12 @@ import { toast } from "react-toastify";
 import Layout from "./Layout";
 import TestSuiteAssignmentForm from "./TestSuiteAssignmentForm";
 import TestSuiteTopForm from "./TestSuitTopForm";
+import { useLocation } from "react-router-dom";
 
 const TestSuiteDetails = () => {
+  const { state } = useLocation();
+  const isUpdateMode = !!state?.suite;
+
   const [suiteCreated, setSuiteCreated] = useState(false);
   const [testSuiteRows, setTestSuiteRows] = useState([]);
 
@@ -56,20 +60,28 @@ const TestSuiteDetails = () => {
         <hr className="mb-6 border-gray-200" />
 
         {/* Top Form */}
-        <TestSuiteTopForm onSave={handleSubmit} onCancel={() => setSuiteCreated(false)} />
+        <TestSuiteTopForm
+          onSave={handleSubmit}
+          onCancel={() => setSuiteCreated(false)}
+          isUpdate={isUpdateMode}
+          defaultValues={state?.suite}
+        />
         <hr className="my-6 border-gray-200" />
 
         {/* Assignment Form */}
         <TestSuiteAssignmentForm
           testCases={testCases}
           onAddToSuite={handleAddToSuite}
-          suiteCreated={suiteCreated}
+          suiteCreated={true}
+          prefilledCases={state?.suite?.testCases || []}
         />
 
         {/* Table */}
         {testSuiteRows.length > 0 && (
           <div className="mt-8 bg-white p-4 border shadow-sm rounded">
-            <h3 className="text-sm font-semibold text-gray-800 mb-4">Associated Test Cases</h3>
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">
+              Associated Test Cases
+            </h3>
             <table className="min-w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-100 text-gray-700 text-left">
