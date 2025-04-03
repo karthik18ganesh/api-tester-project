@@ -3,12 +3,18 @@ import { Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Login from "./components/Login";
-import TestSuite from "./components/TestSuite";
+import Layout from "./components/Layout";
+
 import Dashboard from "./components/Dashboard";
+
 import EnvironmentSetup from "./components/EnvironmentSetup";
 import ProjectSetup from "./components/ProjectSetup";
-import Layout from "./components/Layout";
+
+import TestSuite from "./components/TestSuite";
 import TestSuiteDetails from "./components/TestSuiteDetails";
+
+import TestPackage from "./components/TestPackage";
+import TestPackageDetails from "./components/TestPackageDetails";
 
 function App() {
   return (
@@ -34,6 +40,18 @@ function App() {
         <Route
           path="/test-design/test-suite/create"
           element={<TestSuiteDetails />}
+        />
+        <Route
+          path="/test-design/test-package"
+          element={
+            <Layout>
+              <TestPackage />
+            </Layout>
+          }
+        />
+        <Route
+          path="/test-design/test-package/create"
+          element={<TestPackageDetails />}
         />
         <Route
           path="/environment-setup"

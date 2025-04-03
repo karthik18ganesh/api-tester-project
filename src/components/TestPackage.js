@@ -5,19 +5,19 @@ import { toast } from "react-toastify";
 
 const pageSize = 5;
 
-const mockSuites = Array.from({ length: 50 }, (_, i) => ({
+const mockPackages = Array.from({ length: 50 }, (_, i) => ({
   id: i + 1,
-  suiteId: `TS-${String(50 - i).padStart(3, "0")}`,
-  name: `Test Suite ${50 - i}`,
+  packageId: `TP-${String(50 - i).padStart(3, "0")}`,
+  name: `Test Package ${50 - i}`,
   count: Math.floor(Math.random() * 30) + 5,
   created: new Date(2025, 2, 24 + (i % 5)).toLocaleDateString("en-GB"),
   executed: new Date(2025, 2, 25 + (i % 5)).toLocaleDateString("en-GB"),
   status: ["Passed", "Partial Pass", "Failed"][i % 3],
 }));
 
-const TestSuite = () => {
+const TestPackage = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(mockSuites);
+  const [data, setData] = useState(mockPackages);
   const [selected, setSelected] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,18 +75,18 @@ const TestSuite = () => {
           onClick={() => navigate("/dashboard")}
         />
         <span>/</span>
-        <span className="text-gray-700 font-medium">Test suite</span>
+        <span className="text-gray-700 font-medium">Test Package</span>
       </div>
 
       <div className="border-b border-gray-200 mb-6"></div>
 
-      <h2 className="text-xl font-semibold mb-4">Test suite</h2>
+      <h2 className="text-xl font-semibold mb-4">Test Package</h2>
 
       {/* Header Buttons */}
       <div className="flex justify-end items-center gap-2 mb-3">
         {selected.length === 0 ? (
           <button
-            onClick={() => navigate("/test-design/test-suite/create")}
+            onClick={() => navigate("/test-design/test-package/create")}
             className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
           >
             <FaPlus className="inline mr-2" /> Create
@@ -135,8 +135,8 @@ const TestSuite = () => {
                   )}
                 />
               </th>
-              <th className="py-3 px-4">Suite ID</th>
-              <th className="py-3 px-4">Test Suite Name</th>
+              <th className="py-3 px-4">Package ID</th>
+              <th className="py-3 px-4">Test Package Name</th>
               <th className="py-3 px-4">Test Case Count</th>
               <th className="py-3 px-4">Created Date</th>
               <th className="py-3 px-4">Executed Date</th>
@@ -153,13 +153,13 @@ const TestSuite = () => {
                     onChange={() => toggleSelect(item.id)}
                   />
                 </td>
-                <td className="py-3 px-4">{item.suiteId}</td>
+                <td className="py-3 px-4">{item.packageId}</td>
                 {/* <td className="py-3 px-4 text-indigo-700 underline cursor-pointer">{item.name}</td> */}
                 <td
                   className="py-3 px-4 text-indigo-700 underline cursor-pointer"
                   onClick={() =>
-                    navigate("/test-design/test-suite/create", {
-                      state: { suite: item },
+                    navigate("/test-design/test-package/create", {
+                      state: { package: item },
                     })
                   }
                 >
@@ -210,4 +210,4 @@ const TestSuite = () => {
   );
 };
 
-export default TestSuite;
+export default TestPackage;
