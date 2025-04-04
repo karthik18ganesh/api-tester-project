@@ -33,15 +33,15 @@ const Sidebar = () => {
   const adminSubMenus = [
     {
       label: "Environment Setup",
-      route: "/environment-setup",
+      route: "admin/environment-setup",
       icon: <FaCogs />,
     },
     {
       label: "Project Setup",
-      route: "/project-setup",
+      route: "admin/project-setup",
       icon: <FaProjectDiagram />,
     },
-    { label: "User Settings", route: "/user-settings", icon: <FaUserCog /> },
+    { label: "User Settings", route: "admin/user-settings", icon: <FaUserCog /> },
   ];
 
   const testDesignSubMenus = [

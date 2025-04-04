@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FaHome } from "react-icons/fa";
 import { toast } from "react-toastify";
-import Layout from "./Layout";
+//import Layout from '../../../components/common/Layout';
 import TestSuiteAssignmentForm from "./TestSuiteAssignmentForm";
 import TestSuiteTopForm from "./TestSuitTopForm";
 import { useLocation } from "react-router-dom";
@@ -9,7 +9,6 @@ import { useLocation } from "react-router-dom";
 const TestSuiteDetails = () => {
   const { state } = useLocation();
   const isUpdateMode = !!state?.suite;
-
   const [suiteCreated, setSuiteCreated] = useState(false);
   const [testSuiteRows, setTestSuiteRows] = useState([]);
 
@@ -49,8 +48,7 @@ const TestSuiteDetails = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-6 font-inter">
+    <div className="p-6 font-inter">
         {/* Breadcrumbs */}
         <div className="text-sm text-gray-600 flex items-center gap-2 mb-4">
           <FaHome className="text-gray-400" />
@@ -105,7 +103,7 @@ const TestSuiteDetails = () => {
           </div>
         )}
       </div>
-    </Layout>
+    
   );
 };
 

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FaHome } from "react-icons/fa";
 import { toast } from "react-toastify";
-import Layout from "./Layout";
 import TestPackageAssignmentForm from "./TestPackageAssignmentForm";
 import TestPackageTopForm from "./TestPackageTopForm";
 import { useLocation } from "react-router-dom";
@@ -49,8 +48,7 @@ const TestPackageDetails = () => {
   };
 
   return (
-    <Layout>
-      <div className="p-6 font-inter">
+    <div className="p-6 font-inter">
         {/* Breadcrumbs */}
         <div className="text-sm text-gray-600 flex items-center gap-2 mb-4">
           <FaHome className="text-gray-400" />
@@ -105,7 +103,6 @@ const TestPackageDetails = () => {
           </div>
         )}
       </div>
-    </Layout>
   );
 };
 
