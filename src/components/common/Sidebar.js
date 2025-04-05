@@ -1,19 +1,21 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  FaBars,
-  FaCogs,
-  FaTachometerAlt,
-  FaList,
-  FaFlask,
-  FaRegChartBar,
-  FaUserCog,
-  FaChevronDown,
-  FaChevronUp,
-  FaUsersCog,
-  FaDatabase,
-  FaProjectDiagram,
-} from "react-icons/fa";
+  FiGrid,
+  FiBox,
+  FiPlayCircle,
+  FiBarChart2,
+  FiSettings,
+  FiGlobe,
+  FiFolder,
+  FiUser,
+  FiCode,
+  FiLayers,
+  FiArchive,
+  FiDatabase,
+  FiFileText,
+} from 'react-icons/fi';
+import { FaBars, FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -25,42 +27,42 @@ const Sidebar = () => {
   const isActive = (route) => location.pathname === route;
 
   const mainMenus = [
-    { label: "Dashboard", icon: <FaTachometerAlt />, route: "/dashboard" },
-    { label: "Test Execution", icon: <FaFlask />, route: "/test-execution" },
-    { label: "Results", icon: <FaRegChartBar />, route: "/results" },
+    { label: "Dashboard", icon: <FiGrid />, route: "/dashboard" },
+    { label: "Test Execution", icon: <FiPlayCircle />, route: "/test-execution" },
+    { label: "Results", icon: <FiBarChart2 />, route: "/results" },
   ];
 
   const adminSubMenus = [
     {
       label: "Environment Setup",
       route: "admin/environment-setup",
-      icon: <FaCogs />,
+      icon: <FiGlobe />,
     },
     {
       label: "Project Setup",
       route: "admin/project-setup",
-      icon: <FaProjectDiagram />,
+      icon: <FiFolder />,
     },
-    { label: "User Settings", route: "admin/user-settings", icon: <FaUserCog /> },
+    { label: "User Settings", route: "admin/user-settings", icon: <FiUser /> },
   ];
 
   const testDesignSubMenus = [
     {
       label: "API Repository",
       route: "/test-design/api-repository",
-      icon: <FaDatabase />,
+      icon: <FiDatabase />,
     },
-    { label: "Test Case", route: "/test-design/test-case", icon: <FaList /> },
-    { label: "Test Suite", route: "/test-design/test-suite", icon: <FaList /> },
+    { label: "Test Case", route: "/test-design/test-case", icon: <FiFileText /> },
+    { label: "Test Suite", route: "/test-design/test-suite", icon: <FiLayers /> },
     {
       label: "Test Package",
       route: "/test-design/test-package",
-      icon: <FaList />,
+      icon: <FiArchive />,
     },
     {
       label: "Functions & Variables",
       route: "/test-design/functions-variables",
-      icon: <FaList />,
+      icon: <FiCode />,
     },
   ];
 
@@ -107,7 +109,7 @@ const Sidebar = () => {
             <div
               className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
             >
-              <FaList className="text-[16px]" />
+              <FiBox className="text-[16px]" />
               {!collapsed && <span className="text-sm">Test Design</span>}
             </div>
             {!collapsed &&
@@ -149,7 +151,7 @@ const Sidebar = () => {
             <div
               className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
             >
-              <FaUsersCog className="text-[16px]" />
+              <FiSettings className="text-[16px]" />
               {!collapsed && <span className="text-sm">Admin Settings</span>}
             </div>
             {!collapsed &&
