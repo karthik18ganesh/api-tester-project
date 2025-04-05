@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Button from "../../../components/common/Button";
 
 const TestPackageTopForm = ({
   onSave,
@@ -39,9 +40,6 @@ const TestPackageTopForm = ({
       execution: "On demand",
       executionType: "Execute all test case if any fails",
       reportType: "PDF",
-      publishMethod: "Email",
-      email: "",
-      ftpPath: "",
       description: "",
     });
     onCancel?.();
@@ -135,12 +133,11 @@ const TestPackageTopForm = ({
         >
           Cancel
         </button>
-        <button
+        <Button
           onClick={handleSubmit}
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
         >
           {isUpdate ? "Update" : "Save"}
-        </button>
+        </Button>
       </div>
     </div>
   );

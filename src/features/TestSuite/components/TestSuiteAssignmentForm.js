@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { FaTrash } from "react-icons/fa";
+import { FiTrash2 } from 'react-icons/fi';
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import IconButton from "../../../components/common/IconButton";
+import Button from "../../../components/common/Button";
 
 const allMockTestCases = Array.from({ length: 50 }, (_, i) => ({
   id: `TS-${(i + 1).toString().padStart(3, "0")}`,
@@ -85,7 +87,7 @@ const TestSuiteAssignmentForm = ({ testCases, onAddToSuite, suiteCreated, prefil
       pages.push(
         <button
           key={i}
-          className={`px-2 py-1 mx-1 ${i === currentPage ? "bg-blue-500 text-white" : "bg-white border"}`}
+          className={`px-2 py-1 mx-1 ${i === currentPage ? "bg-indigo-600 text-white" : "bg-white border hover:bg-gray-100"}`}
           onClick={() => setCurrentPage(i)}
         >
           {i}
@@ -183,7 +185,7 @@ const TestSuiteAssignmentForm = ({ testCases, onAddToSuite, suiteCreated, prefil
                   <td className="p-3">{test.description}</td>
                   <td className="p-3 text-center">
                     <button onClick={() => handleDeleteRow(test.id)}>
-                      <FaTrash className="text-gray-500 hover:text-red-600" />
+                      <IconButton icon={FiTrash2} />
                     </button>
                   </td>
                 </tr>
@@ -200,12 +202,11 @@ const TestSuiteAssignmentForm = ({ testCases, onAddToSuite, suiteCreated, prefil
             >
               Cancel
             </button>
-            <button
+            <Button
               onClick={() => toast.success("Test cases associated")}
-              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
             >
               Create
-            </button>
+            </Button>
           </div>
         </>
       )}

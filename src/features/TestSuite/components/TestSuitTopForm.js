@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Button from "../../../components/common/Button";
 
 const TestSuiteTopForm = ({
   onSave,
@@ -52,7 +53,7 @@ const TestSuiteTopForm = ({
 
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-800">
         Create new test suite
       </h2>
 
@@ -183,12 +184,11 @@ const TestSuiteTopForm = ({
         >
           Cancel
         </button>
-        <button
+        <Button
           onClick={handleSubmit}
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
         >
           {isUpdate ? "Update" : "Save"}
-        </button>
+        </Button>
       </div>
     </div>
   );

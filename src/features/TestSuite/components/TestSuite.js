@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { FaHome, FaTrash, FaFileExport, FaEdit, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 
 const pageSize = 5;
 
@@ -80,7 +79,7 @@ const TestSuite = () => {
 
       <div className="border-b border-gray-200 mb-6"></div>
 
-      <h2 className="text-xl font-semibold mb-4">Test suite</h2>
+      <h2 className="text-2xl font-semibold mb-4">Test suite</h2>
 
       {/* Header Buttons */}
       <div className="flex justify-end items-center gap-2 mb-3">

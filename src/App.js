@@ -7,7 +7,8 @@ import TestSuite from './features/TestSuite/components/TestSuite';
 import TestSuiteDetails from './features/TestSuite/components/TestSuiteDetails';
 import TestPackage from './features/TestPackage/components/TestPackage';
 import TestPackageDetails from './features/TestPackage/components/TestPackageDetails';
-import Dashboard from './components/common/Dashboard'; // We'll create this placeholder
+import Dashboard from './components/common/Dashboard';
+import Login from './features/Login/components/Login';
 import Toast from './components/common/Toast';
 
 const App = () => {
@@ -15,7 +16,8 @@ const App = () => {
     <Router>
       <Toast />
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           {/* Admin Settings */}
