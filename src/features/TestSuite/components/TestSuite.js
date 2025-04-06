@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { FaHome, FaTrash, FaFileExport, FaEdit, FaPlus } from "react-icons/fa";
+import { FaTrash, FaFileExport, FaEdit, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import Breadcrumb from "../../../components/common/Breadcrumb";
 
 const pageSize = 5;
 
@@ -68,14 +69,16 @@ const TestSuite = () => {
   return (
     <div className="p-6 font-inter text-gray-800">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
+      {/* <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
         <FaHome
           className="cursor-pointer text-gray-600"
           onClick={() => navigate("/dashboard")}
         />
         <span>/</span>
         <span className="text-gray-700 font-medium">Test suite</span>
-      </div>
+      </div> */}
+      <Breadcrumb items={[{ label: "Test Design", path: "/test-design" }, { label: "Test Suite" }]} />
+
 
       <div className="border-b border-gray-200 mb-6"></div>
 

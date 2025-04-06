@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { FaHome, FaEdit, FaTrash } from "react-icons/fa";
+import { FaEdit } from "react-icons/fa";
 import IconButton from "../../../components/common/IconButton";
 import { FiTrash2 } from 'react-icons/fi';
 import Button from "../../../components/common/Button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import Breadcrumb from "../../../components/common/Breadcrumb";
 
 const pageSize = 5;
 
@@ -92,14 +93,12 @@ const ProjectSetup = () => {
 
   return (
     <div className="p-6 text-gray-800 font-inter">
-      <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-        <FaHome
-          className="cursor-pointer text-gray-600"
-          onClick={() => navigate("/dashboard")}
-        />
-        <span>/</span>
-        <span className="text-gray-700 font-medium">Project setup</span>
-      </div>
+      <Breadcrumb
+  items={[
+    { label: "Admin Settings" },
+    { label: "Project Settings" }
+  ]}
+/>
 
       <div className="border-b border-gray-200 mb-6"></div>
       <h2 className="text-2xl font-semibold mb-4">Project setup</h2>

@@ -5,70 +5,70 @@ import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
 
-const allMockTestCases = Array.from({ length: 50 }, (_, i) => ({
+const allMockTestSuites = Array.from({ length: 50 }, (_, i) => ({
   id: `TS-${(i + 1).toString().padStart(3, "0")}`,
-  name: `Test Case ${i + 1}`,
-  description: `This is the description for test case ${i + 1}.`,
+  name: `Test Suite ${i + 1}`,
+  description: `This is the description for test Suite ${i + 1}.`,
 }));
 
 const ITEMS_PER_PAGE = 6;
 
-const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, prefilledCases = [] }) => {
-  const [selectedCases, setSelectedCases] = useState([]);
-  const [availableCases, setAvailableCases] = useState(allMockTestCases);
+const TestPackageAssignmentForm = ({ testSuites, onAddToPackage, packageCreated, prefilledSuites = [] }) => {
+  const [selectedSuites, setSelectedSuites] = useState([]);
+  const [availableSuites, setAvailableSuites] = useState(allMockTestSuites);
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    if (prefilledCases.length > 0) {
-      const initial = prefilledCases.map((name, i) => ({
+    if (prefilledSuites.length > 0) {
+      const initial = prefilledSuites.map((name, i) => ({
         id: Date.now() + i,
         name,
         description: `This is the description for ${name}`,
       }));
       setTableData(initial);
     }
-  }, [prefilledCases]);
+  }, [prefilledSuites]);
 
   const handleSelectChange = (e) => {
     const selectedId = e.target.value;
-    const selected = availableCases.find((item) => item.name === selectedId);
+    const selected = availableSuites.find((item) => item.name === selectedId);
     if (selected) {
-      setSelectedCases([...selectedCases, selected]);
-      setAvailableCases(
-        availableCases.filter((item) => item.id !== selected.id),
+      setSelectedSuites([...selectedSuites, selected]);
+      setAvailableSuites(
+        availableSuites.filter((item) => item.id !== selected.id),
       );
     }
   };
 
   const handleRemoveBadge = (id) => {
-    const toRemove = selectedCases.find((item) => item.id === id);
-    setAvailableCases([...availableCases, toRemove]);
-    setSelectedCases(selectedCases.filter((item) => item.id !== id));
+    const toRemove = selectedSuites.find((item) => item.id === id);
+    setAvailableSuites([...availableSuites, toRemove]);
+    setSelectedSuites(selectedSuites.filter((item) => item.id !== id));
   };
 
   const handleAddToPackage = () => {
-    if (selectedCases.length === 0) {
-      toast.warning("No test cases selected");
+    if (selectedSuites.length === 0) {
+      toast.warning("No test Suites selected");
       return;
     }
-    const newTableData = [...tableData, ...selectedCases];
+    const newTableData = [...tableData, ...selectedSuites];
     setTableData(newTableData);
-    setSelectedCases([]);
-    toast.success("Test cases added to package");
+    setSelectedSuites([]);
+    toast.success("Test Suites added to package");
   };
 
   const handleDeleteRow = (id) => {
     const toDelete = tableData.find((item) => item.id === id);
     setTableData(tableData.filter((item) => item.id !== id));
-    setAvailableCases([...availableCases, toDelete]);
+    setAvailableSuites([...availableSuites, toDelete]);
   };
 
   const handleCancel = () => {
-    const restored = [...availableCases, ...tableData];
-    setAvailableCases(restored);
+    const restored = [...availableSuites, ...tableData];
+    setAvailableSuites(restored);
     setTableData([]);
-    setSelectedCases([]);
+    setSelectedSuites([]);
   };
 
   const paginatedData = tableData.slice(
@@ -123,15 +123,15 @@ const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, 
       <h3 className="font-semibold text-sm text-gray-700 mb-2">
         Test package configuration
         <span className="ml-2 text-blue-500 text-xs bg-blue-100 px-2 py-1 rounded-full">
-          ℹ Assign test cases
+          ℹ Assign Suite
         </span>
       </h3>
       <label className="text-sm font-medium text-gray-600 mb-1 block">
-        Select test case
+        Select test Suite
       </label>
       <div className="flex items-center mb-4 space-x-2">
         <div className="flex flex-wrap gap-2 flex-1 border px-2 py-2 rounded">
-          {selectedCases.map((test) => (
+          {selectedSuites.map((test) => (
             <span
               key={test.id}
               className="bg-blue-100 text-blue-600 px-2 py-1 text-sm rounded-full flex items-center space-x-1"
@@ -150,7 +150,7 @@ const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, 
             className="outline-none flex-1 bg-transparent"
           >
             <option value=""></option>
-            {availableCases.map((test) => (
+            {availableSuites.map((test) => (
               <option key={test.id} value={test.name}>
                 {test.name}
               </option>
@@ -160,7 +160,7 @@ const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, 
         <button
           className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
           onClick={handleAddToPackage}
-          disabled={selectedCases.length === 0}
+          disabled={selectedSuites.length === 0}
         >
           Add to package
         </button>
@@ -171,8 +171,8 @@ const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, 
           <table className="w-full border mt-4">
             <thead className="bg-gray-50 border-b text-left">
               <tr>
-                <th className="p-3">Case ID</th>
-                <th className="p-3">Test Case Name</th>
+                <th className="p-3">Suite ID</th>
+                <th className="p-3">Test Suite Name</th>
                 <th className="p-3">Description</th>
                 <th className="p-3 text-center">Action</th>
               </tr>
@@ -203,7 +203,7 @@ const TestPackageAssignmentForm = ({ testCases, onAddToPackage, packageCreated, 
               Cancel
             </button>
             <Button
-              onClick={() => toast.success("Test cases associated")}
+              onClick={() => toast.success("Test Suites associated")}
             >
               Create
             </Button>

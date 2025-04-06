@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { FaHome } from "react-icons/fa";
 import { toast } from "react-toastify";
 import TestPackageAssignmentForm from "./TestPackageAssignmentForm";
 import TestPackageTopForm from "./TestPackageTopForm";
 import { useLocation } from "react-router-dom";
+import Breadcrumb from "../../../components/common/Breadcrumb";
 
 const TestPackageDetails = () => {
   const { state } = useLocation();
@@ -50,11 +50,14 @@ const TestPackageDetails = () => {
   return (
     <div className="p-6 font-inter">
         {/* Breadcrumbs */}
-        <div className="text-sm text-gray-600 flex items-center gap-2 mb-4">
-          <FaHome className="text-gray-400" />
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-700 font-medium">Test package</span>
-        </div>
+        <Breadcrumb
+  items={[
+    { label: "Test Design" },
+    { label: "Test Package", path: "/test-design/test-package" },
+    { label: "Create" } 
+  ]}
+/>
+
         <hr className="mb-6 border-gray-200" />
 
         {/* Top Form */}
