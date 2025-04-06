@@ -1,47 +1,53 @@
+// src/features/TestCase/components/TestCase.js
 import React, { useState } from "react";
 import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 
-const pageSize = 5;
+const pageSize = 6;
 
-const mockPackages = Array.from({ length: 50 }, (_, i) => ({
+const mockTestCases = Array.from({ length: 25 }, (_, i) => ({
   id: i + 1,
-  packageId: `TP-${String(50 - i).padStart(3, "0")}`,
-  name: `Test Package ${50 - i}`,
-  count: Math.floor(Math.random() * 30) + 5,
-  created: new Date(2025, 2, 24 + (i % 5)).toLocaleDateString("en-GB"),
-  executed: new Date(2025, 2, 25 + (i % 5)).toLocaleDateString("en-GB"),
-  status: ["Passed", "Partial Pass", "Failed"][i % 3],
+  testCaseId: `TC-${String(25 - i).padStart(3, "0")}`,
+  name: [
+    "Cart Functionality Test",
+    "Mobile App Launch Test",
+    "API Response Validation",
+    "Payment Processing Test",
+    "Invalid Password Test",
+    "Valid Login Test",
+  ][i % 6],
+  description: [
+    "Verify that items can be added and removed from the cart correctly",
+    "Ensure the mobile app launches without crashes on different devices.",
+    "Check if the API returns the expected response format and status codes.",
+    "Validate that a successful payment is processed correctly using a credit card.",
+    "Ensure login fails with incorrect password and displays an error message.",
+    "Verify that a user can log in with correct credentials.",
+  ][i % 6],
+  createdDate: new Date(2025, 2, 24 + (i % 6)).toLocaleDateString("en-GB"),
 }));
 
-const TestPackage = () => {
+const TestCase = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(mockPackages);
+  const [data] = useState(mockTestCases);
   const [selected, setSelected] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(data.length / pageSize);
-  const currentData = data.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
+  const currentData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
   const toggleSelectAll = () => {
     const ids = currentData.map((item) => item.id);
     const allSelected = ids.every((id) => selected.includes(id));
-    setSelected(
-      allSelected
-        ? selected.filter((id) => !ids.includes(id))
-        : [...new Set([...selected, ...ids])],
-    );
+    setSelected(allSelected ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
   };
 
   const getPaginationRange = () => {
@@ -52,11 +58,7 @@ const TestPackage = () => {
     range.push(1);
     if (currentPage > visiblePages + 2) range.push(dots);
 
-    for (
-      let i = Math.max(2, currentPage - visiblePages);
-      i <= Math.min(totalPages - 1, currentPage + visiblePages);
-      i++
-    ) {
+    for (let i = Math.max(2, currentPage - visiblePages); i <= Math.min(totalPages - 1, currentPage + visiblePages); i++) {
       range.push(i);
     }
 
@@ -68,48 +70,40 @@ const TestPackage = () => {
 
   return (
     <div className="p-6 font-inter text-gray-800">
-      {/* Breadcrumb */}
       <Breadcrumb
-  items={[
-    { label: "Test Design" },
-    { label: "Test Package", path: "/test-design/test-package" }
-  ]}
-/>
-
-
+        items={[{ label: "Test Design" }, { label: "Test Case", path: "/test-design/test-case" }]}
+      />
       <div className="border-b border-gray-200 mb-6"></div>
 
-      <h2 className="text-2xl font-semibold mb-4">Test Package</h2>
+      <h2 className="text-2xl font-semibold mb-4">Test case</h2>
 
-      {/* Header Buttons */}
-      <div className="flex justify-end items-center gap-2 mb-3">
+      <div className="flex justify-end gap-2 mb-3">
         {selected.length === 0 ? (
           <button
-            onClick={() => navigate("/test-design/test-package/create")}
-            className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
+            onClick={() => navigate("/test-design/test-case/create")}
+            className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
           >
-            <FaPlus className="inline mr-2" /> Create
+            <FaPlus className="inline mr-2" />
+            Create
           </button>
         ) : (
           <>
-            <button className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
-              <FaTrash className="inline mr-2" /> Delete
+            <button className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]">
+              <FaTrash className="inline mr-2" />
+              Delete
             </button>
             <div className="relative">
               <button
                 onClick={() => setExportOpen(!exportOpen)}
-                className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
+                className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
               >
-                <FaFileExport className="inline mr-2" /> Export
+                <FaFileExport className="inline mr-2" />
+                Export
               </button>
               {exportOpen && (
-                <div className="absolute right-0 mt-1 bg-white shadow border rounded w-32 z-10">
-                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    As PDF
-                  </div>
-                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
-                    As Excel
-                  </div>
+                <div className="absolute right-0 mt-1 bg-white border rounded shadow w-32 z-10">
+                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">As PDF</div>
+                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">As Excel</div>
                 </div>
               )}
             </div>
@@ -126,17 +120,13 @@ const TestPackage = () => {
                 <input
                   type="checkbox"
                   onChange={toggleSelectAll}
-                  checked={currentData.every((item) =>
-                    selected.includes(item.id),
-                  )}
+                  checked={currentData.every((item) => selected.includes(item.id))}
                 />
               </th>
-              <th className="py-3 px-4">Package ID</th>
-              <th className="py-3 px-4">Test Package Name</th>
-              <th className="py-3 px-4">Test Case Count</th>
+              <th className="py-3 px-4">Case ID</th>
+              <th className="py-3 px-4">Test Case Name</th>
+              <th className="py-3 px-4">Description</th>
               <th className="py-3 px-4">Created Date</th>
-              <th className="py-3 px-4">Executed Date</th>
-              <th className="py-3 px-4">Executed Status</th>
             </tr>
           </thead>
           <tbody>
@@ -149,22 +139,15 @@ const TestPackage = () => {
                     onChange={() => toggleSelect(item.id)}
                   />
                 </td>
-                <td className="py-3 px-4">{item.packageId}</td>
-                {/* <td className="py-3 px-4 text-indigo-700 underline cursor-pointer">{item.name}</td> */}
+                <td className="py-3 px-4">{item.testCaseId}</td>
                 <td
-                  className="py-3 px-4 text-indigo-700 underline cursor-pointer"
-                  onClick={() =>
-                    navigate("/test-design/test-package/create", {
-                      state: { package: item },
-                    })
-                  }
+                  className="py-3 px-4 text-[#4F46E5] underline cursor-pointer"
+                  onClick={() => navigate("/test-design/test-case/create", { state: { testCase: item } })}
                 >
                   {item.name}
                 </td>
-                <td className="py-3 px-4">{item.count}</td>
-                <td className="py-3 px-4">{item.created}</td>
-                <td className="py-3 px-4">{item.executed}</td>
-                <td className="py-3 px-4">{item.status}</td>
+                <td className="py-3 px-4">{item.description}</td>
+                <td className="py-3 px-4">{item.createdDate}</td>
               </tr>
             ))}
           </tbody>
@@ -184,11 +167,7 @@ const TestPackage = () => {
               key={idx}
               disabled={item === "..."}
               onClick={() => item !== "..." && setCurrentPage(item)}
-              className={`px-3 py-1 border rounded ${
-                item === currentPage
-                  ? "bg-indigo-600 text-white"
-                  : "hover:bg-gray-100"
-              }`}
+              className={`px-3 py-1 border rounded ${item === currentPage ? "bg-indigo-600 text-white" : "hover:bg-gray-100"}`}
             >
               {item}
             </button>
@@ -206,4 +185,4 @@ const TestPackage = () => {
   );
 };
 
-export default TestPackage;
+export default TestCase;

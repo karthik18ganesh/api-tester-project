@@ -10,6 +10,8 @@ import TestPackageDetails from './features/TestPackage/components/TestPackageDet
 import Dashboard from './components/common/Dashboard';
 import Login from './features/Login/components/Login';
 import Toast from './components/common/Toast';
+import TestCase from './features/TestCase/components/TestCase';
+import TestCaseDetails from './features/TestCase/components/TestCaseDetails';
 
 const App = () => {
   return (
@@ -28,6 +30,8 @@ const App = () => {
           <Route path="/test-design/test-suite/create" element={<TestSuiteDetails />} />
           <Route path="/test-design/test-package" element={<TestPackage />} />
           <Route path="/test-design/test-package/create" element={<TestPackageDetails />} />
+          <Route path="/test-design/test-case" element={<TestCase />} />
+          <Route path="/test-design/test-case/create" element={<TestCaseDetails />} />
         </Route>
       </Routes>
     </Router>

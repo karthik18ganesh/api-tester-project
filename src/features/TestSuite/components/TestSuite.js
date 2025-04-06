@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaTrash, FaFileExport, FaEdit, FaPlus } from "react-icons/fa";
+import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 
@@ -95,9 +95,6 @@ const TestSuite = () => {
           </button>
         ) : (
           <>
-            <button className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
-              <FaEdit className="inline mr-2" /> Update
-            </button>
             <button className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
               <FaTrash className="inline mr-2" /> Delete
             </button>
