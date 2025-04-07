@@ -77,8 +77,12 @@ const TestSuite = () => {
         <span>/</span>
         <span className="text-gray-700 font-medium">Test suite</span>
       </div> */}
-      <Breadcrumb items={[{ label: "Test Design", path: "/test-design" }, { label: "Test Suite" }]} />
-
+      <Breadcrumb
+        items={[
+          { label: "Test Design", path: "/test-design" },
+          { label: "Test Suite" },
+        ]}
+      />
 
       <div className="border-b border-gray-200 mb-6"></div>
 

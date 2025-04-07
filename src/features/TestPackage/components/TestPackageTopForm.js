@@ -133,11 +133,7 @@ const TestPackageTopForm = ({
         >
           Cancel
         </button>
-        <Button
-          onClick={handleSubmit}
-        >
-          {isUpdate ? "Update" : "Save"}
-        </Button>
+        <Button onClick={handleSubmit}>{isUpdate ? "Update" : "Save"}</Button>
       </div>
     </div>
   );

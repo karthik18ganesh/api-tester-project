@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { FaEdit } from "react-icons/fa";
 import IconButton from "../../../components/common/IconButton";
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2 } from "react-icons/fi";
 import Button from "../../../components/common/Button";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -94,11 +94,8 @@ const ProjectSetup = () => {
   return (
     <div className="p-6 text-gray-800 font-inter">
       <Breadcrumb
-  items={[
-    { label: "Admin Settings" },
-    { label: "Project Settings" }
-  ]}
-/>
+        items={[{ label: "Admin Settings" }, { label: "Project Settings" }]}
+      />
 
       <div className="border-b border-gray-200 mb-6"></div>
       <h2 className="text-2xl font-semibold mb-4">Project setup</h2>
@@ -167,11 +164,7 @@ const ProjectSetup = () => {
               Cancel
             </button>
           )}
-          <Button
-            type="submit"
-          >
-            {isUpdateMode ? "Update" : "Create"}
-          </Button>
+          <Button type="submit">{isUpdateMode ? "Update" : "Create"}</Button>
         </div>
       </form>
 
@@ -282,11 +275,7 @@ const ProjectSetup = () => {
               >
                 Cancel
               </button>
-              <Button
-                onClick={handleDelete}
-                >
-                Delete
-              </Button>
+              <Button onClick={handleDelete}>Delete</Button>
             </div>
           </div>
         </div>

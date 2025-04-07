@@ -11,9 +11,31 @@ const TestCaseTopForm = () => {
     url: "",
     description: "",
   });
+  const [showPreview, setShowPreview] = useState(null);
+  const [uploadedRequestFileName, setUploadedRequestFileName] = useState("");
+  const [uploadedResponseFileName, setUploadedResponseFileName] = useState("");
 
   const [requestTemplate, setRequestTemplate] = useState("");
   const [responseTemplate, setResponseTemplate] = useState("");
+
+  const JSONPreviewModal = ({ title, content, onClose }) => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 relative">
+          <h2 className="text-lg font-semibold mb-4">{title}</h2>
+          <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm whitespace-pre-wrap">
+            {content}
+          </pre>
+          <button
+            className="absolute top-3 right-3 text-gray-500 hover:text-gray-800"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,8 +50,10 @@ const TestCaseTopForm = () => {
         const content = JSON.parse(event.target.result);
         const formatted = JSON.stringify(content, null, 2);
         if (type === "request") {
+          setUploadedRequestFileName(file.name);
           setRequestTemplate(formatted);
         } else {
+          setUploadedResponseFileName(file.name);
           setResponseTemplate(formatted);
         }
       };
@@ -45,11 +69,15 @@ const TestCaseTopForm = () => {
 
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-800">Create new test case</h2>
+      <h2 className="text-lg font-semibold text-gray-800">
+        Create new test case
+      </h2>
 
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Test case name</label>
+          <label className="block text-sm font-medium mb-1">
+            Test case name
+          </label>
           <input
             type="text"
             name="testCaseName"
@@ -72,7 +100,9 @@ const TestCaseTopForm = () => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Response type</label>
+          <label className="block text-sm font-medium mb-1">
+            Response type
+          </label>
           <select
             name="responseType"
             className="border border-gray-300 rounded p-2 w-full"
@@ -135,40 +165,113 @@ const TestCaseTopForm = () => {
 
       {/* File Uploads */}
       <div className="grid grid-cols-2 gap-4">
+        {/* Request Template */}
+        {/* Request Template */}
         <div>
-          <label className="block text-sm font-medium mb-1">Request template</label>
-          <input
-            type="file"
-            accept=".json"
-            className="mb-2"
-            onChange={(e) => handleFileUpload(e, "request")}
-          />
-          <button className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]">
-            Upload
-          </button>
-          {requestTemplate && (
-            <pre className="mt-2 bg-gray-100 p-2 rounded max-h-40 overflow-auto text-sm">
-              {requestTemplate}
-            </pre>
-          )}
+          <label className="block font-medium mb-2 text-sm">
+            Request template
+          </label>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              id="request-template"
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, "request")}
+            />
+            <label
+              htmlFor="request-template"
+              className="cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100"
+            >
+              Click to upload
+            </label>
+            {requestTemplate && (
+              <>
+                <span className="text-sm text-gray-700 flex items-center gap-1">
+                  <svg
+                    className="w-4 h-4 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  {uploadedRequestFileName}
+                </span>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+                  onClick={() =>
+                    setShowPreview({
+                      type: "request",
+                      content: requestTemplate,
+                    })
+                  }
+                >
+                  Preview
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
+        {/* Response Template */}
         <div>
-          <label className="block text-sm font-medium mb-1">Response template</label>
-          <input
-            type="file"
-            accept=".json"
-            className="mb-2"
-            onChange={(e) => handleFileUpload(e, "response")}
-          />
-          <button className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]">
-            Upload
-          </button>
-          {responseTemplate && (
-            <pre className="mt-2 bg-gray-100 p-2 rounded max-h-40 overflow-auto text-sm">
-              {responseTemplate}
-            </pre>
-          )}
+          <label className="block font-medium mb-2 text-sm">
+            Response template
+          </label>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              id="response-template"
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => handleFileUpload(e, "response")}
+            />
+            <label
+              htmlFor="response-template"
+              className="cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100"
+            >
+              Click to upload
+            </label>
+            {responseTemplate && (
+              <>
+                <span className="text-sm text-gray-700 flex items-center gap-1">
+                  <svg
+                    className="w-4 h-4 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  {uploadedResponseFileName}
+                </span>
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+                  onClick={() =>
+                    setShowPreview({
+                      type: "response",
+                      content: responseTemplate,
+                    })
+                  }
+                >
+                  Preview
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -182,6 +285,13 @@ const TestCaseTopForm = () => {
           Save
         </button>
       </div>
+      {showPreview && (
+        <JSONPreviewModal
+          title={`${showPreview.type === "request" ? "Request" : "Response"} Template Preview`}
+          content={showPreview.content}
+          onClose={() => setShowPreview(null)}
+        />
+      )}
     </div>
   );
 };

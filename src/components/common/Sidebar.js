@@ -14,7 +14,7 @@ import {
   FiArchive,
   FiDatabase,
   FiFileText,
-} from 'react-icons/fi';
+} from "react-icons/fi";
 import { FaBars, FaChevronDown, FaChevronUp } from "react-icons/fa";
 
 const Sidebar = () => {
@@ -28,7 +28,11 @@ const Sidebar = () => {
 
   const mainMenus = [
     { label: "Dashboard", icon: <FiGrid />, route: "/dashboard" },
-    { label: "Test Execution", icon: <FiPlayCircle />, route: "/test-execution" },
+    {
+      label: "Test Execution",
+      icon: <FiPlayCircle />,
+      route: "/test-execution",
+    },
     { label: "Results", icon: <FiBarChart2 />, route: "/results" },
   ];
 
@@ -52,8 +56,16 @@ const Sidebar = () => {
       route: "/test-design/api-repository",
       icon: <FiDatabase />,
     },
-    { label: "Test Case", route: "/test-design/test-case", icon: <FiFileText /> },
-    { label: "Test Suite", route: "/test-design/test-suite", icon: <FiLayers /> },
+    {
+      label: "Test Case",
+      route: "/test-design/test-case",
+      icon: <FiFileText />,
+    },
+    {
+      label: "Test Suite",
+      route: "/test-design/test-suite",
+      icon: <FiLayers />,
+    },
     {
       label: "Test Package",
       route: "/test-design/test-package",
@@ -70,13 +82,15 @@ const Sidebar = () => {
     <div
       className={`bg-[#F9FAFB] h-screen border-r shadow-sm transition-all duration-300 ease-in-out ${collapsed ? "w-20" : "w-64"}`}
     >
-      <div className={`flex items-center justify-${collapsed ? 'center' : 'between'} px-4 py-4`}>
+      <div
+        className={`flex items-center justify-${collapsed ? "center" : "between"} px-4 py-4`}
+      >
         {!collapsed && (
           <span className="text-lg font-bold text-[#111827]">Automation</span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={`text-gray-600 text-xl ${collapsed ? 'block' : ''}`}
+          className={`text-gray-600 text-xl ${collapsed ? "block" : ""}`}
         >
           <FaBars />
         </button>
@@ -99,12 +113,16 @@ const Sidebar = () => {
         ))}
 
         {/* Test Design */}
-        <div className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}>
+        <div
+          className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}
+        >
           <div
             onClick={() => setTestDesignOpen(!testDesignOpen)}
             className={`flex ${collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"} px-3 py-2 rounded cursor-pointer transition-colors`}
           >
-            <div className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}>
+            <div
+              className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
+            >
               <FiBox className="text-xl" />
               {!collapsed && <span className="text-sm">Test Design</span>}
             </div>
@@ -137,12 +155,16 @@ const Sidebar = () => {
         </div>
 
         {/* Admin Settings */}
-        <div className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}>
+        <div
+          className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}
+        >
           <div
             onClick={() => setAdminOpen(!adminOpen)}
             className={`flex ${collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"} px-3 py-2 rounded cursor-pointer transition-colors`}
           >
-            <div className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}>
+            <div
+              className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
+            >
               <FiSettings className="text-xl" />
               {!collapsed && <span className="text-sm">Admin Settings</span>}
             </div>

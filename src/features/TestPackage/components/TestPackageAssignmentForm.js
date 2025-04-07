@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
@@ -13,7 +13,12 @@ const allMockTestSuites = Array.from({ length: 50 }, (_, i) => ({
 
 const ITEMS_PER_PAGE = 6;
 
-const TestPackageAssignmentForm = ({ testSuites, onAddToPackage, packageCreated, prefilledSuites = [] }) => {
+const TestPackageAssignmentForm = ({
+  testSuites,
+  onAddToPackage,
+  packageCreated,
+  prefilledSuites = [],
+}) => {
   const [selectedSuites, setSelectedSuites] = useState([]);
   const [availableSuites, setAvailableSuites] = useState(allMockTestSuites);
   const [tableData, setTableData] = useState([]);
@@ -185,7 +190,7 @@ const TestPackageAssignmentForm = ({ testSuites, onAddToPackage, packageCreated,
                   <td className="p-3">{test.description}</td>
                   <td className="p-3 text-center">
                     <button onClick={() => handleDeleteRow(test.id)}>
-                    <IconButton icon={FiTrash2} />
+                      <IconButton icon={FiTrash2} />
                     </button>
                   </td>
                 </tr>
@@ -202,9 +207,7 @@ const TestPackageAssignmentForm = ({ testSuites, onAddToPackage, packageCreated,
             >
               Cancel
             </button>
-            <Button
-              onClick={() => toast.success("Test Suites associated")}
-            >
+            <Button onClick={() => toast.success("Test Suites associated")}>
               Create
             </Button>
           </div>

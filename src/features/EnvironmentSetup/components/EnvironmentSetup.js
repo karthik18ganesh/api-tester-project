@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FaHome, FaEdit } from "react-icons/fa";
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2 } from "react-icons/fi";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
 import { useNavigate } from "react-router-dom";
@@ -101,11 +101,8 @@ const EnvironmentSetup = () => {
   return (
     <div className="p-6 text-gray-800 font-inter">
       <Breadcrumb
-  items={[
-    { label: "Admin Settings" },
-    { label: "Environment Settings" }
-  ]}
-/>
+        items={[{ label: "Admin Settings" }, { label: "Environment Settings" }]}
+      />
 
       <div className="border-b border-gray-200 mb-6"></div>
 
@@ -160,16 +157,16 @@ const EnvironmentSetup = () => {
 
         <div className="flex justify-end gap-3">
           {isUpdateMode && (
-            <button className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100" onClick={() =>
+            <button
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+              onClick={() =>
                 setFormData({ id: null, name: "", url: "", description: "" })
               }
             >
               Cancel
             </button>
           )}
-          <Button>
-            {isUpdateMode ? "Update" : "Create"}
-          </Button>
+          <Button>{isUpdateMode ? "Update" : "Create"}</Button>
         </div>
       </form>
 
@@ -194,10 +191,9 @@ const EnvironmentSetup = () => {
                 <td className="py-3 px-4">{env.description}</td>
                 <td className="py-3 px-4">{env.date}</td>
                 <td className="py-3 px-4 text-right flex justify-end gap-3 pr-4">
-                  <IconButton icon={FaEdit}
-                    onClick={() => handleEdit(env)}
-                  />
-                  <IconButton icon={FiTrash2}
+                  <IconButton icon={FaEdit} onClick={() => handleEdit(env)} />
+                  <IconButton
+                    icon={FiTrash2}
                     onClick={() => {
                       setSelectedEnv(env);
                       setShowModal(true);
@@ -284,11 +280,7 @@ const EnvironmentSetup = () => {
               >
                 Cancel
               </button>
-              <Button
-                onClick={handleDelete}
-              >
-                Delete
-              </Button>
+              <Button onClick={handleDelete}>Delete</Button>
             </div>
           </div>
         </div>

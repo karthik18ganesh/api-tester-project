@@ -1,5 +1,5 @@
-import React from 'react';
-import { FaSearch, FaCog, FaUserCircle } from 'react-icons/fa';
+import React from "react";
+import { FaSearch, FaCog, FaUserCircle } from "react-icons/fa";
 import Logo from "../../assets/Logo.svg";
 const Navbar = () => {
   return (

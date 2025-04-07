@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-const IconButton = ({ icon: Icon, className = '', ...props }) => {
+const IconButton = ({ icon: Icon, className = "", ...props }) => {
   return (
     <button
       className={`p-2 text-gray-500 hover:text-[#4F46E5] transition-colors duration-200 ${className}`}

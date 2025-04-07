@@ -36,18 +36,25 @@ const TestCase = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(data.length / pageSize);
-  const currentData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const currentData = data.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const toggleSelectAll = () => {
     const ids = currentData.map((item) => item.id);
     const allSelected = ids.every((id) => selected.includes(id));
-    setSelected(allSelected ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
+    setSelected(
+      allSelected
+        ? selected.filter((id) => !ids.includes(id))
+        : [...new Set([...selected, ...ids])],
+    );
   };
 
   const getPaginationRange = () => {
@@ -58,7 +65,11 @@ const TestCase = () => {
     range.push(1);
     if (currentPage > visiblePages + 2) range.push(dots);
 
-    for (let i = Math.max(2, currentPage - visiblePages); i <= Math.min(totalPages - 1, currentPage + visiblePages); i++) {
+    for (
+      let i = Math.max(2, currentPage - visiblePages);
+      i <= Math.min(totalPages - 1, currentPage + visiblePages);
+      i++
+    ) {
       range.push(i);
     }
 
@@ -71,7 +82,10 @@ const TestCase = () => {
   return (
     <div className="p-6 font-inter text-gray-800">
       <Breadcrumb
-        items={[{ label: "Test Design" }, { label: "Test Case", path: "/test-design/test-case" }]}
+        items={[
+          { label: "Test Design" },
+          { label: "Test Case", path: "/test-design/test-case" },
+        ]}
       />
       <div className="border-b border-gray-200 mb-6"></div>
 
@@ -102,8 +116,12 @@ const TestCase = () => {
               </button>
               {exportOpen && (
                 <div className="absolute right-0 mt-1 bg-white border rounded shadow w-32 z-10">
-                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">As PDF</div>
-                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">As Excel</div>
+                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                    As PDF
+                  </div>
+                  <div className="px-4 py-2 hover:bg-gray-100 cursor-pointer">
+                    As Excel
+                  </div>
                 </div>
               )}
             </div>
@@ -120,7 +138,9 @@ const TestCase = () => {
                 <input
                   type="checkbox"
                   onChange={toggleSelectAll}
-                  checked={currentData.every((item) => selected.includes(item.id))}
+                  checked={currentData.every((item) =>
+                    selected.includes(item.id),
+                  )}
                 />
               </th>
               <th className="py-3 px-4">Case ID</th>
@@ -142,7 +162,11 @@ const TestCase = () => {
                 <td className="py-3 px-4">{item.testCaseId}</td>
                 <td
                   className="py-3 px-4 text-[#4F46E5] underline cursor-pointer"
-                  onClick={() => navigate("/test-design/test-case/create", { state: { testCase: item } })}
+                  onClick={() =>
+                    navigate("/test-design/test-case/create", {
+                      state: { testCase: item },
+                    })
+                  }
                 >
                   {item.name}
                 </td>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiTrash2 } from 'react-icons/fi';
+import { FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
@@ -13,7 +13,12 @@ const allMockTestCases = Array.from({ length: 50 }, (_, i) => ({
 
 const ITEMS_PER_PAGE = 6;
 
-const TestSuiteAssignmentForm = ({ testCases, onAddToSuite, suiteCreated, prefilledCases = [] }) => {
+const TestSuiteAssignmentForm = ({
+  testCases,
+  onAddToSuite,
+  suiteCreated,
+  prefilledCases = [],
+}) => {
   const [selectedCases, setSelectedCases] = useState([]);
   const [availableCases, setAvailableCases] = useState(allMockTestCases);
   const [tableData, setTableData] = useState([]);
@@ -202,9 +207,7 @@ const TestSuiteAssignmentForm = ({ testCases, onAddToSuite, suiteCreated, prefil
             >
               Cancel
             </button>
-            <Button
-              onClick={() => toast.success("Test cases associated")}
-            >
+            <Button onClick={() => toast.success("Test cases associated")}>
               Create
             </Button>
           </div>

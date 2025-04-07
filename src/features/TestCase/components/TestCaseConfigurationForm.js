@@ -20,7 +20,7 @@ const TestCaseConfigurationForm = () => {
   const totalPages = Math.ceil(variables.length / ITEMS_PER_PAGE);
   const paginatedVariables = variables.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   const handleDelete = (indexToRemove) => {

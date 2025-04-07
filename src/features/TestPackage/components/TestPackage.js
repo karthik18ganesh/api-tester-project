@@ -70,12 +70,11 @@ const TestPackage = () => {
     <div className="p-6 font-inter text-gray-800">
       {/* Breadcrumb */}
       <Breadcrumb
-  items={[
-    { label: "Test Design" },
-    { label: "Test Package", path: "/test-design/test-package" }
-  ]}
-/>
-
+        items={[
+          { label: "Test Design" },
+          { label: "Test Package", path: "/test-design/test-package" },
+        ]}
+      />
 
       <div className="border-b border-gray-200 mb-6"></div>
 
