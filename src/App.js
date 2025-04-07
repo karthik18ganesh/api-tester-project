@@ -17,6 +17,7 @@ import Login from "./features/Login/components/Login";
 import Toast from "./components/common/Toast";
 import TestCase from "./features/TestCase/components/TestCase";
 import TestCaseDetails from "./features/TestCase/components/TestCaseDetails";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 
 const App = () => {
   return (
@@ -26,28 +27,28 @@ const App = () => {
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           {/* Admin Settings */}
           <Route
             path="/admin/environment-setup"
-            element={<EnvironmentSetup />}
+            element={<ProtectedRoute><EnvironmentSetup /></ProtectedRoute>}
           />
-          <Route path="/admin/project-setup" element={<ProjectSetup />} />
+          <Route path="/admin/project-setup" element={<ProtectedRoute><ProjectSetup /></ProtectedRoute>} />
           {/* Test Design */}
-          <Route path="/test-design/test-suite" element={<TestSuite />} />
+          <Route path="/test-design/test-suite" element={<ProtectedRoute><TestSuite /></ProtectedRoute>} />
           <Route
             path="/test-design/test-suite/create"
-            element={<TestSuiteDetails />}
+            element={<ProtectedRoute><TestSuiteDetails /></ProtectedRoute>}
           />
-          <Route path="/test-design/test-package" element={<TestPackage />} />
+          <Route path="/test-design/test-package" element={<ProtectedRoute><TestPackage /></ProtectedRoute>} />
           <Route
             path="/test-design/test-package/create"
-            element={<TestPackageDetails />}
+            element={<ProtectedRoute><TestPackageDetails /></ProtectedRoute>}
           />
-          <Route path="/test-design/test-case" element={<TestCase />} />
+          <Route path="/test-design/test-case" element={<ProtectedRoute><TestCase /></ProtectedRoute>} />
           <Route
             path="/test-design/test-case/create"
-            element={<TestCaseDetails />}
+            element={<ProtectedRoute><TestCaseDetails /></ProtectedRoute>}
           />
         </Route>
       </Routes>

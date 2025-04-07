@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { mockLogin } from "../../../utils/mockLogin";
+//import { mockLogin } from "../../../utils/mockLogin";
 import Logo from "../../../assets/Logo.svg";
+import axios from "axios";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -21,19 +22,33 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-
+  
     try {
-      await mockLogin({ username, password });
-
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", username);
+      const response = await axios.post("http://localhost:8080/users/login", {
+        username,
+        password,
+      });
+      console.log(response)
+  
+      if (
+        response.data.status === "success" &&
+        response.data.data // JWT token
+      ) {
+        localStorage.setItem("authToken", response.data.data);
+  
+        if (rememberMe) {
+          localStorage.setItem("rememberedUsername", username);
+        } else {
+          localStorage.removeItem("rememberedUsername");
+        }
+  
+        navigate("/dashboard");
       } else {
-        localStorage.removeItem("rememberedUsername");
+        setError("Invalid login credentials.");
       }
-
-      navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      setError("Login failed. Please check your username and password.");
+      console.error("Login error:", err);
     }
   };
 
