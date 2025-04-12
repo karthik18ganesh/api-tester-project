@@ -18,6 +18,8 @@ import Toast from "./components/common/Toast";
 import TestCase from "./features/TestCase/components/TestCase";
 import TestCaseDetails from "./features/TestCase/components/TestCaseDetails";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import APIRepository from "./features/APIRepository/components/APIRepository";
+import APIRepositoryDetails from "./features/APIRepository/components/APIRepositoryDetails";
 
 const App = () => {
   return (
@@ -35,6 +37,11 @@ const App = () => {
           />
           <Route path="/admin/project-setup" element={<ProtectedRoute><ProjectSetup /></ProtectedRoute>} />
           {/* Test Design */}
+          <Route path="/test-design/api-repository" element={<ProtectedRoute><APIRepository /></ProtectedRoute>} />
+          <Route
+            path="/test-design/api-repository/create"
+            element={<ProtectedRoute><APIRepositoryDetails /></ProtectedRoute>}
+          />
           <Route path="/test-design/test-suite" element={<ProtectedRoute><TestSuite /></ProtectedRoute>} />
           <Route
             path="/test-design/test-suite/create"
