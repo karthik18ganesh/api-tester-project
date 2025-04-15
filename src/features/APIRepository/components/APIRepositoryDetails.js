@@ -22,6 +22,9 @@ const APIRepositoryDetails = () => {
     environment: "",
     description: ""
   });
+  const [headers, setHeaders] = useState([{ key: "", value: "" }]);
+  const [queryParams, setQueryParams] = useState([{ key: "", value: "" }]);
+  const [rawBody, setRawBody] = useState("");
   const [responseData, setResponseData] = useState({
     statusCode: "",
     content: "",
@@ -34,20 +37,50 @@ const APIRepositoryDetails = () => {
     }
   }, [isEditMode, location.state]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!formData.url || !formData.method) {
       toast.error("URL and Method are required to send a request.");
       return;
     }
 
-    // Simulate a request
-    setResponseData({
-      statusCode: "200 OK",
-      content: JSON.stringify({ message: "Mock response from server" }, null, 2),
-      contentType: "JSON"
-    });
+    try {
+      const url = new URL(formData.url);
+      queryParams.forEach(param => {
+        if (param.key && param.value) {
+          url.searchParams.append(param.key, param.value);
+        }
+      });
 
-    toast.success("Request sent successfully");
+      const options = {
+        method: formData.method,
+        headers: headers.reduce((acc, cur) => {
+          if (cur.key && cur.value) acc[cur.key] = cur.value;
+          return acc;
+        }, {}),
+        body: ["POST", "PUT", "PATCH"].includes(formData.method) ? rawBody : undefined
+      };
+
+      const res = await fetch(url.toString(), options);
+      const contentType = res.headers.get("Content-Type") || "";
+      const isJson = contentType.includes("application/json");
+      const responseBody = isJson ? await res.json() : await res.text();
+
+      setResponseData({
+        statusCode: res.status + " " + res.statusText,
+        content: isJson ? JSON.stringify(responseBody, null, 2) : responseBody,
+        contentType: isJson ? "JSON" : "Text"
+      });
+
+      toast.success("Request sent successfully");
+    } catch (error) {
+      console.error("API Error:", error);
+      setResponseData({
+        statusCode: "Error",
+        content: error.message,
+        contentType: "Text"
+      });
+      toast.error("Failed to send request");
+    }
   };
 
   const handleSave = () => {
@@ -63,10 +96,10 @@ const APIRepositoryDetails = () => {
 
   const renderTab = () => {
     switch (activeTab) {
-      case "Headers": return <HeadersTab />;
+      case "Headers": return <HeadersTab headers={headers} setHeaders={setHeaders} />;
       case "Authorization": return <AuthTab />;
-      case "Body": return <BodyTab />;
-      case "Query Params": return <QueryParamsTab />;
+      case "Body": return <BodyTab rawBody={rawBody} setRawBody={setRawBody} />;
+      case "Query Params": return <QueryParamsTab params={queryParams} setParams={setQueryParams} />;
       default: return null;
     }
   };
@@ -110,3 +143,4 @@ const APIRepositoryDetails = () => {
 };
 
 export default APIRepositoryDetails;
+

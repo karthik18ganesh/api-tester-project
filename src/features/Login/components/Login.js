@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-//import { mockLogin } from "../../../utils/mockLogin";
+import { toast } from "react-toastify";
 import Logo from "../../../assets/Logo.svg";
-import axios from "axios";
+import { nanoid } from "nanoid";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -22,55 +23,61 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-  
-    try {
-      const response = await axios.post("http://localhost:8080/users/login", {
+
+    const payload = {
+      requestMetaData: {
+        userId: "",
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString()
+      },
+      data: {
         username,
-        password,
+        password
+      }
+    };
+
+    try {
+      const res = await fetch("http://localhost:8080/users/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-      console.log(response)
-  
-      if (
-        response.data.status === "success" &&
-        response.data.data // JWT token
-      ) {
-        localStorage.setItem("authToken", response.data.data);
-  
+
+      const result = await res.json();
+      const { code, message, data } = result.result;
+      console.log(typeof code)
+      if (code === "200") {
         if (rememberMe) {
           localStorage.setItem("rememberedUsername", username);
         } else {
           localStorage.removeItem("rememberedUsername");
         }
-  
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userId", data.userId);
+        toast.success(message);
         navigate("/dashboard");
       } else {
-        setError("Invalid login credentials.");
+        setError(message);
+        toast.error(message);
       }
     } catch (err) {
-      setError("Login failed. Please check your username and password.");
-      console.error("Login error:", err);
+      setError("Login failed. Please try again.");
+      toast.error("Login failed");
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 font-inter">
-      {/* Logo */}
       <img src={Logo} alt="Logo" className="mb-4 h-10 w-10" />
-
-      {/* Title */}
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
         Enter your login details
       </h2>
-
-      {/* Card */}
       <div className="w-full max-w-sm bg-white shadow-md rounded-xl p-6">
         <form onSubmit={handleLogin} className="space-y-5">
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Username
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
             <input
               type="text"
               placeholder="Enter username"
@@ -79,11 +86,8 @@ const Login = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               placeholder="Enter password"
@@ -92,7 +96,6 @@ const Login = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div className="flex items-center justify-between text-sm">
             <label className="flex items-center space-x-2 text-gray-700">
               <input
@@ -103,12 +106,8 @@ const Login = () => {
               />
               <span>Remember me</span>
             </label>
-
-            <a href="#" className="text-blue-600 hover:underline">
-              Forgot your password?
-            </a>
+            <a href="#" className="text-blue-600 hover:underline">Forgot your password?</a>
           </div>
-
           <button
             type="submit"
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md font-medium"

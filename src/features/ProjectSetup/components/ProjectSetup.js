@@ -1,25 +1,17 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { FaEdit } from "react-icons/fa";
-import IconButton from "../../../components/common/IconButton";
 import { FiTrash2 } from "react-icons/fi";
+import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
-import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
 import Breadcrumb from "../../../components/common/Breadcrumb";
+import { toast } from "react-toastify";
+import { nanoid } from "nanoid";
 
 const pageSize = 5;
 
-const mockProjects = Array.from({ length: 60 }, (_, i) => ({
-  id: i + 1,
-  name: `Project ${i + 1}`,
-  projectId: `PRJ-${String(i + 1).padStart(3, "0")}`,
-  description: `This is project ${i + 1}`,
-  date: new Date(2025, 2, (i % 28) + 1).toLocaleDateString("en-GB"),
-}));
-
 const ProjectSetup = () => {
-  const navigate = useNavigate();
-  const [data, setData] = useState(mockProjects);
+  const [data, setData] = useState([]);
   const [formData, setFormData] = useState({
     id: null,
     name: "",
@@ -34,40 +26,8 @@ const ProjectSetup = () => {
   const totalPages = Math.ceil(data.length / pageSize);
   const currentData = data.slice(
     (currentPage - 1) * pageSize,
-    currentPage * pageSize,
+    currentPage * pageSize
   );
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (isUpdateMode) {
-      setData((prev) =>
-        prev.map((item) =>
-          item.id === formData.id ? { ...formData, date: item.date } : item,
-        ),
-      );
-      toast.success(`"${formData.name}" updated successfully`);
-    } else {
-      setData((prev) => [
-        ...prev,
-        {
-          ...formData,
-          id: prev.length + 1,
-          date: new Date().toLocaleDateString("en-GB"),
-        },
-      ]);
-      toast.success(`"${formData.name}" created successfully`);
-    }
-    setFormData({ id: null, name: "", projectId: "", description: "" });
-    setCurrentPage(1);
-  };
-
-  const handleEdit = (item) => setFormData(item);
-
-  const handleDelete = () => {
-    setData((prev) => prev.filter((item) => item.id !== selectedProject.id));
-    setShowModal(false);
-    toast.success(`"${selectedProject?.name}" deleted successfully`);
-  };
 
   const getPaginationRange = () => {
     const range = [];
@@ -91,75 +51,146 @@ const ProjectSetup = () => {
     return range;
   };
 
+  const fetchProjects = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/projects?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC");
+      const json = await res.json();
+      const { code, data: responseData, message } = json.result;
+
+      if (code === "200") {
+        const formatted = responseData.content.map((p) => ({
+          id: p.id,
+          name: p.projectName,
+          projectId: p.projectId,
+          description: p.description,
+          date: p.createdDate,
+        }));
+        setData(formatted);
+      } else {
+        toast.error(message || "Failed to fetch projects");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error fetching projects");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId"),
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        id: formData.id,
+        projectId: formData.projectId,
+        projectName: formData.name,
+        description: formData.description,
+      },
+    };
+
+    const method = isUpdateMode ? "PUT" : "POST";
+
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/projects", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      const { code, message } = json.result;
+
+      if (code === "200") {
+        toast.success(message || (isUpdateMode ? "Updated" : "Created"));
+        fetchProjects();
+        setFormData({ id: null, name: "", projectId: "", description: "" });
+      } else {
+        toast.error(message || "Failed to process project");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error during submission");
+    }
+  };
+
+  const handleEdit = (item) => setFormData(item);
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/v1/projects/${selectedProject.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      const { code, message } = json.result;
+
+      if (code === "200") {
+        toast.success(message || "Project deleted");
+        fetchProjects();
+      } else {
+        toast.error(message || "Delete failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Error deleting project");
+    }
+
+    setShowModal(false);
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
   return (
-    <div className="p-6 text-gray-800 font-inter">
-      <Breadcrumb
-        items={[{ label: "Admin Settings" }, { label: "Project Settings" }]}
-      />
-
+    <div className="p-6 font-inter text-gray-800">
+      <Breadcrumb items={[{ label: "Admin Settings" }, { label: "Project Setup" }]} />
       <div className="border-b border-gray-200 mb-6"></div>
-      <h2 className="text-2xl font-semibold mb-4">Project setup</h2>
+      <h2 className="text-2xl font-semibold my-4">Project Setup</h2>
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 border rounded-md mb-6 shadow-sm"
-      >
-        <h3 className="text-md font-semibold mb-4">
-          {isUpdateMode ? "Update project" : "Create new project"}
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-sm border mb-6">
+        <h3 className="text-lg font-medium mb-4">
+          {isUpdateMode ? "Update Project" : "Create New Project"}
         </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm mb-1">Project name</label>
+            <label className="text-sm block mb-1">Project Name</label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
-              className="w-full border rounded px-3 py-2 bg-gray-50"
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              className="w-full border p-2 rounded bg-gray-50"
               required
             />
           </div>
           <div>
-            <label className="block text-sm mb-1">Project ID</label>
+            <label className="text-sm block mb-1">Project ID</label>
             <input
               type="text"
               value={formData.projectId}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, projectId: e.target.value }))
-              }
-              className="w-full border rounded px-3 py-2 bg-gray-50"
+              onChange={(e) => setFormData((prev) => ({ ...prev, projectId: e.target.value }))}
+              className="w-full border p-2 rounded bg-gray-50"
               required
             />
           </div>
         </div>
-
         <div className="mb-4">
-          <label className="block text-sm mb-1">Description</label>
+          <label className="text-sm block mb-1">Description</label>
           <textarea
             rows={3}
             value={formData.description}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, description: e.target.value }))
-            }
-            className="w-full border rounded px-3 py-2 bg-gray-50"
+            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+            className="w-full border p-2 rounded bg-gray-50"
           />
         </div>
-
         <div className="flex justify-end gap-3">
           {isUpdateMode && (
             <button
               type="button"
-              className="px-6 py-2 border border-gray-400 text-gray-700 rounded hover:bg-gray-100"
-              onClick={() =>
-                setFormData({
-                  id: null,
-                  name: "",
-                  projectId: "",
-                  description: "",
-                })
-              }
+              onClick={() => setFormData({ id: null, name: "", projectId: "", description: "" })}
+              className="px-4 py-2 border rounded text-gray-600"
             >
               Cancel
             </button>
@@ -172,38 +203,32 @@ const ProjectSetup = () => {
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 text-gray-600 border-b">
             <tr>
-              <th className="py-3 px-4">Project name</th>
-              <th className="py-3 px-4">Project ID</th>
-              <th className="py-3 px-4">Description</th>
-              <th className="py-3 px-4">Date</th>
-              <th className="py-3 px-4 text-right">Action</th>
+              <th className="p-3">Name</th>
+              <th className="p-3">Project ID</th>
+              <th className="p-3">Description</th>
+              <th className="p-3">Date</th>
+              <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {currentData.map((project) => (
               <tr key={project.id} className="border-b">
-                <td className="py-3 px-4">{project.name}</td>
-                <td className="py-3 px-4">{project.projectId}</td>
-                <td className="py-3 px-4">{project.description}</td>
-                <td className="py-3 px-4">{project.date}</td>
-                <td className="py-3 px-4 text-right flex justify-end gap-3 pr-4">
-                  <IconButton
-                    icon={FaEdit}
-                    onClick={() => handleEdit(project)}
-                  />
-                  <IconButton
-                    icon={FiTrash2}
-                    onClick={() => {
-                      setSelectedProject(project);
-                      setShowModal(true);
-                    }}
-                  />
+                <td className="p-3">{project.name}</td>
+                <td className="p-3">{project.projectId}</td>
+                <td className="p-3">{project.description}</td>
+                <td className="p-3">{project.date}</td>
+                <td className="p-3 text-right">
+                  <IconButton icon={FaEdit} onClick={() => handleEdit(project)} />
+                  <IconButton icon={FiTrash2} onClick={() => {
+                    setSelectedProject(project);
+                    setShowModal(true);
+                  }} />
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-
+        {/* Pagination */}
         <div className="flex justify-end items-center px-4 py-3 text-sm text-gray-600 gap-1">
           <button
             onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -236,42 +261,16 @@ const ProjectSetup = () => {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center transition-all duration-300 animate-fadeIn">
-          <div className="bg-white rounded shadow-lg w-[90%] max-w-md animate-scaleIn overflow-hidden">
-            <div className="bg-blue-50 p-4 flex items-center gap-3 border-b">
-              <div className="bg-blue-100 text-blue-600 rounded-full p-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M12 20c4.418 0 8-3.582 8-8s-3.582-8-8-8-8 3.582-8 8 3.582 8 8 8z"
-                  />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-blue-800">
-                Delete Project:{" "}
-                <span className="text-blue-700">"{selectedProject?.name}"</span>
-              </h3>
-            </div>
-
-            <div className="p-5 text-sm text-gray-700">
-              Are you sure you want to delete this project? <br />
-              <strong>This action is permanent and cannot be reversed.</strong>
-            </div>
-
-            <div className="flex justify-end gap-3 px-5 py-4 bg-gray-50 border-t">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-30 flex items-center justify-center">
+          <div className="bg-white rounded shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-medium mb-4">
+              Are you sure you want to delete project "{selectedProject?.name}"?
+            </h3>
+            <div className="flex justify-end gap-3">
               <button
+                className="px-4 py-2 border rounded text-gray-600"
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
               >
                 Cancel
               </button>
