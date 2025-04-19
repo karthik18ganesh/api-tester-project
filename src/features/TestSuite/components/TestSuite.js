@@ -1,32 +1,48 @@
-import React, { useState } from "react";
+import React, { useEffect,useState } from "react";
 import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
-
+import { toast } from "react-toastify";
 const pageSize = 5;
-
-const mockSuites = Array.from({ length: 50 }, (_, i) => ({
-  id: i + 1,
-  suiteId: `TS-${String(50 - i).padStart(3, "0")}`,
-  name: `Test Suite ${50 - i}`,
-  count: Math.floor(Math.random() * 30) + 5,
-  created: new Date(2025, 2, 24 + (i % 5)).toLocaleDateString("en-GB"),
-  executed: new Date(2025, 2, 25 + (i % 5)).toLocaleDateString("en-GB"),
-  status: ["Passed", "Partial Pass", "Failed"][i % 3],
-}));
 
 const TestSuite = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(mockSuites);
+  const [data, setData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(data.length / pageSize);
   const currentData = data.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+
+  const fetchSuites = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/test-suites");
+      const json = await res.json();
+      const { code, message, data: resultData } = json.result;
+  
+      if (code === "200") {
+        const formatted = resultData.content.map((suite) => ({
+          id: suite.testSuiteID,
+          suiteId: suite.testSuiteID, 
+          name: suite.suiteName,
+          count: suite.testCases?.length || 0,
+          created: suite.createdDate,   
+          executed: suite.updatedDate,    
+          status: "-",    
+        }));
+        setData(formatted);
+      } else {
+        toast.error(message || "Failed to fetch test suites");
+      }
+    } catch (err) {
+      toast.error("Error fetching test suites");
+    }
+  };
+  
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
@@ -65,6 +81,10 @@ const TestSuite = () => {
 
     return range;
   };
+
+  useEffect(() => {
+    fetchSuites();
+  }, []);  
 
   return (
     <div className="p-6 font-inter text-gray-800">

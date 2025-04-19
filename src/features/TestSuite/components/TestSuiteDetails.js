@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-//import Layout from '../../../components/common/Layout';
+import { useNavigate } from "react-router-dom";
+import { nanoid } from "nanoid";
 import TestSuiteAssignmentForm from "./TestSuiteAssignmentForm";
 import TestSuiteTopForm from "./TestSuitTopForm";
 import { useLocation } from "react-router-dom";
@@ -11,6 +12,7 @@ const TestSuiteDetails = () => {
   const isUpdateMode = !!state?.suite;
   const [suiteCreated, setSuiteCreated] = useState(false);
   const [testSuiteRows, setTestSuiteRows] = useState([]);
+  const [suiteDetails, setSuiteDetails] = useState(null);
 
   const [testCases] = useState([
     "Cart Functionality Test",
@@ -20,14 +22,87 @@ const TestSuiteDetails = () => {
     "Invalid Password Test",
   ]);
 
-  const handleSubmit = (formData) => {
-    if (!formData.name) {
-      toast.error("Please enter suite name");
-      return;
+  const navigate = useNavigate();
+  const suiteId = state?.suite?.id; // Map this to `testSuiteID` if fetched
+
+  const handleSubmit = async (formData) => {
+    const isUpdate = !!suiteId;
+  
+    const payload = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        suiteName: formData.name,
+        description: formData.description,
+        execution: formData.execution,
+        executionType: formData.executionType,
+        reportType: formData.reportType,
+        publishMethod: formData.publishMethod,
+        ...(formData.publishMethod === "Email"
+          ? { email: formData.email }
+          : { ftpPath: formData.ftpPath }),
+        ...(isUpdate && { testSuiteID: suiteId }),
+      },
+    };
+  
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/test-suites", {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const json = await res.json();
+      const { code, message } = json.result;
+  
+      if (code === "200") {
+        toast.success(message || "Suite saved successfully");
+        setTimeout(() => navigate("/test-design/test-suite"), 1000);
+      } else {
+        toast.error(message || "Failed to save test suite");
+      }
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Something went wrong");
     }
-    setSuiteCreated(true);
-    toast.success(`"${formData.name}" created successfully`);
   };
+
+  useEffect(() => {
+    const fetchSuiteById = async () => {
+      if (!suiteId) return;
+  
+      try {
+        const res = await fetch(`http://localhost:8080/api/v1/test-suites/${suiteId}`);
+        const json = await res.json();
+        const { code, message, data } = json.result;
+  
+        if (code === "200") {
+          setSuiteDetails({
+            name: data.suiteName,
+            description: data.description,
+            execution: data.execution,
+            executionType: data.executionType,
+            reportType: data.reportType,
+            publishMethod: data.publishMethod,
+            email: data.email || "",
+            ftpPath: data.ftpPath || "",
+            testCases: data.testCases || [],
+          });
+        } else {
+          toast.error(message || "Failed to load suite data");
+        }
+      } catch (error) {
+        console.error("Error loading suite:", error);
+        toast.error("Error fetching test suite data");
+      }
+    };
+  
+    fetchSuiteById();
+  }, [suiteId]);
+  
 
   const handleAddToSuite = (selectedCases) => {
     if (!selectedCases || selectedCases.length === 0) {
@@ -63,8 +138,8 @@ const TestSuiteDetails = () => {
       <TestSuiteTopForm
         onSave={handleSubmit}
         onCancel={() => setSuiteCreated(false)}
-        isUpdate={isUpdateMode}
-        defaultValues={state?.suite}
+        isUpdate={!!suiteId}
+        defaultValues={suiteDetails}
       />
       <hr className="my-6 border-gray-200" />
 
