@@ -29,7 +29,7 @@ const TestPackageTopForm = ({
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSavePackage = (e) => {
     e.preventDefault();
     onSave?.(formData);
   };
@@ -48,7 +48,9 @@ const TestPackageTopForm = ({
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">
-        Create new test package
+      {isUpdate
+    ? `Edit ${defaultValues?.name || 'Test'}`
+    : "Create new Test Package"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -133,7 +135,7 @@ const TestPackageTopForm = ({
         >
           Cancel
         </button>
-        <Button onClick={handleSubmit}>{isUpdate ? "Update" : "Save"}</Button>
+        <Button onClick={handleSavePackage}>{isUpdate ? "Update" : "Save"}</Button>
       </div>
     </div>
   );

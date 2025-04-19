@@ -1,23 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
-
+import { toast } from "react-toastify";
 const pageSize = 5;
-
-const mockPackages = Array.from({ length: 50 }, (_, i) => ({
-  id: i + 1,
-  packageId: `TP-${String(50 - i).padStart(3, "0")}`,
-  name: `Test Package ${50 - i}`,
-  count: Math.floor(Math.random() * 30) + 5,
-  created: new Date(2025, 2, 24 + (i % 5)).toLocaleDateString("en-GB"),
-  executed: new Date(2025, 2, 25 + (i % 5)).toLocaleDateString("en-GB"),
-  status: ["Passed", "Partial Pass", "Failed"][i % 3],
-}));
 
 const TestPackage = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(mockPackages);
+  const [data, setData] = useState([]);
   const [selected, setSelected] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -27,6 +17,32 @@ const TestPackage = () => {
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
   );
+
+  const fetchPackages = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/api/v1/packages?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC");
+        const json = await res.json();
+        const { code, data: resultData, message } = json.result;
+  
+        if (code === "200") {
+          const formatted = resultData.content.map(pkg => ({
+            id: pkg.testPackageID,
+            packageId: pkg.testPackageID,
+            name: pkg.packageName,
+            count: pkg.testSuites?.length || 0,
+            created: pkg.createdDate,
+            executed: pkg.updatedDate,
+            status: "-"
+          }));
+          setData(formatted);
+        } else {
+          toast.error(message || "Failed to fetch packages");
+        }
+      } catch (error) {
+        console.error("Error fetching packages:", error);
+        toast.error("Something went wrong while fetching packages");
+      }
+    };
 
   const toggleSelect = (id) => {
     setSelected((prev) =>
@@ -65,6 +81,10 @@ const TestPackage = () => {
 
     return range;
   };
+
+  useEffect(() => {
+      fetchPackages();
+    }, []);
 
   return (
     <div className="p-6 font-inter text-gray-800">

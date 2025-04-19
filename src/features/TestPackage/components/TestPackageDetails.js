@@ -1,16 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import TestPackageAssignmentForm from "./TestPackageAssignmentForm";
 import TestPackageTopForm from "./TestPackageTopForm";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
+import { nanoid } from "nanoid";
+import { useNavigate } from "react-router-dom";
 
 const TestPackageDetails = () => {
+  const navigate = useNavigate();
   const { state } = useLocation();
   const isUpdateMode = !!state?.package;
 
   const [packageCreated, setPackageCreated] = useState(false);
   const [testPackageRows, setTestPackageRows] = useState([]);
+
+  const packageId = state?.package?.id;
+
+  const [loading, setLoading] = useState(false);
+  const [packageData, setPackageData] = useState(null);
 
   const [testCases] = useState([
     "Cart Functionality Test",
@@ -20,13 +28,77 @@ const TestPackageDetails = () => {
     "Invalid Password Test",
   ]);
 
-  const handleSubmit = (formData) => {
-    if (!formData.name) {
-      toast.error("Please enter package name");
-      return;
+  useEffect(() => {
+    if (!packageId) return;
+  
+    const fetchPackage = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`http://localhost:8080/api/v1/packages/${packageId}`);
+        const json = await res.json();
+        const { code, message, data } = json.result;
+  
+        if (code === "200") {
+          setPackageData({
+            name: data.packageName,
+            description: data.description,
+            execution: data.execution,
+            executionType: data.executionType,
+            reportType: data.reportType,
+          });
+        } else {
+          toast.error(message || "Failed to load package data");
+        }
+      } catch (error) {
+        console.error("Failed to load package:", error);
+        toast.error("Error while loading test package");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchPackage();
+  }, [packageId]);
+
+  const handleSavePackage = async (formData) => {
+    const isUpdate = !!packageId;
+    const payload = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "00", // fallback
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        packageName: formData.name,
+        description: formData.description,
+        execution: formData.execution,
+        executionType: formData.executionType,
+        reportType: formData.reportType,
+        ...(isUpdate && { testPackageID: packageId }),
+      },
+    };
+  
+    try {
+      const res = await fetch("http://localhost:8080/api/v1/packages", {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+  
+      const json = await res.json();
+      const { code, message } = json.result;
+  
+      if (code === "200") {
+        toast.success(`"${formData.name}" ${isUpdate ? "Updated" : "Created"} successfully` || message);
+        setPackageCreated(true);
+        setTimeout(() => navigate("/test-design/test-package"), 1000);
+      } else {
+        toast.error(message || "Failed to create test package");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error occurred during creation");
     }
-    setPackageCreated(true);
-    toast.success(`"${formData.name}" created successfully`);
   };
 
   const handleAddToPackage = (selectedCases) => {
@@ -62,10 +134,10 @@ const TestPackageDetails = () => {
 
       {/* Top Form */}
       <TestPackageTopForm
-        onSave={handleSubmit}
+        onSave={handleSavePackage}
         onCancel={() => setPackageCreated(false)}
-        isUpdate={isUpdateMode}
-        defaultValues={state?.package}
+        isUpdate={!!packageId}
+        defaultValues={packageData}
       />
       <hr className="my-6 border-gray-200" />
 
