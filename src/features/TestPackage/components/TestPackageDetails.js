@@ -11,26 +11,20 @@ const TestPackageDetails = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const isUpdateMode = !!state?.package;
+  const [packageId, setPackageId] = useState(() => state?.package?.id || null);
 
-  const [packageCreated, setPackageCreated] = useState(false);
+
+  const [packageCreated, setPackageCreated] = useState(isUpdateMode);
   const [testPackageRows, setTestPackageRows] = useState([]);
-
-  const packageId = state?.package?.id;
 
   const [loading, setLoading] = useState(false);
   const [packageData, setPackageData] = useState(null);
 
-  const [testCases] = useState([
-    "Cart Functionality Test",
-    "Mobile App Launch Test",
-    "API Response Validation",
-    "Payment Processing Test",
-    "Invalid Password Test",
-  ]);
-
   useEffect(() => {
     if (!packageId) return;
-  
+    if (state?.package?.id && !packageId) {
+      setPackageId(state.package.id);
+    }
     const fetchPackage = async () => {
       setLoading(true);
       try {
@@ -58,13 +52,13 @@ const TestPackageDetails = () => {
     };
   
     fetchPackage();
-  }, [packageId]);
+  }, [state, packageId]);
 
   const handleSavePackage = async (formData) => {
     const isUpdate = !!packageId;
     const payload = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "00", // fallback
+        userId: localStorage.getItem("userId") || "00",
         transactionId: nanoid(),
         timestamp: new Date().toISOString(),
       },
@@ -86,12 +80,16 @@ const TestPackageDetails = () => {
       });
   
       const json = await res.json();
-      const { code, message } = json.result;
+      const { code, message, data } = json.result;
   
       if (code === "200") {
-        toast.success(`"${formData.name}" ${isUpdate ? "Updated" : "Created"} successfully` || message);
+        toast.success(`"${formData.name}" ${isUpdate ? "Updated" : "Created"} successfully`);
+  
+        if (!isUpdate && data?.testPackageID) {
+          setPackageId(data.testPackageID);
+        }
+  
         setPackageCreated(true);
-        setTimeout(() => navigate("/test-design/test-package"), 1000);
       } else {
         toast.error(message || "Failed to create test package");
       }
@@ -143,10 +141,9 @@ const TestPackageDetails = () => {
 
       {/* Assignment Form */}
       <TestPackageAssignmentForm
-        testCases={testCases}
-        onAddToPackage={handleAddToPackage}
-        packageCreated={true}
-        prefilledCases={state?.package?.testCases || []}
+        packageCreated={packageCreated}
+        packageId={packageId}
+        prefilledSuites={state?.package?.testSuites || []}
       />
 
       {/* Table */}

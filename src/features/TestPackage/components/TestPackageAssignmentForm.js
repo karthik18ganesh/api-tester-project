@@ -5,27 +5,73 @@ import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
 
-const allMockTestSuites = Array.from({ length: 50 }, (_, i) => ({
-  id: `TS-${(i + 1).toString().padStart(3, "0")}`,
-  name: `Test Suite ${i + 1}`,
-  description: `This is the description for test Suite ${i + 1}.`,
-}));
-
 const ITEMS_PER_PAGE = 6;
 
 const TestPackageAssignmentForm = ({
   testSuites,
   onAddToPackage,
+  packageId,
   packageCreated,
   prefilledSuites = [],
 }) => {
   const [selectedSuites, setSelectedSuites] = useState([]);
-  const [availableSuites, setAvailableSuites] = useState(allMockTestSuites);
+  const [availableSuites, setAvailableSuites] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  // 💡 Add these at the top inside the component
+const [dropdownOpen, setDropdownOpen] = useState(false);
+const [selectedSuite, setSelectedSuite] = useState(null);
+
 
   useEffect(() => {
-    if (prefilledSuites.length > 0) {
+    const fetchTestSuites = async () => {
+      try {
+        const res = await fetch("http://localhost:8080/api/v1/test-suites?pageNo=0&limit=50&sortBy=createdDate&sortDir=DESC");
+        const json = await res.json();
+        const { code, data } = json.result;
+  
+        if (code === "200") {
+          const suites = data.content.map((suite) => ({
+            id: suite.testSuiteID,
+            name: suite.suiteName,
+            description: suite.description,
+          }));
+          setAvailableSuites(suites);
+        } else {
+          toast.error("Failed to load test suites");
+        }
+      } catch (err) {
+        toast.error("Error fetching test suites");
+      }
+    };
+  
+    const fetchAssociatedSuites = async () => {
+      try {
+        const res = await fetch(`http://localhost:8080/api/v1/test-suites/by-package/${packageId}`);
+        const json = await res.json();
+        const { code, data } = json.result;
+  
+        if (code === "200" && Array.isArray(data)) {
+          const formatted = data.map((suite) => ({
+            id: suite.testSuiteID,
+            name: suite.suiteName,
+            description: suite.description,
+          }));
+          setTableData(formatted);
+          setAvailableSuites((prev) =>
+            prev.filter((suite) => !formatted.some((assigned) => assigned.id === suite.id))
+          );
+        }
+      } catch (err) {
+        console.error("Error fetching associated test suites:", err);
+        toast.error("Error loading previously assigned test suites");
+      }
+    };
+  
+    if (packageCreated) {
+      fetchTestSuites();
+      fetchAssociatedSuites();
+    } else if (prefilledSuites.length > 0) {
       const initial = prefilledSuites.map((name, i) => ({
         id: Date.now() + i,
         name,
@@ -33,24 +79,16 @@ const TestPackageAssignmentForm = ({
       }));
       setTableData(initial);
     }
-  }, [prefilledSuites]);
-
-  const handleSelectChange = (e) => {
-    const selectedId = e.target.value;
-    const selected = availableSuites.find((item) => item.name === selectedId);
-    if (selected) {
-      setSelectedSuites([...selectedSuites, selected]);
-      setAvailableSuites(
-        availableSuites.filter((item) => item.id !== selected.id),
-      );
-    }
-  };
+  }, [packageCreated, packageId, prefilledSuites]);
 
   const handleRemoveBadge = (id) => {
-    const toRemove = selectedSuites.find((item) => item.id === id);
-    setAvailableSuites([...availableSuites, toRemove]);
-    setSelectedSuites(selectedSuites.filter((item) => item.id !== id));
+    const removedSuite = selectedSuites.find((s) => s.id === id);
+    if (removedSuite) {
+      setAvailableSuites((prev) => [...prev, removedSuite]);
+    }
+    setSelectedSuites((prev) => prev.filter((s) => s.id !== id));
   };
+  
 
   const handleAddToPackage = () => {
     if (selectedSuites.length === 0) {
@@ -62,6 +100,13 @@ const TestPackageAssignmentForm = ({
     setSelectedSuites([]);
     toast.success("Test Suites added to package");
   };
+
+  const handleAddSuite = (suite) => {
+    setSelectedSuites((prev) => [...prev, suite]);
+    setAvailableSuites((prev) => prev.filter((s) => s.id !== suite.id));
+    setDropdownOpen(false);
+  };
+  
 
   const handleDeleteRow = (id) => {
     const toDelete = tableData.find((item) => item.id === id);
@@ -131,45 +176,81 @@ const TestPackageAssignmentForm = ({
           ℹ Assign Suite
         </span>
       </h3>
-      <label className="text-sm font-medium text-gray-600 mb-1 block">
-        Select test Suite
-      </label>
-      <div className="flex items-center mb-4 space-x-2">
-        <div className="flex flex-wrap gap-2 flex-1 border px-2 py-2 rounded">
-          {selectedSuites.map((test) => (
-            <span
-              key={test.id}
-              className="bg-blue-100 text-blue-600 px-2 py-1 text-sm rounded-full flex items-center space-x-1"
-            >
-              <span>{test.name}</span>
-              <button
-                onClick={() => handleRemoveBadge(test.id)}
-                className="text-xs font-bold px-1"
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          <select
-            onChange={handleSelectChange}
-            className="outline-none flex-1 bg-transparent"
-          >
-            <option value=""></option>
-            {availableSuites.map((test) => (
-              <option key={test.id} value={test.name}>
-                {test.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Label for the dropdown */}
+{/* Multi-select badge input container */}
+<div className="relative w-full col-span-2">
+  <label className="text-sm font-medium text-gray-600 mb-1 block">
+    Select Test Suite
+  </label>
+
+  {/* Input + badges + button */}
+  <div
+    onClick={() => setDropdownOpen(!dropdownOpen)}
+    className="flex items-center flex-wrap min-h-[46px] w-full px-3 py-2 border border-gray-300 rounded bg-white cursor-pointer hover:border-indigo-500 transition-all"
+  >
+    {/* Selected badges */}
+    {selectedSuites.length === 0 && (
+      <span className="text-sm text-gray-400">Select test suite(s)</span>
+    )}
+
+    {selectedSuites.map((suite) => (
+      <span
+        key={suite.id}
+        className="flex items-center bg-indigo-100 text-indigo-700 px-3 py-1 text-xs rounded-full mr-2 mb-1"
+        onClick={(e) => e.stopPropagation()} // prevent dropdown toggle
+      >
+        {suite.name}
         <button
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
-          onClick={handleAddToPackage}
-          disabled={selectedSuites.length === 0}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRemoveBadge(suite.id);
+          }}
+          className="ml-2 text-xs font-bold text-indigo-500 hover:text-red-500"
         >
-          Add to package
+          ×
         </button>
-      </div>
+      </span>
+    ))}
+
+    {/* Add Button inside input, sticks to right */}
+    {selectedSuites.length > 0 && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAddToPackage();
+        }}
+        className="ml-auto bg-[#4F46E5] text-white text-xs px-3 py-1 rounded hover:bg-[#4338CA] whitespace-nowrap"
+      >
+        Add to package
+      </button>
+    )}
+  </div>
+
+  {/* Dropdown */}
+  {dropdownOpen && (
+    <div className="absolute z-10 w-full max-h-60 overflow-y-auto mt-1 bg-white border border-gray-300 rounded shadow-md">
+      {availableSuites.length > 0 ? (
+        availableSuites.filter(
+          (suite) =>
+            !selectedSuites.find((s) => s.id === suite.id) &&
+            !tableData.find((t) => t.id === suite.id)
+        )
+        .map((suite) => (
+          <div
+            key={suite.id}
+            onClick={() => handleAddSuite(suite)}
+            className="px-4 py-2 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer text-sm text-gray-700 transition-all"
+          >
+            <div className="font-medium">{suite.name}</div>
+            <div className="text-xs text-gray-400">{suite.description}</div>
+          </div>
+        ))
+      ) : (
+        <div className="px-4 py-2 text-sm text-gray-500">No available suites</div>
+      )}
+    </div>
+  )}
+</div>    
 
       {tableData.length > 0 && (
         <>
@@ -207,9 +288,43 @@ const TestPackageAssignmentForm = ({
             >
               Cancel
             </button>
-            <Button onClick={() => toast.success("Test Suites associated")}>
-              Create
-            </Button>
+            <Button
+  onClick={async () => {
+    try {
+      const payload = {
+        requestMetaData: {
+          userId: localStorage.getItem("userId") || "001",
+          transactionId: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+        },
+        data: tableData.map((s) => s.id),
+      };
+
+      const res = await fetch(
+        `http://localhost:8080/api/v1/test-suites/associate-to-packages/${packageId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const json = await res.json();
+      const { code, message } = json.result;
+
+      if (code === "200") {
+        toast.success(message || "Test Suites associated successfully");
+      } else {
+        toast.error(message || "Failed to associate test suites");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error associating test suites");
+    }
+  }}
+>
+  Create
+</Button>
           </div>
         </>
       )}

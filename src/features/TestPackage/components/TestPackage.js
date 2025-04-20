@@ -3,6 +3,7 @@ import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
+import { nanoid } from "nanoid";
 const pageSize = 5;
 
 const TestPackage = () => {
@@ -85,7 +86,47 @@ const TestPackage = () => {
   useEffect(() => {
       fetchPackages();
     }, []);
-
+  
+    const handleDelete = async () => {
+      if (selected.length === 0) {
+        toast.error("Please select package(s) to delete");
+        return;
+      }
+    
+      const payload = {
+        requestMetaData: {
+          userId: localStorage.getItem("userId") || "302",
+          transactionId: nanoid(),
+          timestamp: new Date().toISOString(),
+        },
+        data: selected, // array of package IDs
+      };
+    
+      try {
+        const res = await fetch("http://localhost:8080/api/v1/packages/delete", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+    
+        const json = await res.json();
+        const { code, message } = json.result;
+    
+        if (code === "200") {
+          toast.success(message || "Packages deleted successfully");
+    
+          // Remove deleted packages from UI
+          setData((prev) => prev.filter((pkg) => !selected.includes(pkg.id)));
+          setSelected([]);
+        } else {
+          toast.error(message || "Failed to delete packages");
+        }
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast.error("Error deleting packages");
+      }
+    };
+    
   return (
     <div className="p-6 font-inter text-gray-800">
       {/* Breadcrumb */}
@@ -111,9 +152,13 @@ const TestPackage = () => {
           </button>
         ) : (
           <>
-            <button className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
-              <FaTrash className="inline mr-2" /> Delete
-            </button>
+            <button
+  onClick={handleDelete}
+  className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700"
+>
+  <FaTrash className="inline mr-2" /> Delete
+</button>
+
             <div className="relative">
               <button
                 onClick={() => setExportOpen(!exportOpen)}
@@ -174,7 +219,7 @@ const TestPackage = () => {
                   className="py-3 px-4 text-indigo-700 underline cursor-pointer"
                   onClick={() =>
                     navigate("/test-design/test-package/create", {
-                      state: { package: item },
+                      state: { package: { id: item.testPackageID, ...item } },
                     })
                   }
                 >
