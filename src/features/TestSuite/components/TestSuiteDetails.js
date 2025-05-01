@@ -6,6 +6,7 @@ import TestSuiteAssignmentForm from "./TestSuiteAssignmentForm";
 import TestSuiteTopForm from "./TestSuitTopForm";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
+import { api } from "../../../utils/api";
 
 const TestSuiteDetails = () => {
   const { state } = useLocation();
@@ -23,7 +24,7 @@ const TestSuiteDetails = () => {
   ]);
 
   const navigate = useNavigate();
-  const suiteId = state?.suite?.id; // Map this to `testSuiteID` if fetched
+  const suiteId = state?.suite?.id;
 
   const handleSubmit = async (formData) => {
     const isUpdate = !!suiteId;
@@ -49,13 +50,8 @@ const TestSuiteDetails = () => {
     };
   
     try {
-      const res = await fetch("http://localhost:8080/api/v1/test-suites", {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-  
-      const json = await res.json();
+      const json = await api("/api/v1/test-suites", isUpdate ? "PUT" : "POST", payload);
+
       const { code, message } = json.result;
   
       if (code === "200") {
@@ -75,8 +71,7 @@ const TestSuiteDetails = () => {
       if (!suiteId) return;
   
       try {
-        const res = await fetch(`http://localhost:8080/api/v1/test-suites/${suiteId}`);
-        const json = await res.json();
+        const json = await api(`/api/v1/test-suites/${suiteId}`);
         const { code, message, data } = json.result;
   
         if (code === "200") {

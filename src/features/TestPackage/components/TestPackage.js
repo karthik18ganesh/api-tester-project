@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
+import { api } from "../../../utils/api";
+
 const pageSize = 5;
 
 const TestPackage = () => {
@@ -21,8 +23,7 @@ const TestPackage = () => {
 
   const fetchPackages = async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/v1/packages?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC");
-        const json = await res.json();
+        const json = await api("/api/v1/packages?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC", "GET");
         const { code, data: resultData, message } = json.result;
   
         if (code === "200") {
@@ -103,13 +104,7 @@ const TestPackage = () => {
       };
     
       try {
-        const res = await fetch("http://localhost:8080/api/v1/packages/delete", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-    
-        const json = await res.json();
+        const json = await api("/api/v1/packages/delete", "DELETE", payload);
         const { code, message } = json.result;
     
         if (code === "200") {

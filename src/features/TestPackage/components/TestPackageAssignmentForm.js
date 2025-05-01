@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
+import { api } from "../../../utils/api";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -18,16 +19,14 @@ const TestPackageAssignmentForm = ({
   const [availableSuites, setAvailableSuites] = useState([]);
   const [tableData, setTableData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  // 💡 Add these at the top inside the component
-const [dropdownOpen, setDropdownOpen] = useState(false);
-const [selectedSuite, setSelectedSuite] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedSuite, setSelectedSuite] = useState(null);
 
 
   useEffect(() => {
     const fetchTestSuites = async () => {
       try {
-        const res = await fetch("http://localhost:8080/api/v1/test-suites?pageNo=0&limit=50&sortBy=createdDate&sortDir=DESC");
-        const json = await res.json();
+        const json = await api("/api/v1/test-suites?pageNo=0&limit=50&sortBy=createdDate&sortDir=DESC", "GET");
         const { code, data } = json.result;
   
         if (code === "200") {
@@ -47,8 +46,7 @@ const [selectedSuite, setSelectedSuite] = useState(null);
   
     const fetchAssociatedSuites = async () => {
       try {
-        const res = await fetch(`http://localhost:8080/api/v1/test-suites/by-package/${packageId}`);
-        const json = await res.json();
+        const json = await api(`/api/v1/test-suites/by-package/${packageId}`, "GET");
         const { code, data } = json.result;
   
         if (code === "200" && Array.isArray(data)) {
@@ -300,16 +298,8 @@ const [selectedSuite, setSelectedSuite] = useState(null);
         data: tableData.map((s) => s.id),
       };
 
-      const res = await fetch(
-        `http://localhost:8080/api/v1/test-suites/associate-to-packages/${packageId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const json = await api(`/api/v1/test-suites/associate-to-packages/${packageId}`, "POST", payload);
 
-      const json = await res.json();
       const { code, message } = json.result;
 
       if (code === "200") {

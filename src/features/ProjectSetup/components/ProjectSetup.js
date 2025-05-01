@@ -7,7 +7,7 @@ import Button from "../../../components/common/Button";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
-
+import { api } from "../../../utils/api";
 const pageSize = 5;
 
 const ProjectSetup = () => {
@@ -53,8 +53,7 @@ const ProjectSetup = () => {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/v1/projects?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC");
-      const json = await res.json();
+      const json = await api("/api/v1/projects?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC", "GET");
       const { code, data: responseData, message } = json.result;
 
       if (code === "200") {
@@ -94,13 +93,8 @@ const ProjectSetup = () => {
     const method = isUpdateMode ? "PUT" : "POST";
 
     try {
-      const res = await fetch("http://localhost:8080/api/v1/projects", {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const json = await api("/api/v1/projects", method, payload);
 
-      const json = await res.json();
       const { code, message } = json.result;
 
       if (code === "200") {
@@ -120,10 +114,7 @@ const ProjectSetup = () => {
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/v1/projects/${selectedProject.id}`, {
-        method: "DELETE",
-      });
-      const json = await res.json();
+      const json = await api(`/api/v1/projects/${selectedProject.id}`, "DELETE");
       const { code, message } = json.result;
 
       if (code === "200") {

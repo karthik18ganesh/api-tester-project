@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import Logo from "../../../assets/Logo.svg";
 import { nanoid } from "nanoid";
+import BgImage from "../../../assets/lp-bg.jpg";
+import { api } from "../../../utils/api";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -37,11 +39,7 @@ const Login = () => {
     };
 
     try {
-      const res = await fetch("http://localhost:8080/users/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      const res = await api("/users/login", "POST", payload);
 
       const result = await res.json();
       const { code, message, data } = result.result;
@@ -68,7 +66,10 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 font-inter">
+    <div
+  className="flex flex-col items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat px-4 font-inter"
+  style={{ backgroundImage: `url(${BgImage})` }}
+>
       <img src={Logo} alt="Logo" className="mb-4 h-10 w-10" />
       <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
         Enter your login details

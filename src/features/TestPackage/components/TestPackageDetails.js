@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { nanoid } from "nanoid";
 import { useNavigate } from "react-router-dom";
+import { api } from "../../../utils/api";
 
 const TestPackageDetails = () => {
   const navigate = useNavigate();
@@ -28,8 +29,7 @@ const TestPackageDetails = () => {
     const fetchPackage = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`http://localhost:8080/api/v1/packages/${packageId}`);
-        const json = await res.json();
+        const json = await api(`/api/v1/packages/${packageId}`, "GET");
         const { code, message, data } = json.result;
   
         if (code === "200") {
@@ -73,13 +73,7 @@ const TestPackageDetails = () => {
     };
   
     try {
-      const res = await fetch("http://localhost:8080/api/v1/packages", {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-  
-      const json = await res.json();
+      const json = await api("/api/v1/packages", isUpdate ? "PUT" : "POST", payload);
       const { code, message, data } = json.result;
   
       if (code === "200") {

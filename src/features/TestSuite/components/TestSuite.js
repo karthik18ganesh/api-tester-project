@@ -3,6 +3,10 @@ import { FaTrash, FaFileExport, FaPlus } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
+import { nanoid } from "nanoid";
+import ConfirmationModal from "../../../components/common/ConfirmationModal";
+import { api } from "../../../utils/api";
+
 const pageSize = 5;
 
 const TestSuite = () => {
@@ -11,6 +15,7 @@ const TestSuite = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selected, setSelected] = useState([]);
   const [exportOpen, setExportOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const totalPages = Math.ceil(data.length / pageSize);
   const currentData = data.slice(
@@ -20,8 +25,7 @@ const TestSuite = () => {
 
   const fetchSuites = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/v1/test-suites");
-      const json = await res.json();
+      const json = await api("/api/v1/test-suites", "GET");
       const { code, message, data: resultData } = json.result;
   
       if (code === "200") {
@@ -42,6 +46,35 @@ const TestSuite = () => {
       toast.error("Error fetching test suites");
     }
   };
+
+  const handleDelete = async () => {
+    const payload = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString(),
+      },
+      data: selected,
+    };
+  
+    try {
+      const json = await api("/api/v1/test-suites/delete", "DELETE", payload);
+      const { code, message } = json.result;
+  
+      if (code === "200") {
+        toast.success(message || "Test Suites deleted successfully");
+        setData((prev) => prev.filter((suite) => !selected.includes(suite.id)));
+        setSelected([]);
+      } else {
+        toast.error(message || "Failed to delete Test Suites");
+      }
+    } catch (error) {
+      console.error("Error during delete:", error);
+      toast.error("Error occurred while deleting Test Suites");
+    } finally {
+      setShowModal(false);
+    }
+  };  
   
 
   const toggleSelect = (id) => {
@@ -119,7 +152,7 @@ const TestSuite = () => {
           </button>
         ) : (
           <>
-            <button className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
+            <button onClick={() => setShowModal(true)} className="px-4 py-2 bg-[#4F46E5] text-white rounded hover:bg-indigo-700">
               <FaTrash className="inline mr-2" /> Delete
             </button>
             <div className="relative">
@@ -229,6 +262,13 @@ const TestSuite = () => {
           </button>
         </div>
       </div>
+      <ConfirmationModal
+  isOpen={showModal}
+  onClose={() => setShowModal(false)}
+  onConfirm={handleDelete}
+  title="Delete Confirmation"
+  message="Are you sure you want to delete the selected Test Suite(s)? This action cannot be undone."
+/>
     </div>
   );
 };

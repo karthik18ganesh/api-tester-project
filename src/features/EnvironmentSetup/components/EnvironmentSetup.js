@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
+import { api } from "../../../utils/api";
 
 const pageSize = 5;
 
@@ -46,8 +47,7 @@ const EnvironmentSetup = () => {
 
   const fetchEnvironments = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/v1/environments?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC");
-      const json = await res.json();
+      const json = await api("/api/v1/environments?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC", "GET");
       const { code, message, data: responseData } = json.result;
 
       if (code === "200") {
@@ -89,13 +89,7 @@ const EnvironmentSetup = () => {
       : "http://localhost:8080/api/v1/environments";
 
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const json = await res.json();
+      const json = await api(url, method, payload);
       const { code, message } = json.result;
 
       if (code === "200") {
@@ -114,10 +108,7 @@ const EnvironmentSetup = () => {
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`http://localhost:8080/api/v1/environments/${selectedEnv.id}`, {
-        method: "DELETE",
-      });
-      const json = await res.json();
+      const json = await api(`/api/v1/environments/${selectedEnv.id}`, "DELETE");
       const { code, message } = json.result;
 
       if (code === "200") {
