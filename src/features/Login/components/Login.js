@@ -39,11 +39,9 @@ const Login = () => {
     };
 
     try {
-      const res = await api("/users/login", "POST", payload);
+      const json = await api("/users/login", "POST", payload);
 
-      const result = await res.json();
-      const { code, message, data } = result.result;
-      console.log(typeof code)
+      const { code, message, data } = json.result;
       if (code === "200") {
         if (rememberMe) {
           localStorage.setItem("rememberedUsername", username);
