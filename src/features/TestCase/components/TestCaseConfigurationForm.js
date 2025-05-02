@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FiTrash2, FiPlus } from "react-icons/fi";
 import { FaEdit } from "react-icons/fa";
 
@@ -23,6 +23,7 @@ const TestCaseConfigurationForm = () => {
   const [newVariable, setNewVariable] = useState({ name: "", value: "" });
   const [editingIndex, setEditingIndex] = useState(null);
   const [saveDisabled, setSaveDisabled] = useState(true);
+  
   // Refs for input fields
   const nameInputRef = useRef(null);
   const valueInputRef = useRef(null);
@@ -32,6 +33,22 @@ const TestCaseConfigurationForm = () => {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
+
+  // Update saveDisabled based on newVariable values - using memoized value to prevent focus loss
+  useEffect(() => {
+    const nameEmpty = !newVariable.name.trim();
+    const valueEmpty = !newVariable.value.trim();
+    setSaveDisabled(nameEmpty || valueEmpty);
+  }, [newVariable.name, newVariable.value]);
+
+  // Focus on name input when modal opens
+  useEffect(() => {
+    if (isModalOpen && nameInputRef.current) {
+      setTimeout(() => {
+        nameInputRef.current.focus();
+      }, 100);
+    }
+  }, [isModalOpen]);
 
   const handleModalOpen = (index = null) => {
     if (index !== null) {
@@ -80,9 +97,41 @@ const TestCaseConfigurationForm = () => {
     setVariables(updated);
   };
 
+  // Local state for the modal inputs
+  const [localVariableName, setLocalVariableName] = useState("");
+  const [localVariableValue, setLocalVariableValue] = useState("");
+
+  // Update local state when modal opens or newVariable changes
+  useEffect(() => {
+    if (isModalOpen) {
+      setLocalVariableName(newVariable.name);
+      setLocalVariableValue(newVariable.value);
+    }
+  }, [isModalOpen, newVariable]);
+
+  // Use a debounced input handler to prevent focus issues
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewVariable(prev => ({ ...prev, [name]: value }));
+    // We use setTimeout with 0ms to defer the state update until after the current 
+    // execution context, which helps maintain focus during typing
+    setTimeout(() => {
+      setNewVariable(prev => ({ ...prev, [name]: value }));
+    }, 0);
+  };
+  
+  // Handler for local state updates
+  const handleLocalInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "name") {
+      setLocalVariableName(value);
+    } else if (name === "value") {
+      setLocalVariableValue(value);
+    }
+    
+    // Also update the parent state after a slight delay
+    setTimeout(() => {
+      setNewVariable(prev => ({ ...prev, [name]: value }));
+    }, 10);
   };
 
   const renderPagination = () => {
@@ -146,7 +195,7 @@ const TestCaseConfigurationForm = () => {
         handleSaveVariable();
       }
     };
-
+    
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -160,10 +209,12 @@ const TestCaseConfigurationForm = () => {
               id="variable-name"
               ref={nameInputRef}
               type="text"
+              name="name"
               className="border border-gray-300 rounded p-2 w-full"
               placeholder="variable_name"
+              value={localVariableName}
+              onChange={handleLocalInputChange}
               onKeyDown={handleKeyDown}
-              onChange={handleInputChange}
             />
           </div>
           
@@ -173,10 +224,12 @@ const TestCaseConfigurationForm = () => {
               id="variable-value"
               ref={valueInputRef}
               type="text"
+              name="value"
               className="border border-gray-300 rounded p-2 w-full"
               placeholder="variable value"
+              value={localVariableValue}
+              onChange={handleLocalInputChange}
               onKeyDown={handleKeyDown}
-              onChange={handleInputChange}
             />
           </div>
           
