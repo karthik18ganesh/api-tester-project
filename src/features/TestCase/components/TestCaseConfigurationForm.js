@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import { FiTrash2, FiPlus } from "react-icons/fi";
 import { FaEdit } from "react-icons/fa";
 
@@ -18,122 +18,98 @@ const TestCaseConfigurationForm = () => {
   ]);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newVariable, setNewVariable] = useState({ name: "", value: "" });
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [saveDisabled, setSaveDisabled] = useState(true);
+  // Separate modals for add and edit
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   
-  // Refs for input fields
-  const nameInputRef = useRef(null);
-  const valueInputRef = useRef(null);
+  // Simple state for form inputs
+  const [inputName, setInputName] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [editingIndex, setEditingIndex] = useState(null);
 
   const totalPages = Math.ceil(variables.length / ITEMS_PER_PAGE);
   const paginatedVariables = variables.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
   );
 
-  // Update saveDisabled based on newVariable values - using memoized value to prevent focus loss
-  useEffect(() => {
-    const nameEmpty = !newVariable.name.trim();
-    const valueEmpty = !newVariable.value.trim();
-    setSaveDisabled(nameEmpty || valueEmpty);
-  }, [newVariable.name, newVariable.value]);
-
-  // Focus on name input when modal opens
-  useEffect(() => {
-    if (isModalOpen && nameInputRef.current) {
-      setTimeout(() => {
-        nameInputRef.current.focus();
-      }, 100);
-    }
-  }, [isModalOpen]);
-
-  const handleModalOpen = (index = null) => {
-    if (index !== null) {
-      // Editing an existing variable
-      const variable = variables[(currentPage - 1) * ITEMS_PER_PAGE + index];
-      setNewVariable({ ...variable });
-      setEditingIndex(index);
-    } else {
-      // Creating a new variable
-      setNewVariable({ name: "", value: "" });
-      setEditingIndex(null);
-    }
-    setIsModalOpen(true);
+  // Open add modal with empty form
+  const handleOpenAddModal = () => {
+    setInputName("");
+    setInputValue("");
+    setIsAddModalOpen(true);
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setNewVariable({ name: "", value: "" });
+  // Open edit modal with values from the selected variable
+  const handleOpenEditModal = (index) => {
+    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+    const variable = variables[realIndex];
+    setInputName(variable.name);
+    setInputValue(variable.value);
+    setEditingIndex(realIndex);
+    setIsEditModalOpen(true);
+  };
+
+  // Close both modals
+  const handleCloseModals = () => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setInputName("");
+    setInputValue("");
     setEditingIndex(null);
   };
 
-  const handleSaveVariable = () => {
-    // Validate inputs
-    if (!newVariable.name.trim() || !newVariable.value.trim()) {
-      return; // Don't save if either field is empty
-    }
-
-    if (editingIndex !== null) {
-      // Update existing variable
-      const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + editingIndex;
-      const updatedVariables = [...variables];
-      updatedVariables[realIndex] = { ...newVariable };
-      setVariables(updatedVariables);
-    } else {
-      // Add new variable
-      setVariables([...variables, { ...newVariable }]);
-    }
-
-    handleModalClose();
-  };
-
-  const handleDelete = (indexToRemove) => {
-    const indexInData = (currentPage - 1) * ITEMS_PER_PAGE + indexToRemove;
-    const updated = [...variables];
-    updated.splice(indexInData, 1);
-    setVariables(updated);
-  };
-
-  // Local state for the modal inputs
-  const [localVariableName, setLocalVariableName] = useState("");
-  const [localVariableValue, setLocalVariableValue] = useState("");
-
-  // Update local state when modal opens or newVariable changes
-  useEffect(() => {
-    if (isModalOpen) {
-      setLocalVariableName(newVariable.name);
-      setLocalVariableValue(newVariable.value);
-    }
-  }, [isModalOpen, newVariable]);
-
-  // Use a debounced input handler to prevent focus issues
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    // We use setTimeout with 0ms to defer the state update until after the current 
-    // execution context, which helps maintain focus during typing
-    setTimeout(() => {
-      setNewVariable(prev => ({ ...prev, [name]: value }));
-    }, 0);
-  };
-  
-  // Handler for local state updates
-  const handleLocalInputChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "name") {
-      setLocalVariableName(value);
-    } else if (name === "value") {
-      setLocalVariableValue(value);
+  // Add new variable
+  const handleAddVariable = () => {
+    // Get values directly from DOM elements
+    const nameInput = document.getElementById('add-variable-name');
+    const valueInput = document.getElementById('add-variable-value');
+    
+    // Extract values
+    const name = nameInput ? nameInput.value.trim() : '';
+    const value = valueInput ? valueInput.value.trim() : '';
+    
+    // Validate
+    if (name === "" || value === "") {
+      return; // Don't add if either field is empty
     }
     
-    // Also update the parent state after a slight delay
-    setTimeout(() => {
-      setNewVariable(prev => ({ ...prev, [name]: value }));
-    }, 10);
+    // Add to variables array
+    setVariables([...variables, { name, value }]);
+    handleCloseModals();
   };
 
+  // Update existing variable
+  const handleUpdateVariable = () => {
+    // Get values directly from DOM elements
+    const nameInput = document.getElementById('edit-variable-name');
+    const valueInput = document.getElementById('edit-variable-value');
+    
+    // Extract values
+    const name = nameInput ? nameInput.value.trim() : '';
+    const value = valueInput ? valueInput.value.trim() : '';
+    
+    // Validate
+    if (name === "" || value === "") {
+      return; // Don't update if either field is empty
+    }
+    
+    // Update variables array
+    const updatedVariables = [...variables];
+    updatedVariables[editingIndex] = { name, value };
+    setVariables(updatedVariables);
+    handleCloseModals();
+  };
+
+  // Delete variable
+  const handleDelete = (index) => {
+    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+    const updatedVariables = [...variables];
+    updatedVariables.splice(realIndex, 1);
+    setVariables(updatedVariables);
+  };
+
+  // Simple pagination rendering
   const renderPagination = () => {
     const pageNumbers = [];
     const maxButtons = 5;
@@ -185,69 +161,109 @@ const TestCaseConfigurationForm = () => {
     );
   };
 
-  // Variable Modal Component
-  const VariableModal = () => {
-    if (!isModalOpen) return null;
+  // Add Variable Modal
+  const AddVariableModal = () => {
+    if (!isAddModalOpen) return null;
 
-    // Add direct keyboard handling for the modal
-    const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && !saveDisabled) {
-        handleSaveVariable();
-      }
-    };
-    
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-full max-w-md">
-          <h3 className="text-lg font-semibold mb-4">
-            {editingIndex !== null ? "Edit Variable" : "Add New Variable"}
-          </h3>
+          <h3 className="text-lg font-semibold mb-4">Add New Variable</h3>
           
           <div className="mb-4">
-            <label htmlFor="variable-name" className="block text-sm font-medium mb-1">Name</label>
+            <label htmlFor="add-variable-name" className="block text-sm font-medium mb-1">Name</label>
             <input
-              id="variable-name"
-              ref={nameInputRef}
+              id="add-variable-name"
               type="text"
-              name="name"
               className="border border-gray-300 rounded p-2 w-full"
               placeholder="variable_name"
-              value={localVariableName}
-              onChange={handleLocalInputChange}
-              onKeyDown={handleKeyDown}
+              defaultValue={inputName}
+              ref={(input) => {
+                if (input && isAddModalOpen) setTimeout(() => input.focus(), 50);
+              }}
             />
           </div>
           
           <div className="mb-6">
-            <label htmlFor="variable-value" className="block text-sm font-medium mb-1">Value</label>
+            <label htmlFor="add-variable-value" className="block text-sm font-medium mb-1">Value</label>
             <input
-              id="variable-value"
-              ref={valueInputRef}
+              id="add-variable-value"
               type="text"
-              name="value"
               className="border border-gray-300 rounded p-2 w-full"
               placeholder="variable value"
-              value={localVariableValue}
-              onChange={handleLocalInputChange}
-              onKeyDown={handleKeyDown}
+              defaultValue={inputValue}
             />
           </div>
           
           <div className="flex justify-end space-x-2">
             <button
               type="button"
-              onClick={handleModalClose}
+              onClick={handleCloseModals}
               className="px-4 py-2 border text-sm rounded"
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={handleSaveVariable}
-              disabled={saveDisabled}
-              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleAddVariable}
+              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
             >
               Save
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Edit Variable Modal
+  const EditVariableModal = () => {
+    if (!isEditModalOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-lg font-semibold mb-4">Edit Variable</h3>
+          
+          <div className="mb-4">
+            <label htmlFor="edit-variable-name" className="block text-sm font-medium mb-1">Name</label>
+            <input
+              id="edit-variable-name"
+              type="text"
+              className="border border-gray-300 rounded p-2 w-full"
+              placeholder="variable_name"
+              defaultValue={inputName}
+              ref={(input) => {
+                if (input && isEditModalOpen) setTimeout(() => input.focus(), 50);
+              }}
+            />
+          </div>
+          
+          <div className="mb-6">
+            <label htmlFor="edit-variable-value" className="block text-sm font-medium mb-1">Value</label>
+            <input
+              id="edit-variable-value"
+              type="text"
+              className="border border-gray-300 rounded p-2 w-full"
+              placeholder="variable value"
+              defaultValue={inputValue}
+            />
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              onClick={handleCloseModals}
+              className="px-4 py-2 border text-sm rounded"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleUpdateVariable}
+              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+            >
+              Update
             </button>
           </div>
         </div>
@@ -260,7 +276,7 @@ const TestCaseConfigurationForm = () => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-md font-semibold">Test case configuration</h2>
         <button
-          onClick={() => handleModalOpen()}
+          onClick={handleOpenAddModal}
           className="px-3 py-1 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
         >
           <FiPlus className="mr-1" />
@@ -310,7 +326,7 @@ const TestCaseConfigurationForm = () => {
                   <td className="p-3">
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleModalOpen(idx)}
+                        onClick={() => handleOpenEditModal(idx)}
                         className="text-gray-400 hover:text-[#4F46E5]"
                         title="Edit"
                       >
@@ -335,8 +351,9 @@ const TestCaseConfigurationForm = () => {
       {/* Pagination */}
       {variables.length > ITEMS_PER_PAGE && renderPagination()}
 
-      {/* Variable Modal */}
-      <VariableModal />
+      {/* Modals */}
+      <AddVariableModal />
+      <EditVariableModal />
     </div>
   );
 };
