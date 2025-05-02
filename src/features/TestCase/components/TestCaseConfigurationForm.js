@@ -1,37 +1,70 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiTrash2, FiPlus } from "react-icons/fi";
 import { FaEdit } from "react-icons/fa";
+import { useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
+import { api } from "../../../utils/api";
+import ConfirmationModal from "../../../components/common/ConfirmationModal";
 
 const ITEMS_PER_PAGE = 6;
 
 const TestCaseConfigurationForm = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("Variables");
-  const [variables, setVariables] = useState([
-    { name: "user_email", value: "testuser@example.com" },
-    { name: "user_password", value: "P@ssw0rd123" },
-    { name: "auth_token", value: "eyJhbGciOiJIUzI1NiIsInR..." },
-    { name: "api_base_url", value: "https://api.example.com" },
-    { name: "request_timeout", value: "30 (seconds)" },
-    { name: "max_retry_count", value: "3" },
-    { name: "region", value: "ap-south-1" },
-    { name: "app_version", value: "1.4.5" },
-  ]);
+  const [variables, setVariables] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  
-  // Separate modals for add and edit
+  const [loading, setLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  
-  // Simple state for form inputs
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteVariableId, setDeleteVariableId] = useState(null);
   const [inputName, setInputName] = useState("");
   const [inputValue, setInputValue] = useState("");
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingVariableId, setEditingVariableId] = useState(null);
+  
+  // Get testCaseId from location state
+  const testCaseId = location.state?.testCase?.testCaseId;
 
   const totalPages = Math.ceil(variables.length / ITEMS_PER_PAGE);
   const paginatedVariables = variables.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  // Generate metadata for API requests
+  const generateMetadata = () => {
+    return {
+      userId: "302", // This would typically come from auth context
+      transactionId: Date.now().toString(),
+      timestamp: new Date().toISOString()
+    };
+  };
+
+  // Fetch variables for the current test case
+  const fetchVariables = async () => {
+    if (!testCaseId) return;
+    
+    try {
+      setLoading(true);
+      const response = await api(`/api/v1/variables/${testCaseId}`);
+      
+      if (response.result?.data) {
+        setVariables(response.result.data || []);
+      } else {
+        throw new Error("Unexpected response format");
+      }
+    } catch (err) {
+      console.error("Error fetching variables:", err);
+      toast.error("Failed to load variables");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load variables when component mounts
+  useEffect(() => {
+    fetchVariables();
+  }, [testCaseId]);
 
   // Open add modal with empty form
   const handleOpenAddModal = () => {
@@ -42,11 +75,10 @@ const TestCaseConfigurationForm = () => {
 
   // Open edit modal with values from the selected variable
   const handleOpenEditModal = (index) => {
-    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
-    const variable = variables[realIndex];
+    const variable = paginatedVariables[index];
     setInputName(variable.name);
     setInputValue(variable.value);
-    setEditingIndex(realIndex);
+    setEditingVariableId(variable.variableId);
     setIsEditModalOpen(true);
   };
 
@@ -56,11 +88,11 @@ const TestCaseConfigurationForm = () => {
     setIsEditModalOpen(false);
     setInputName("");
     setInputValue("");
-    setEditingIndex(null);
+    setEditingVariableId(null);
   };
 
   // Add new variable
-  const handleAddVariable = () => {
+  const handleAddVariable = async () => {
     // Get values directly from DOM elements
     const nameInput = document.getElementById('add-variable-name');
     const valueInput = document.getElementById('add-variable-value');
@@ -71,16 +103,43 @@ const TestCaseConfigurationForm = () => {
     
     // Validate
     if (name === "" || value === "") {
-      return; // Don't add if either field is empty
+      toast.error("Name and value cannot be empty");
+      return;
     }
     
-    // Add to variables array
-    setVariables([...variables, { name, value }]);
-    handleCloseModals();
+    try {
+      setLoading(true);
+      
+      const requestBody = {
+        requestMetaData: generateMetadata(),
+        data: {
+          name: name,
+          value: value,
+          testCase: {
+            testCaseId: testCaseId
+          }
+        }
+      };
+      
+      const response = await api("/api/v1/variables", "POST", requestBody);
+      
+      if (response.result?.code === "200") {
+        toast.success("Variable created successfully");
+        fetchVariables(); // Refresh the data
+      } else {
+        throw new Error(response.result?.message || "Failed to create variable");
+      }
+    } catch (err) {
+      console.error("Error creating variable:", err);
+      toast.error(err.message || "Failed to create variable");
+    } finally {
+      setLoading(false);
+      handleCloseModals();
+    }
   };
 
   // Update existing variable
-  const handleUpdateVariable = () => {
+  const handleUpdateVariable = async () => {
     // Get values directly from DOM elements
     const nameInput = document.getElementById('edit-variable-name');
     const valueInput = document.getElementById('edit-variable-value');
@@ -91,22 +150,75 @@ const TestCaseConfigurationForm = () => {
     
     // Validate
     if (name === "" || value === "") {
-      return; // Don't update if either field is empty
+      toast.error("Name and value cannot be empty");
+      return;
     }
     
-    // Update variables array
-    const updatedVariables = [...variables];
-    updatedVariables[editingIndex] = { name, value };
-    setVariables(updatedVariables);
-    handleCloseModals();
+    try {
+      setLoading(true);
+      
+      const requestBody = {
+        requestMetaData: generateMetadata(),
+        data: {
+          variableId: editingVariableId,
+          name: name,
+          value: value,
+          testCase: {
+            testCaseId: testCaseId
+          }
+        }
+      };
+      
+      const response = await api("/api/v1/variables", "PUT", requestBody);
+      
+      if (response.result?.code === "200") {
+        toast.success("Variable updated successfully");
+        fetchVariables(); // Refresh the data
+      } else {
+        throw new Error(response.result?.message || "Failed to update variable");
+      }
+    } catch (err) {
+      console.error("Error updating variable:", err);
+      toast.error(err.message || "Failed to update variable");
+    } finally {
+      setLoading(false);
+      handleCloseModals();
+    }
   };
 
   // Delete variable
-  const handleDelete = (index) => {
-    const realIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
-    const updatedVariables = [...variables];
-    updatedVariables.splice(realIndex, 1);
-    setVariables(updatedVariables);
+  const handleDelete = async () => {
+    if (!deleteVariableId) {
+      toast.error("Cannot delete variable: Missing ID");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await api(`/api/v1/variables/${deleteVariableId}`, "DELETE");
+      
+      if (response.result?.code === "200") {
+        toast.success("Variable deleted successfully");
+        fetchVariables(); // Refresh the data
+      } else {
+        throw new Error(response.result?.message || "Failed to delete variable");
+      }
+    } catch (err) {
+      console.error("Error deleting variable:", err);
+      toast.error(err.message || "Failed to delete variable");
+    } finally {
+      setLoading(false);
+      setIsDeleteModalOpen(false);
+      setDeleteVariableId(null);
+    }
+  };
+  
+  // Open delete confirmation modal
+  const openDeleteModal = (index) => {
+    const variable = paginatedVariables[index];
+    setDeleteVariableId(variable.variableId);
+    setIsDeleteModalOpen(true);
   };
 
   // Simple pagination rendering
@@ -200,14 +312,19 @@ const TestCaseConfigurationForm = () => {
               type="button"
               onClick={handleCloseModals}
               className="px-4 py-2 border text-sm rounded"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleAddVariable}
-              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
+              disabled={loading}
             >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
               Save
             </button>
           </div>
@@ -255,14 +372,19 @@ const TestCaseConfigurationForm = () => {
               type="button"
               onClick={handleCloseModals}
               className="px-4 py-2 border text-sm rounded"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleUpdateVariable}
-              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
+              disabled={loading}
             >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
               Update
             </button>
           </div>
@@ -278,6 +400,7 @@ const TestCaseConfigurationForm = () => {
         <button
           onClick={handleOpenAddModal}
           className="px-3 py-1 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
+          disabled={!testCaseId || loading}
         >
           <FiPlus className="mr-1" />
           Add Variable
@@ -308,14 +431,27 @@ const TestCaseConfigurationForm = () => {
             <tr>
               <th className="p-3 font-medium">Name</th>
               <th className="p-3 font-medium">Value</th>
+              <th className="p-3 font-medium">Created Date</th>
+              <th className="p-3 font-medium">Updated Date</th>
               <th className="p-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {paginatedVariables.length === 0 ? (
+            {loading && variables.length === 0 ? (
               <tr>
-                <td colSpan="3" className="p-4 text-center text-gray-500">
-                  No variables found. Click "Add Variable" to create one.
+                <td colSpan="5" className="p-4 text-center">
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
+                    Loading variables...
+                  </div>
+                </td>
+              </tr>
+            ) : paginatedVariables.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="p-4 text-center text-gray-500">
+                  {testCaseId 
+                    ? "No variables found. Click \"Add Variable\" to create one."
+                    : "Please save the test case before adding variables."}
                 </td>
               </tr>
             ) : (
@@ -323,19 +459,23 @@ const TestCaseConfigurationForm = () => {
                 <tr key={idx} className="hover:bg-gray-50">
                   <td className="p-3">{item.name}</td>
                   <td className="p-3 truncate max-w-xs">{item.value}</td>
+                  <td className="p-3">{item.createdDate}</td>
+                  <td className="p-3">{item.updatedDate}</td>
                   <td className="p-3">
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleOpenEditModal(idx)}
                         className="text-gray-400 hover:text-[#4F46E5]"
                         title="Edit"
+                        disabled={loading}
                       >
                         <FaEdit size={16} />
                       </button>
                       <button
-                        onClick={() => handleDelete(idx)}
+                        onClick={() => openDeleteModal(idx)}
                         className="text-gray-400 hover:text-red-500"
                         title="Delete"
+                        disabled={loading}
                       >
                         <FiTrash2 size={16} />
                       </button>
@@ -354,6 +494,18 @@ const TestCaseConfigurationForm = () => {
       {/* Modals */}
       <AddVariableModal />
       <EditVariableModal />
+      
+      {/* Confirmation Modal for Delete */}
+      <ConfirmationModal 
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeleteVariableId(null);
+        }}
+        onConfirm={handleDelete}
+        title="Delete Variable"
+        message="Are you sure you want to delete this variable? This action cannot be undone."
+      />
     </div>
   );
 };
