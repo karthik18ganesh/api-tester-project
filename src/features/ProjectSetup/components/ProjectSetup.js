@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaEdit, FaPlus, FaChevronDown } from "react-icons/fa";
+import { FaEdit, FaPlus, FaChevronDown, FaStar, FaRegStar, FaCheck } from "react-icons/fa";
 import { FiTrash2, FiSearch, FiX } from "react-icons/fi";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
@@ -7,7 +7,8 @@ import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import { api } from "../../../utils/api";
-const pageSize = 5;
+
+const pageSize = 6; // Changed from 5 to 6 per request
 
 const ProjectSetup = () => {
   const [data, setData] = useState([]);
@@ -23,7 +24,12 @@ const ProjectSetup = () => {
   const [formExpanded, setFormExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [activeProject, setActiveProject] = useState(() => {
+    // Get active project from localStorage or use default
+    const storedProject = localStorage.getItem("activeProject");
+    return storedProject ? JSON.parse(storedProject) : null;
+  });
+  
   const isUpdateMode = formData.id !== null;
   
   // Filter data based on search term
@@ -65,7 +71,8 @@ const ProjectSetup = () => {
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
-      const json = await api("/api/v1/projects?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC", "GET");
+      // Use updatedDate instead of createdDate to show most recently updated projects first
+      const json = await api("/api/v1/projects?pageNo=0&limit=100&sortBy=updatedDate&sortDir=DESC", "GET");
       const { code, data: responseData, message } = json.result;
 
       if (code === "200") {
@@ -75,6 +82,7 @@ const ProjectSetup = () => {
           projectId: p.projectId,
           description: p.description,
           date: p.createdDate,
+          updatedDate: p.updatedDate
         }));
         setData(formatted);
       } else {
@@ -142,6 +150,14 @@ const ProjectSetup = () => {
       const { code, message } = json.result;
 
       if (code === "200") {
+        // If the deleted project was active, clear it
+        if (activeProject && activeProject.id === selectedProject.id) {
+          setActiveProject(null);
+          localStorage.removeItem("activeProject");
+          // Trigger a storage event to notify other components
+          window.dispatchEvent(new Event('storage'));
+        }
+        
         toast.success(message || "Project deleted");
         fetchProjects();
       } else {
@@ -158,6 +174,14 @@ const ProjectSetup = () => {
 
   const clearForm = () => {
     setFormData({ id: null, name: "", projectId: "", description: "" });
+  };
+  
+  const setProjectAsActive = (project) => {
+    setActiveProject(project);
+    localStorage.setItem("activeProject", JSON.stringify(project));
+    // Trigger a storage event to notify other components
+    window.dispatchEvent(new Event('storage'));
+    toast.success(`Project "${project.name}" set as active`);
   };
 
   useEffect(() => {
@@ -264,10 +288,18 @@ const ProjectSetup = () => {
         </div>
       </div>
 
-      {/* Enhanced Table Section */}
+      {/* Enhanced Table Section with Selection */}
       <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between md:items-center gap-4">
-          <h3 className="text-lg font-medium text-gray-700">Projects</h3>
+          <div className="flex items-center">
+            <h3 className="text-lg font-medium text-gray-700">Projects</h3>
+            {activeProject && (
+              <div className="ml-3 bg-indigo-100 text-indigo-800 text-xs py-1 px-2 rounded-full flex items-center">
+                <span className="mr-1">Active:</span>
+                <span className="font-medium">{activeProject.name}</span>
+              </div>
+            )}
+          </div>
           
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -333,6 +365,7 @@ const ProjectSetup = () => {
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
                   <tr>
+                    <th className="p-4 font-medium">Status</th>
                     <th className="p-4 font-medium">Name</th>
                     <th className="p-4 font-medium">Project ID</th>
                     <th className="p-4 font-medium">Description</th>
@@ -346,12 +379,42 @@ const ProjectSetup = () => {
                       key={project.id} 
                       className={`border-b border-gray-200 hover:bg-indigo-50/30 transition-colors ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                      }`}
+                      } ${activeProject && activeProject.id === project.id ? 'bg-indigo-50' : ''}`}
                     >
+                      <td className="p-4 text-center">
+                        <button
+                          onClick={() => setProjectAsActive(project)}
+                          className="relative inline-flex items-center h-6 rounded-full w-11 focus:outline-none transition-colors"
+                          title={activeProject && activeProject.id === project.id ? "Current active project" : "Set as active project"}
+                          disabled={activeProject && activeProject.id === project.id}
+                        >
+                          <span 
+                            className={`${
+                              activeProject && activeProject.id === project.id
+                                ? "bg-indigo-600"
+                                : "bg-gray-200"
+                            } absolute inset-y-0 left-0 w-11 h-6 rounded-full transition-colors`}
+                          ></span>
+                          <span 
+                            className={`${
+                              activeProject && activeProject.id === project.id 
+                                ? "translate-x-6" 
+                                : "translate-x-1"
+                            } inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}
+                          ></span>
+                        </button>
+                      </td>
                       <td className="p-4 font-medium text-indigo-700">{project.name}</td>
                       <td className="p-4 text-gray-600">{project.projectId}</td>
                       <td className="p-4 text-gray-600 line-clamp-2">{project.description}</td>
-                      <td className="p-4 text-gray-500">{project.date}</td>
+                      <td className="p-4 text-gray-500">
+                        <div>
+                          <div>Created: {project.date}</div>
+                          {project.updatedDate && project.updatedDate !== project.date && (
+                            <div className="text-xs text-gray-400">Updated: {project.updatedDate}</div>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end gap-1">
                           <IconButton 
@@ -438,6 +501,13 @@ const ProjectSetup = () => {
                 <p className="text-gray-600 text-center">
                   Are you sure you want to delete <span className="font-medium text-gray-900">"{selectedProject?.name}"</span>? This action cannot be undone.
                 </p>
+                
+                {activeProject && activeProject.id === selectedProject?.id && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
+                    <div className="font-medium mb-1">Warning</div>
+                    <p>This is currently set as your active project. Deleting it will remove your active project selection.</p>
+                  </div>
+                )}
               </div>
               
               <div className="mt-6 flex justify-end gap-3">

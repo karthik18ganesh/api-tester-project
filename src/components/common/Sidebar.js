@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FiGrid,
@@ -14,8 +14,10 @@ import {
   FiArchive,
   FiDatabase,
   FiFileText,
+  FiChevronRight,
 } from "react-icons/fi";
 import { FaBars, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import Logo from "../../assets/Logo.svg";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -23,6 +25,37 @@ const Sidebar = () => {
   const [testDesignOpen, setTestDesignOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [activeProject, setActiveProject] = useState(() => {
+    // Get active project from localStorage or use default
+    const storedProject = localStorage.getItem("activeProject");
+    return storedProject ? JSON.parse(storedProject) : null;
+  });
+
+  // Listen for active project changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const storedProject = localStorage.getItem("activeProject");
+      if (storedProject) {
+        setActiveProject(JSON.parse(storedProject));
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  // Auto-expand sections based on current route
+  useEffect(() => {
+    // Check if current route is under admin
+    if (location.pathname.includes("/admin/")) {
+      setAdminOpen(true);
+    }
+    
+    // Check if current route is under test-design
+    if (location.pathname.includes("/test-design/")) {
+      setTestDesignOpen(true);
+    }
+  }, [location.pathname]);
 
   const isActive = (route) => location.pathname === route;
 
@@ -39,15 +72,15 @@ const Sidebar = () => {
   const adminSubMenus = [
     {
       label: "Environment Setup",
-      route: "admin/environment-setup",
+      route: "/admin/environment-setup",
       icon: <FiGlobe />,
     },
     {
       label: "Project Setup",
-      route: "admin/project-setup",
+      route: "/admin/project-setup",
       icon: <FiFolder />,
     },
-    { label: "User Settings", route: "admin/user-settings", icon: <FiUser /> },
+    { label: "User Settings", route: "/admin/user-settings", icon: <FiUser /> },
   ];
 
   const testDesignSubMenus = [
@@ -78,124 +111,173 @@ const Sidebar = () => {
     },
   ];
 
+  const MenuSection = ({ title, open, setOpen, items, icon }) => {
+    return (
+      <div className={`mt-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
+        <div
+          onClick={() => !collapsed && setOpen(!open)}
+          className={`flex ${
+            collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"
+          } px-3 py-2.5 rounded-md cursor-pointer transition-colors hover:bg-gray-100`}
+        >
+          <div
+            className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
+          >
+            {icon}
+            {!collapsed && <span className="text-sm font-medium">{title}</span>}
+          </div>
+          {!collapsed &&
+            (open ? (
+              <FaChevronUp className="text-xs text-gray-500" />
+            ) : (
+              <FaChevronDown className="text-xs text-gray-500" />
+            ))}
+        </div>
+        
+        {/* Submenu items */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            open && !collapsed ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          {!collapsed &&
+            items.map(({ label, route, icon }) => (
+              <div
+                key={label}
+                onClick={() => navigate(route)}
+                className={`flex items-center gap-3 pl-9 pr-3 py-2.5 my-0.5 rounded-md cursor-pointer transition-colors text-sm ${
+                  isActive(route)
+                    ? "bg-indigo-50 text-indigo-600 font-medium"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <div className="text-[14px]">{icon}</div>
+                <span>{label}</span>
+                {isActive(route) && <FiChevronRight className="ml-auto text-indigo-500" />}
+              </div>
+            ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
-      className={`bg-[#F9FAFB] h-screen border-r shadow-sm transition-all duration-300 ease-in-out ${collapsed ? "w-20" : "w-64"}`}
+      className={`bg-white h-screen border-r shadow-sm transition-all duration-300 ease-in-out flex flex-col ${
+        collapsed ? "w-20" : "w-64"
+      }`}
     >
+      {/* Sidebar Header */}
       <div
-        className={`flex items-center justify-${collapsed ? "center" : "between"} px-4 py-4`}
+        className={`flex items-center border-b border-gray-100 py-4 px-4 ${
+          collapsed ? "justify-center" : "justify-between"
+        }`}
       >
         {!collapsed && (
-          <span className="text-lg font-bold text-[#111827]">Automation</span>
+          <div className="flex items-center gap-2">
+            <img src={Logo} alt="Logo" className="w-7 h-7" />
+            <span className="text-lg font-bold text-gray-800">API Tester</span>
+          </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className={`text-gray-600 text-xl ${collapsed ? "block" : ""}`}
+          className={`text-gray-600 hover:text-indigo-600 transition-colors p-1 rounded-md hover:bg-gray-100 ${
+            collapsed && "mt-2"
+          }`}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <FaBars />
         </button>
       </div>
 
-      <div className="px-2 text-sm text-gray-700">
-        {mainMenus.map(({ label, icon, route }) => (
-          <div
-            key={label}
-            onClick={() => route && navigate(route)}
-            className={`flex ${collapsed ? "flex-col items-center justify-center" : "flex-row items-center"} gap-3 px-3 py-2 mb-1 rounded cursor-pointer transition-all duration-200 ease-in-out ${
-              isActive(route)
-                ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]"
-                : "hover:bg-gray-100"
-            }`}
-          >
-            <div className="text-xl">{icon}</div>
-            {!collapsed && <span className="text-sm">{label}</span>}
-          </div>
-        ))}
-
-        {/* Test Design */}
-        <div
-          className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}
-        >
-          <div
-            onClick={() => setTestDesignOpen(!testDesignOpen)}
-            className={`flex ${collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"} px-3 py-2 rounded cursor-pointer transition-colors`}
-          >
-            <div
-              className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
-            >
-              <FiBox className="text-xl" />
-              {!collapsed && <span className="text-sm">Test Design</span>}
+      {/* Active Project (when sidebar is expanded) */}
+      {!collapsed && activeProject && (
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="flex flex-col">
+            <div className="text-xs text-gray-500 mb-1">ACTIVE PROJECT</div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-800 truncate">
+                {activeProject.name}
+              </span>
+              <span className="bg-indigo-100 text-indigo-800 text-xs py-0.5 px-1.5 rounded-full">
+                {activeProject.projectId}
+              </span>
             </div>
-            {!collapsed &&
-              (testDesignOpen ? (
-                <FaChevronUp className="text-xs" />
-              ) : (
-                <FaChevronDown className="text-xs" />
-              ))}
-          </div>
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${testDesignOpen && !collapsed ? "max-h-60" : "max-h-0"}`}
-          >
-            {!collapsed &&
-              testDesignSubMenus.map(({ label, route, icon }) => (
-                <div
-                  key={label}
-                  onClick={() => navigate(route)}
-                  className={`flex items-center gap-3 px-5 py-2 ml-3 mb-1 rounded cursor-pointer transition-colors text-sm ${
-                    isActive(route)
-                      ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <div className="text-[14px]">{icon}</div>
-                  <span>{label}</span>
-                </div>
-              ))}
           </div>
         </div>
+      )}
+
+      {/* Main Menu */}
+      <div className="flex-1 overflow-y-auto px-2 pt-4 pb-6 text-sm text-gray-700">
+        {/* Main Menu Items */}
+        <div className="mb-4">
+          <div className={`${!collapsed && "mb-2 px-3"}`}>
+            <div className={`text-xs text-gray-500 ${collapsed && "hidden"}`}>MAIN NAVIGATION</div>
+          </div>
+          
+          {mainMenus.map(({ label, icon, route }) => (
+            <div
+              key={label}
+              onClick={() => route && navigate(route)}
+              className={`flex ${
+                collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
+              } gap-3 px-3 py-2.5 my-1 rounded-md cursor-pointer transition-all duration-200 ease-in-out ${
+                isActive(route)
+                  ? "bg-indigo-50 text-indigo-600 font-medium"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <div className="text-[18px]">{icon}</div>
+              {!collapsed && (
+                <div className="flex justify-between items-center flex-1">
+                  <span className="text-sm">{label}</span>
+                  {isActive(route) && <FiChevronRight className="text-indigo-500" />}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className={`border-b border-gray-100 my-3 ${collapsed && "mx-2"}`}></div>
+
+        {/* Test Design Section */}
+        <div className={`${!collapsed && "mb-2 px-3"}`}>
+          <div className={`text-xs text-gray-500 ${collapsed && "hidden"}`}>TEST MANAGEMENT</div>
+        </div>
+        
+        <MenuSection
+          title="Test Design"
+          open={testDesignOpen}
+          setOpen={setTestDesignOpen}
+          items={testDesignSubMenus}
+          icon={<FiBox className="text-[18px]" />}
+        />
+
+        {/* Divider */}
+        <div className={`border-b border-gray-100 my-3 ${collapsed && "mx-2"}`}></div>
 
         {/* Admin Settings */}
-        <div
-          className={`mt-2 ${collapsed ? "flex flex-col items-center" : ""}`}
-        >
-          <div
-            onClick={() => setAdminOpen(!adminOpen)}
-            className={`flex ${collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"} px-3 py-2 rounded cursor-pointer transition-colors`}
-          >
-            <div
-              className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
-            >
-              <FiSettings className="text-xl" />
-              {!collapsed && <span className="text-sm">Admin Settings</span>}
-            </div>
-            {!collapsed &&
-              (adminOpen ? (
-                <FaChevronUp className="text-xs" />
-              ) : (
-                <FaChevronDown className="text-xs" />
-              ))}
-          </div>
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${adminOpen && !collapsed ? "max-h-60" : "max-h-0"}`}
-          >
-            {!collapsed &&
-              adminSubMenus.map(({ label, route, icon }) => (
-                <div
-                  key={label}
-                  onClick={() => navigate(route)}
-                  className={`flex items-center gap-3 px-5 py-2 ml-3 mb-1 rounded cursor-pointer transition-colors text-sm ${
-                    isActive(route)
-                      ? "bg-[#EEF4FF] border-l-4 border-[#4F46E5] text-[#1E40AF]"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <div className="text-[14px]">{icon}</div>
-                  <span>{label}</span>
-                </div>
-              ))}
-          </div>
+        <div className={`${!collapsed && "mb-2 px-3"}`}>
+          <div className={`text-xs text-gray-500 ${collapsed && "hidden"}`}>ADMINISTRATION</div>
         </div>
+        
+        <MenuSection
+          title="Admin Settings"
+          open={adminOpen}
+          setOpen={setAdminOpen}
+          items={adminSubMenus}
+          icon={<FiSettings className="text-[18px]" />}
+        />
       </div>
+
+      {/* Sidebar Footer */}
+      {!collapsed && (
+        <div className="border-t border-gray-100 px-4 py-3">
+          <div className="text-xs text-gray-500 mb-1">APP VERSION</div>
+          <div className="text-sm">v1.3.0</div>
+        </div>
+      )}
     </div>
   );
 };
