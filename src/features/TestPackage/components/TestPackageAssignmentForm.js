@@ -46,7 +46,7 @@ const TestPackageAssignmentForm = ({
   
     const fetchAssociatedSuites = async () => {
       try {
-        const json = await api(`/api/v1/test-suites/by-package/${packageId}`, "GET");
+        const json = await api(`/api/v1/packages/${packageId}/test-suites`, "GET");
         const { code, data } = json.result;
   
         if (code === "200" && Array.isArray(data)) {
