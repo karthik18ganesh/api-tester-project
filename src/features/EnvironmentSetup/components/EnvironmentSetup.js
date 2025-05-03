@@ -16,7 +16,7 @@ const EnvironmentSetup = () => {
   const [formData, setFormData] = useState({
     id: null,
     environmentName: "",
-    environmentURL: "",
+    environmentUrl: "",
     description: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,7 +54,7 @@ const EnvironmentSetup = () => {
         const mapped = responseData.content.map((env) => ({
           id: env.environmentId,
           environmentName: env.environmentName,
-          environmentURL: env.environmentURL,
+          environmentUrl: env.environmentUrl,
           description: env.description,
           date: env.createdDate,
         }));
@@ -78,15 +78,15 @@ const EnvironmentSetup = () => {
       data: {
         //projectId: localStorage.getItem("activeProjectId"),
         environmentName: formData.environmentName,
-        environmentURL: formData.environmentURL,
+        environmentUrl: formData.environmentUrl,
         description: formData.description,
       }
     };
 
     const method = isUpdateMode ? "PUT" : "POST";
     const url = isUpdateMode
-      ? `http://localhost:8080/api/v1/environments/${formData.id}`
-      : "http://localhost:8080/api/v1/environments";
+      ? `/api/v1/environments/${formData.id}`
+      : "/api/v1/environments";
 
     try {
       const json = await api(url, method, payload);
@@ -95,7 +95,7 @@ const EnvironmentSetup = () => {
       if (code === "200") {
         toast.success(message || (isUpdateMode ? "Updated" : "Created"));
         fetchEnvironments();
-        setFormData({ id: null, environmentName: "", environmentURL: "", description: "" });
+        setFormData({ id: null, environmentName: "", environmentUrl: "", description: "" });
       } else {
         toast.error(message || "Failed to process request");
       }
@@ -152,8 +152,8 @@ const EnvironmentSetup = () => {
             <label className="text-sm block mb-1">Environment URL</label>
             <input
               type="text"
-              value={formData.environmentURL}
-              onChange={(e) => setFormData((prev) => ({ ...prev, environmentURL: e.target.value }))}
+              value={formData.environmentUrl}
+              onChange={(e) => setFormData((prev) => ({ ...prev, environmentUrl: e.target.value }))}
               className="w-full border p-2 rounded bg-gray-50"
               required
             />
@@ -172,7 +172,7 @@ const EnvironmentSetup = () => {
           {isUpdateMode && (
             <button
               type="button"
-              onClick={() => setFormData({ id: null, environmentName: "", environmentURL: "", description: "" })}
+              onClick={() => setFormData({ id: null, environmentName: "", environmentUrl: "", description: "" })}
               className="px-4 py-2 border rounded text-gray-600"
             >
               Cancel
@@ -197,7 +197,7 @@ const EnvironmentSetup = () => {
             {currentData.map((env) => (
               <tr key={env.id} className="border-b">
                 <td className="p-3">{env.environmentName}</td>
-                <td className="p-3">{env.environmentURL}</td>
+                <td className="p-3">{env.environmentUrl}</td>
                 <td className="p-3">{env.description}</td>
                 <td className="p-3">{env.date}</td>
                 <td className="p-3 text-right">
