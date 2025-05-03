@@ -78,7 +78,7 @@ const Login = () => {
               <img src={Logo} alt="Logo" className="h-10 w-10" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 text-center">
-              Welcome Back
+              Welcome
             </h2>
             <p className="text-gray-600 text-center text-sm mt-1">
               Enter your credentials to access your account
@@ -159,7 +159,7 @@ const Login = () => {
         
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 bg-white/70 px-3 py-1 rounded-full inline-block shadow-sm">
-            API Tester Application &copy; {new Date().getFullYear()}
+            API Automation &copy; {new Date().getFullYear()}
           </p>
         </div>
       </div>

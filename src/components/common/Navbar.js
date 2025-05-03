@@ -28,8 +28,8 @@ const Navbar = () => {
 
   // Mock user data - in production, this would come from your auth context/state
   const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: "User",
+    email: "user@example.com",
     role: "Administrator",
     avatar: null // If null, we'll use the FaUserCircle icon
   };

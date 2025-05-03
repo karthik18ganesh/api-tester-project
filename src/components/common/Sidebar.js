@@ -15,6 +15,7 @@ import {
   FiDatabase,
   FiFileText,
   FiChevronRight,
+  FiTrello,
 } from "react-icons/fi";
 import { FaBars, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import Logo from "../../assets/Logo.svg";
@@ -23,10 +24,10 @@ const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [testDesignOpen, setTestDesignOpen] = useState(false);
+  const [testExecutionOpen, setTestExecutionOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [activeProject, setActiveProject] = useState(() => {
-    // Get active project from localStorage or use default
     const storedProject = localStorage.getItem("activeProject");
     return storedProject ? JSON.parse(storedProject) : null;
   });
@@ -44,43 +45,36 @@ const Sidebar = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // Auto-expand sections based on current route
   useEffect(() => {
-    // Check if current route is under admin
+    // Auto-expand sections based on current route
     if (location.pathname.includes("/admin/")) {
       setAdminOpen(true);
     }
     
-    // Check if current route is under test-design
     if (location.pathname.includes("/test-design/")) {
       setTestDesignOpen(true);
+    }
+
+    // Expand test execution section if on test execution or results pages
+    if (location.pathname.includes("/test-execution") || location.pathname.includes("/results")) {
+      setTestExecutionOpen(true);
     }
   }, [location.pathname]);
 
   const isActive = (route) => location.pathname === route;
 
-  const mainMenus = [
-    { label: "Dashboard", icon: <FiGrid />, route: "/dashboard" },
+  // Test Execution submenu items
+  const testExecutionSubMenus = [
     {
       label: "Test Execution",
       icon: <FiPlayCircle />,
       route: "/test-execution",
     },
-    { label: "Results", icon: <FiBarChart2 />, route: "/results" },
-  ];
-
-  const adminSubMenus = [
-    {
-      label: "Environment Setup",
-      route: "/admin/environment-setup",
-      icon: <FiGlobe />,
+    { 
+      label: "Results", 
+      icon: <FiBarChart2 />, 
+      route: "/results" 
     },
-    {
-      label: "Project Setup",
-      route: "/admin/project-setup",
-      icon: <FiFolder />,
-    },
-    { label: "User Settings", route: "/admin/user-settings", icon: <FiUser /> },
   ];
 
   const testDesignSubMenus = [
@@ -109,6 +103,20 @@ const Sidebar = () => {
       route: "/test-design/functions-variables",
       icon: <FiCode />,
     },
+  ];
+
+  const adminSubMenus = [
+    {
+      label: "Environment Setup",
+      route: "/admin/environment-setup",
+      icon: <FiGlobe />,
+    },
+    {
+      label: "Project Setup",
+      route: "/admin/project-setup",
+      icon: <FiFolder />,
+    },
+    { label: "User Settings", route: "/admin/user-settings", icon: <FiUser /> },
   ];
 
   const MenuSection = ({ title, open, setOpen, items, icon }) => {
@@ -176,7 +184,7 @@ const Sidebar = () => {
         {!collapsed && (
           <div className="flex items-center gap-2">
             <img src={Logo} alt="Logo" className="w-7 h-7" />
-            <span className="text-lg font-bold text-gray-800">API Tester</span>
+            <span className="text-lg font-bold text-gray-800">API Automation</span>
           </div>
         )}
         <button
@@ -209,49 +217,50 @@ const Sidebar = () => {
 
       {/* Main Menu */}
       <div className="flex-1 overflow-y-auto px-2 pt-4 pb-6 text-sm text-gray-700">
-        {/* Main Menu Items */}
-        <div className="mb-4">
-          <div className={`${!collapsed && "mb-2 px-3"}`}>
-            <div className={`text-xs text-gray-500 ${collapsed && "hidden"}`}>MAIN NAVIGATION</div>
-          </div>
-          
-          {mainMenus.map(({ label, icon, route }) => (
-            <div
-              key={label}
-              onClick={() => route && navigate(route)}
-              className={`flex ${
-                collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
-              } gap-3 px-3 py-2.5 my-1 rounded-md cursor-pointer transition-all duration-200 ease-in-out ${
-                isActive(route)
-                  ? "bg-indigo-50 text-indigo-600 font-medium"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <div className="text-[18px]">{icon}</div>
-              {!collapsed && (
-                <div className="flex justify-between items-center flex-1">
-                  <span className="text-sm">{label}</span>
-                  {isActive(route) && <FiChevronRight className="text-indigo-500" />}
-                </div>
-              )}
+        {/* Dashboard (without section heading) */}
+        <div
+          onClick={() => navigate("/dashboard")}
+          className={`flex ${
+            collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
+          } gap-3 px-3 py-2.5 my-1 rounded-md cursor-pointer transition-all duration-200 ease-in-out ${
+            isActive("/dashboard")
+              ? "bg-indigo-50 text-indigo-600 font-medium"
+              : "text-gray-700 hover:bg-gray-100"
+          }`}
+        >
+          <div className="text-[18px]"><FiGrid /></div>
+          {!collapsed && (
+            <div className="flex justify-between items-center flex-1">
+              <span className="text-sm">Dashboard</span>
+              {isActive("/dashboard") && <FiChevronRight className="text-indigo-500" />}
             </div>
-          ))}
+          )}
         </div>
 
         {/* Divider */}
         <div className={`border-b border-gray-100 my-3 ${collapsed && "mx-2"}`}></div>
 
-        {/* Test Design Section */}
+        {/* Test Management Section */}
         <div className={`${!collapsed && "mb-2 px-3"}`}>
           <div className={`text-xs text-gray-500 ${collapsed && "hidden"}`}>TEST MANAGEMENT</div>
         </div>
         
+        {/* Test Design subsection */}
         <MenuSection
           title="Test Design"
           open={testDesignOpen}
           setOpen={setTestDesignOpen}
           items={testDesignSubMenus}
           icon={<FiBox className="text-[18px]" />}
+        />
+        
+        {/* Test Execution subsection */}
+        <MenuSection
+          title="Test Execution"
+          open={testExecutionOpen}
+          setOpen={setTestExecutionOpen}
+          items={testExecutionSubMenus}
+          icon={<FiTrello className="text-[18px]" />}
         />
 
         {/* Divider */}
