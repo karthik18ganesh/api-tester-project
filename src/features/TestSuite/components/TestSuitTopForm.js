@@ -10,9 +10,9 @@ const TestSuiteTopForm = ({
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    execution: "",
-    executionType: "",
-    reportType: "",
+    execution: "On demand",
+    executionType: "Execute all test case if any fails",
+    reportType: "PDF",
     publishMethod: "",
     email: "",
     ftpPath: "",
@@ -46,7 +46,7 @@ const TestSuiteTopForm = ({
       execution: "On demand",
       executionType: "Execute all test case if any fails",
       reportType: "PDF",
-      publishMethod: "Email",
+      publishMethod: "",
       email: "",
       ftpPath: "",
       description: "",
@@ -57,7 +57,7 @@ const TestSuiteTopForm = ({
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
       <h2 className="text-2xl font-semibold mb-4 text-gray-800">
-        Create new test suite
+        {isUpdate ? "Update test suite" : "Create new test suite"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -127,21 +127,17 @@ const TestSuiteTopForm = ({
           <select
             name="publishMethod"
             value={formData.publishMethod}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                publishMethod: e.target.value,
-              }))
-            }
+            onChange={handleChange}
             className="w-full border rounded px-3 py-2 text-sm"
           >
             <option value="">Select Publish Method</option>
             <option>Email</option>
             <option>FTP path</option>
+            <option>In-app</option>
           </select>
         </div>
 
-        {formData.publishMethod === "email" ? (
+        {formData.publishMethod === "Email" && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -150,14 +146,14 @@ const TestSuiteTopForm = ({
               type="email"
               name="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, email: e.target.value }))
-              }
+              onChange={handleChange}
               placeholder="tester@example.com"
               className="w-full border rounded px-3 py-2 text-sm"
             />
           </div>
-        ) : (
+        )}
+
+        {formData.publishMethod === "FTP path" && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               FTP path
@@ -166,9 +162,7 @@ const TestSuiteTopForm = ({
               type="text"
               name="ftpPath"
               value={formData.ftpPath}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, ftpPath: e.target.value }))
-              }
+              onChange={handleChange}
               placeholder="/ftp/test_suites/login/"
               className="w-full border rounded px-3 py-2 text-sm"
             />

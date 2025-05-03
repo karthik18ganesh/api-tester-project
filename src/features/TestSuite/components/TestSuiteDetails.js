@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { nanoid } from "nanoid";
@@ -12,22 +12,22 @@ const TestSuiteDetails = () => {
   const { state } = useLocation();
   const isUpdateMode = !!state?.suite;
   const [suiteCreated, setSuiteCreated] = useState(false);
-  const [testSuiteRows, setTestSuiteRows] = useState([]);
   const [suiteDetails, setSuiteDetails] = useState(null);
-
-  const [testCases] = useState([
-    "Cart Functionality Test",
-    "Mobile App Launch Test",
-    "API Response Validation",
-    "Payment Processing Test",
-    "Invalid Password Test",
-  ]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newSuiteId, setNewSuiteId] = useState(null);
+  
+  // Use refs to track initialization state and prevent multiple API calls
+  const suiteDetailsLoaded = useRef(false);
+  const apiCallInProgress = useRef(false);
 
   const navigate = useNavigate();
   const suiteId = state?.suite?.id;
 
+  // Handle form submission
   const handleSubmit = async (formData) => {
     const isUpdate = !!suiteId;
+    setSaving(true);
   
     const payload = {
       requestMetaData: {
@@ -42,80 +42,95 @@ const TestSuiteDetails = () => {
         executionType: formData.executionType,
         reportType: formData.reportType,
         publishMethod: formData.publishMethod,
-        ...(formData.publishMethod === "Email"
-          ? { email: formData.email }
-          : { ftpPath: formData.ftpPath }),
+        // Only include email if publishMethod is Email
+        ...(formData.publishMethod === "Email" 
+          ? { email: formData.email } 
+          : {}),
+        // Only include ftpPath if publishMethod is FTP path
+        ...(formData.publishMethod === "FTP path" 
+          ? { ftpPath: formData.ftpPath } 
+          : {}),
         ...(isUpdate && { testSuiteID: suiteId }),
       },
     };
   
     try {
       const json = await api("/api/v1/test-suites", isUpdate ? "PUT" : "POST", payload);
-
-      const { code, message } = json.result;
+      const { code, message, data } = json.result;
   
       if (code === "200") {
         toast.success(message || "Suite saved successfully");
-        setTimeout(() => navigate("/test-design/test-suite"), 1000);
+        
+        // If it's a new suite, store the ID for test case association
+        if (!isUpdate && data && data.testSuiteID) {
+          setNewSuiteId(data.testSuiteID);
+          setSuiteCreated(true);
+        } else if (isUpdate) {
+          // For updates, just set the flag but don't navigate away yet
+          setSuiteCreated(true);
+        }
       } else {
         toast.error(message || "Failed to save test suite");
       }
     } catch (error) {
       console.error("Save error:", error);
       toast.error("Something went wrong");
+    } finally {
+      setSaving(false);
     }
   };
 
+  // Load existing suite details - only once
   useEffect(() => {
     const fetchSuiteById = async () => {
-      if (!suiteId) return;
+      // Skip if no suiteId, already loaded, or API call is in progress
+      if (!suiteId || suiteDetailsLoaded.current || apiCallInProgress.current) return;
+      
+      apiCallInProgress.current = true;
+      setLoading(true);
   
       try {
-        const json = await api(`/api/v1/test-suites/${suiteId}`);
+        const json = await api(`/api/v1/test-suites/${suiteId}`, "GET");
         const { code, message, data } = json.result;
   
         if (code === "200") {
           setSuiteDetails({
             name: data.suiteName,
             description: data.description,
-            execution: data.execution,
-            executionType: data.executionType,
-            reportType: data.reportType,
-            publishMethod: data.publishMethod,
+            execution: data.execution || "On demand",
+            executionType: data.executionType || "Execute all test case if any fails",
+            reportType: data.reportType || "PDF",
+            publishMethod: data.publishMethod || "",
             email: data.email || "",
             ftpPath: data.ftpPath || "",
-            testCases: data.testCases || [],
           });
+          
+          // Mark as loaded
+          suiteDetailsLoaded.current = true;
+          setSuiteCreated(true);
         } else {
           toast.error(message || "Failed to load suite data");
         }
       } catch (error) {
         console.error("Error loading suite:", error);
         toast.error("Error fetching test suite data");
+      } finally {
+        setLoading(false);
+        apiCallInProgress.current = false;
       }
     };
   
     fetchSuiteById();
-  }, [suiteId]);
-  
+  }, [suiteId]); // Only depends on suiteId
 
-  const handleAddToSuite = (selectedCases) => {
-    if (!selectedCases || selectedCases.length === 0) {
-      toast.error("Please select at least one test case");
-      return;
-    }
-
-    const newRows = selectedCases.map((name, index) => ({
-      id: Date.now() + index,
-      name,
-      status: "Pending",
-      createdDate: new Date().toLocaleDateString(),
-      executedDate: "-",
-    }));
-
-    setTestSuiteRows((prev) => [...prev, ...newRows]);
-    toast.success("Test cases added to the suite");
-  };
+  // Loading state
+  if (loading && !suiteDetailsLoaded.current) {
+    return (
+      <div className="p-6 font-inter flex justify-center items-center min-h-[400px]">
+        <div className="text-lg text-gray-600">Loading test suite details...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 font-inter">
@@ -124,7 +139,7 @@ const TestSuiteDetails = () => {
         items={[
           { label: "Test Design" },
           { label: "Test Suite", path: "/test-design/test-suite" },
-          { label: "Create" },
+          { label: isUpdateMode ? "Update" : "Create" },
         ]}
       />
       <hr className="mb-6 border-gray-200" />
@@ -132,47 +147,19 @@ const TestSuiteDetails = () => {
       {/* Top Form */}
       <TestSuiteTopForm
         onSave={handleSubmit}
-        onCancel={() => setSuiteCreated(false)}
+        onCancel={() => navigate("/test-design/test-suite")}
         isUpdate={!!suiteId}
         defaultValues={suiteDetails}
       />
       <hr className="my-6 border-gray-200" />
 
-      {/* Assignment Form */}
-      <TestSuiteAssignmentForm
-        testCases={testCases}
-        onAddToSuite={handleAddToSuite}
-        suiteCreated={true}
-        prefilledCases={state?.suite?.testCases || []}
-      />
-
-      {/* Table */}
-      {testSuiteRows.length > 0 && (
-        <div className="mt-8 bg-white p-4 border shadow-sm rounded">
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">
-            Associated Test Cases
-          </h3>
-          <table className="min-w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-gray-700 text-left">
-                <th className="px-4 py-2 border">Test Case Name</th>
-                <th className="px-4 py-2 border">Status</th>
-                <th className="px-4 py-2 border">Created Date</th>
-                <th className="px-4 py-2 border">Executed Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {testSuiteRows.map((row) => (
-                <tr key={row.id} className="border-t">
-                  <td className="px-4 py-2 border">{row.name}</td>
-                  <td className="px-4 py-2 border">{row.status}</td>
-                  <td className="px-4 py-2 border">{row.createdDate}</td>
-                  <td className="px-4 py-2 border">{row.executedDate}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Assignment Form (only shown after suite is created in create mode, or immediately in update mode) */}
+      {(suiteCreated || isUpdateMode) && (
+        <TestSuiteAssignmentForm
+          key={`test-suite-assignment-${isUpdateMode ? suiteId : newSuiteId}`} // Add a key prop to force re-render when ID changes
+          suiteId={isUpdateMode ? suiteId : newSuiteId}
+          onComplete={() => navigate("/test-design/test-suite")}
+        />
       )}
     </div>
   );

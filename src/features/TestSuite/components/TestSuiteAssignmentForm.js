@@ -1,43 +1,126 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
-
-const allMockTestCases = Array.from({ length: 50 }, (_, i) => ({
-  id: `TS-${(i + 1).toString().padStart(3, "0")}`,
-  name: `Test Case ${i + 1}`,
-  description: `This is the description for test case ${i + 1}.`,
-}));
+import { api } from "../../../utils/api";
+import { nanoid } from "nanoid";
 
 const ITEMS_PER_PAGE = 6;
 
 const TestSuiteAssignmentForm = ({
-  testCases,
-  onAddToSuite,
-  suiteCreated,
-  prefilledCases = [],
+  suiteId, // Pass the suite ID for API calls
+  onComplete, // Callback for when the user is finished with this form
 }) => {
   const [selectedCases, setSelectedCases] = useState([]);
-  const [availableCases, setAvailableCases] = useState(allMockTestCases);
-  const [tableData, setTableData] = useState([]);
+  const [availableCases, setAvailableCases] = useState([]);
+  const [associatedCases, setAssociatedCases] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [associating, setAssociating] = useState(false);
+  
+  // Use refs to track API call status and prevent duplicate calls
+  const availableCasesLoaded = useRef(false);
+  const associatedCasesLoaded = useRef(false);
+  const apiCallInProgress = useRef(false);
 
+  // Fetch all available test cases and associated test cases
   useEffect(() => {
-    if (prefilledCases.length > 0) {
-      const initial = prefilledCases.map((name, i) => ({
-        id: Date.now() + i,
-        name,
-        description: `This is the description for ${name}`,
-      }));
-      setTableData(initial);
+    const fetchTestCases = async () => {
+      // Skip if already loaded or API call is in progress
+      if (availableCasesLoaded.current || apiCallInProgress.current) return;
+      
+      apiCallInProgress.current = true;
+      setLoading(true);
+      
+      try {
+        // First fetch all available test cases
+        const allCasesJson = await api("/api/v1/test-cases?pageNo=0&limit=100&sortBy=createdDate&sortDir=DESC", "GET");
+        const { code: allCasesCode, message: allCasesMessage, data: allCasesData } = allCasesJson.result;
+        
+        if (allCasesCode === "200") {
+          const allFormattedCases = allCasesData.content.map(testCase => ({
+            id: testCase.testCaseId,
+            name: testCase.name,
+            description: testCase.description || `Description for ${testCase.name}`,
+            createdDate: new Date(testCase.createdDate).toLocaleDateString(),
+            executedDate: testCase.executedDate ? new Date(testCase.executedDate).toLocaleDateString() : "-",
+            status: testCase.status || "Pending",
+          }));
+          
+          // If we have a suiteId, fetch associated test cases
+          if (suiteId) {
+            try {
+              const associatedCasesJson = await api(`/api/v1/test-suites/${suiteId}/test-cases`, "GET");
+              const { code: assocCode, data: assocData } = associatedCasesJson.result;
+              
+              if (assocCode === "200" && Array.isArray(assocData)) {
+                // Format associated test cases
+                const assocCases = assocData.map(testCase => ({
+                  id: testCase.testCaseId,
+                  name: testCase.name,
+                  description: testCase.description || `Description for ${testCase.name}`,
+                  createdDate: new Date(testCase.createdDate).toLocaleDateString(),
+                  executedDate: testCase.executedDate ? new Date(testCase.executedDate).toLocaleDateString() : "-",
+                  status: testCase.status || "Pending",
+                }));
+                
+                setAssociatedCases(assocCases);
+                
+                // Filter out associated cases from all cases to get available cases
+                const associatedIds = assocCases.map(tc => tc.id);
+                const availableCasesFiltered = allFormattedCases.filter(tc => !associatedIds.includes(tc.id));
+                setAvailableCases(availableCasesFiltered);
+              } else {
+                // If no associated cases or error, all cases are available
+                setAvailableCases(allFormattedCases);
+              }
+            } catch (assocError) {
+              console.error("Error fetching associated test cases:", assocError);
+              // If error fetching associated cases, assume all cases are available
+              setAvailableCases(allFormattedCases);
+            }
+          } else {
+            // If no suiteId, all cases are available
+            setAvailableCases(allFormattedCases);
+          }
+          
+          // Mark as loaded
+          availableCasesLoaded.current = true;
+          associatedCasesLoaded.current = true;
+        } else {
+          toast.error(allCasesMessage || "Failed to fetch test cases");
+        }
+      } catch (error) {
+        console.error("Error fetching test cases:", error);
+        toast.error("Error loading test cases");
+      } finally {
+        setLoading(false);
+        apiCallInProgress.current = false;
+      }
+    };
+
+    fetchTestCases();
+  }, [suiteId]); // Only depends on suiteId
+  
+  // Reset loaded flags when suiteId changes
+  useEffect(() => {
+    if (suiteId !== undefined && suiteId !== null && suiteId !== prevSuiteIdRef.current) {
+      availableCasesLoaded.current = false;
+      associatedCasesLoaded.current = false;
+      prevSuiteIdRef.current = suiteId;
     }
-  }, [prefilledCases]);
+  }, [suiteId]);
+  
+  // Store previous suiteId to detect changes
+  const prevSuiteIdRef = useRef(null);
 
   const handleSelectChange = (e) => {
     const selectedId = e.target.value;
-    const selected = availableCases.find((item) => item.name === selectedId);
+    if (!selectedId) return;
+    
+    const selected = availableCases.find((item) => item.id === parseInt(selectedId));
     if (selected) {
       setSelectedCases([...selectedCases, selected]);
       setAvailableCases(
@@ -52,35 +135,76 @@ const TestSuiteAssignmentForm = ({
     setSelectedCases(selectedCases.filter((item) => item.id !== id));
   };
 
-  const handleAddToSuite = () => {
+  const handleAddToSuite = async () => {
     if (selectedCases.length === 0) {
       toast.warning("No test cases selected");
       return;
     }
-    const newTableData = [...tableData, ...selectedCases];
-    setTableData(newTableData);
-    setSelectedCases([]);
-    toast.success("Test cases added to suite");
+
+    // If we have a suiteId, use the API to associate test cases
+    if (suiteId) {
+      setAssociating(true);
+      try {
+        const selectedIds = selectedCases.map(tc => tc.id);
+        const payload = {
+          requestMetaData: {
+            userId: localStorage.getItem("userId") || "302",
+            transactionId: nanoid(),
+            timestamp: new Date().toISOString(),
+          },
+          data: selectedIds
+        };
+        
+        const json = await api(`/api/v1/test-cases/associate-to-suite/${suiteId}`, "POST", payload);
+        const { code, message } = json.result;
+        
+        if (code === "200") {
+          toast.success("Test cases successfully associated with suite");
+          
+          // Move selected cases to associated cases
+          setAssociatedCases([...associatedCases, ...selectedCases]);
+          setSelectedCases([]);
+        } else {
+          toast.error(message || "Failed to associate test cases");
+        }
+      } catch (error) {
+        console.error("Error associating test cases:", error);
+        toast.error("Error associating test cases with suite");
+      } finally {
+        setAssociating(false);
+      }
+    } else {
+      // For cases where we don't have a suiteId yet
+      setAssociatedCases([...associatedCases, ...selectedCases]);
+      setSelectedCases([]);
+      toast.success("Test cases added to suite");
+    }
   };
 
-  const handleDeleteRow = (id) => {
-    const toDelete = tableData.find((item) => item.id === id);
-    setTableData(tableData.filter((item) => item.id !== id));
-    setAvailableCases([...availableCases, toDelete]);
+  const handleDeleteRow = async (id) => {
+    // API call to disassociate the test case would go here when available
+    // For now, we'll just update the UI
+    const toRemove = associatedCases.find((item) => item.id === id);
+    
+    // Move from associated to available
+    setAssociatedCases(associatedCases.filter((item) => item.id !== id));
+    setAvailableCases([...availableCases, toRemove]);
+    
+    toast.success("Test case removed from suite");
   };
 
-  const handleCancel = () => {
-    const restored = [...availableCases, ...tableData];
-    setAvailableCases(restored);
-    setTableData([]);
-    setSelectedCases([]);
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete();
+    }
   };
 
-  const paginatedData = tableData.slice(
+  // Pagination logic
+  const paginatedData = associatedCases.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
-  const totalPages = Math.ceil(tableData.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(associatedCases.length / ITEMS_PER_PAGE);
 
   const renderPagination = () => {
     let pages = [];
@@ -104,7 +228,7 @@ const TestSuiteAssignmentForm = ({
       <div className="flex justify-end items-center px-4 py-3 text-sm text-gray-600 gap-1">
         <button
           disabled={currentPage === 1}
-          onClick={() => setCurrentPage(currentPage - 1)}
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
           className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
         >
           Prev
@@ -114,7 +238,7 @@ const TestSuiteAssignmentForm = ({
         {end < totalPages && <span>...</span>}
         <button
           disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage(currentPage + 1)}
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
           className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
         >
           Next
@@ -122,6 +246,14 @@ const TestSuiteAssignmentForm = ({
       </div>
     );
   };
+
+  if (loading && !availableCasesLoaded.current) {
+    return (
+      <div className="bg-white shadow p-6 rounded-lg mt-8 flex justify-center">
+        <div className="text-gray-600">Loading test cases...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white shadow p-6 rounded-lg mt-8">
@@ -131,6 +263,8 @@ const TestSuiteAssignmentForm = ({
           ℹ Assign test cases
         </span>
       </h3>
+      
+      {/* Selection Area */}
       <label className="text-sm font-medium text-gray-600 mb-1 block">
         Select test case
       </label>
@@ -153,27 +287,33 @@ const TestSuiteAssignmentForm = ({
           <select
             onChange={handleSelectChange}
             className="outline-none flex-1 bg-transparent"
+            value=""
           >
-            <option value=""></option>
+            <option value="">Select a test case</option>
             {availableCases.map((test) => (
-              <option key={test.id} value={test.name}>
+              <option key={test.id} value={test.id}>
                 {test.name}
               </option>
             ))}
           </select>
         </div>
         <button
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] disabled:opacity-50"
           onClick={handleAddToSuite}
-          disabled={selectedCases.length === 0}
+          disabled={selectedCases.length === 0 || associating}
         >
-          Add to suite
+          {associating ? "Adding..." : "Add to suite"}
         </button>
       </div>
 
-      {tableData.length > 0 && (
+      {/* Associated Test Cases Table */}
+      <div className="mt-6 mb-2">
+        <h4 className="font-semibold text-sm text-gray-700">Associated Test Cases</h4>
+      </div>
+      
+      {associatedCases.length > 0 ? (
         <>
-          <table className="w-full border mt-4">
+          <table className="w-full border mt-2">
             <thead className="bg-gray-50 border-b text-left">
               <tr>
                 <th className="p-3">Case ID</th>
@@ -198,21 +338,20 @@ const TestSuiteAssignmentForm = ({
             </tbody>
           </table>
 
-          {renderPagination()}
-
-          <div className="flex justify-end mt-4 space-x-3">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 border rounded text-sm text-gray-700 bg-white hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-            <Button onClick={() => toast.success("Test cases associated")}>
-              Create
-            </Button>
-          </div>
+          {totalPages > 1 && renderPagination()}
         </>
+      ) : (
+        <div className="p-4 border border-dashed rounded-md text-center text-gray-500">
+          No test cases associated with this suite yet. Select test cases from the dropdown above.
+        </div>
       )}
+      
+      {/* Final action button - replaced Done button with Save button */}
+      <div className="flex justify-end mt-4">
+        <Button onClick={() => handleComplete()}>
+          Save
+        </Button>
+      </div>
     </div>
   );
 };
