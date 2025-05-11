@@ -5,6 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
 import { api } from "../../../utils/api";
+import ConfirmationModal from "../../../components/common/ConfirmationModal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -21,7 +22,9 @@ const TestPackageAssignmentForm = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [selectedSuite, setSelectedSuite] = useState(null);
-
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [suiteToRemove, setSuiteToRemove] = useState(null);
+  const [isRemoving, setIsRemoving] = useState(false);
 
   useEffect(() => {
     const fetchTestSuites = async () => {
@@ -87,7 +90,6 @@ const TestPackageAssignmentForm = ({
     setSelectedSuites((prev) => prev.filter((s) => s.id !== id));
   };
   
-
   const handleAddToPackage = () => {
     if (selectedSuites.length === 0) {
       toast.warning("No test Suites selected");
@@ -105,11 +107,57 @@ const TestPackageAssignmentForm = ({
     setDropdownOpen(false);
   };
   
-
   const handleDeleteRow = (id) => {
-    const toDelete = tableData.find((item) => item.id === id);
-    setTableData(tableData.filter((item) => item.id !== id));
-    setAvailableSuites([...availableSuites, toDelete]);
+    const suiteToDelete = tableData.find(item => item.id === id);
+    if (suiteToDelete) {
+      setSuiteToRemove(suiteToDelete);
+      setShowDeleteModal(true);
+    }
+  };
+
+  // New function to remove suite from package using the API
+  const removeSuiteFromPackage = async () => {
+    if (!suiteToRemove || !packageId) {
+      toast.error("Missing required information");
+      return;
+    }
+
+    setIsRemoving(true);
+
+    try {
+      const payload = {
+        requestMetaData: {
+          userId: localStorage.getItem("userId") || "302",
+          transactionId: Date.now().toString(),
+          timestamp: new Date().toISOString(),
+        },
+        data: {
+          testPackageId: parseInt(packageId),
+          testSuiteId: suiteToRemove.id
+        }
+      };
+
+      const response = await api("/api/v1/test-suites/remove-assoc-to-packages", "DELETE", payload);
+      
+      if (response.result?.code === "200") {
+        toast.success(response.result.message || "Test suite removed from package successfully");
+        
+        // Update the UI by removing the suite
+        setTableData(tableData.filter(item => item.id !== suiteToRemove.id));
+        
+        // Add back to available suites
+        setAvailableSuites(prev => [...prev, suiteToRemove]);
+      } else {
+        throw new Error(response.result?.message || "Failed to remove test suite");
+      }
+    } catch (error) {
+      console.error("Error removing test suite:", error);
+      toast.error(error.message || "Failed to remove test suite from package");
+    } finally {
+      setIsRemoving(false);
+      setShowDeleteModal(false);
+      setSuiteToRemove(null);
+    }
   };
 
   const handleCancel = () => {
@@ -175,80 +223,80 @@ const TestPackageAssignmentForm = ({
         </span>
       </h3>
       {/* Label for the dropdown */}
-{/* Multi-select badge input container */}
-<div className="relative w-full col-span-2">
-  <label className="text-sm font-medium text-gray-600 mb-1 block">
-    Select Test Suite
-  </label>
+      {/* Multi-select badge input container */}
+      <div className="relative w-full col-span-2">
+        <label className="text-sm font-medium text-gray-600 mb-1 block">
+          Select Test Suite
+        </label>
 
-  {/* Input + badges + button */}
-  <div
-    onClick={() => setDropdownOpen(!dropdownOpen)}
-    className="flex items-center flex-wrap min-h-[46px] w-full px-3 py-2 border border-gray-300 rounded bg-white cursor-pointer hover:border-indigo-500 transition-all"
-  >
-    {/* Selected badges */}
-    {selectedSuites.length === 0 && (
-      <span className="text-sm text-gray-400">Select test suite(s)</span>
-    )}
-
-    {selectedSuites.map((suite) => (
-      <span
-        key={suite.id}
-        className="flex items-center bg-indigo-100 text-indigo-700 px-3 py-1 text-xs rounded-full mr-2 mb-1"
-        onClick={(e) => e.stopPropagation()} // prevent dropdown toggle
-      >
-        {suite.name}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleRemoveBadge(suite.id);
-          }}
-          className="ml-2 text-xs font-bold text-indigo-500 hover:text-red-500"
+        {/* Input + badges + button */}
+        <div
+          onClick={() => setDropdownOpen(!dropdownOpen)}
+          className="flex items-center flex-wrap min-h-[46px] w-full px-3 py-2 border border-gray-300 rounded bg-white cursor-pointer hover:border-indigo-500 transition-all"
         >
-          ×
-        </button>
-      </span>
-    ))}
+          {/* Selected badges */}
+          {selectedSuites.length === 0 && (
+            <span className="text-sm text-gray-400">Select test suite(s)</span>
+          )}
 
-    {/* Add Button inside input, sticks to right */}
-    {selectedSuites.length > 0 && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleAddToPackage();
-        }}
-        className="ml-auto bg-[#4F46E5] text-white text-xs px-3 py-1 rounded hover:bg-[#4338CA] whitespace-nowrap"
-      >
-        Add to package
-      </button>
-    )}
-  </div>
+          {selectedSuites.map((suite) => (
+            <span
+              key={suite.id}
+              className="flex items-center bg-indigo-100 text-indigo-700 px-3 py-1 text-xs rounded-full mr-2 mb-1"
+              onClick={(e) => e.stopPropagation()} // prevent dropdown toggle
+            >
+              {suite.name}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveBadge(suite.id);
+                }}
+                className="ml-2 text-xs font-bold text-indigo-500 hover:text-red-500"
+              >
+                ×
+              </button>
+            </span>
+          ))}
 
-  {/* Dropdown */}
-  {dropdownOpen && (
-    <div className="absolute z-10 w-full max-h-60 overflow-y-auto mt-1 bg-white border border-gray-300 rounded shadow-md">
-      {availableSuites.length > 0 ? (
-        availableSuites.filter(
-          (suite) =>
-            !selectedSuites.find((s) => s.id === suite.id) &&
-            !tableData.find((t) => t.id === suite.id)
-        )
-        .map((suite) => (
-          <div
-            key={suite.id}
-            onClick={() => handleAddSuite(suite)}
-            className="px-4 py-2 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer text-sm text-gray-700 transition-all"
-          >
-            <div className="font-medium">{suite.name}</div>
-            <div className="text-xs text-gray-400">{suite.description}</div>
+          {/* Add Button inside input, sticks to right */}
+          {selectedSuites.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddToPackage();
+              }}
+              className="ml-auto bg-[#4F46E5] text-white text-xs px-3 py-1 rounded hover:bg-[#4338CA] whitespace-nowrap"
+            >
+              Add to package
+            </button>
+          )}
+        </div>
+
+        {/* Dropdown */}
+        {dropdownOpen && (
+          <div className="absolute z-10 w-full max-h-60 overflow-y-auto mt-1 bg-white border border-gray-300 rounded shadow-md">
+            {availableSuites.length > 0 ? (
+              availableSuites.filter(
+                (suite) =>
+                  !selectedSuites.find((s) => s.id === suite.id) &&
+                  !tableData.find((t) => t.id === suite.id)
+              )
+              .map((suite) => (
+                <div
+                  key={suite.id}
+                  onClick={() => handleAddSuite(suite)}
+                  className="px-4 py-2 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer text-sm text-gray-700 transition-all"
+                >
+                  <div className="font-medium">{suite.name}</div>
+                  <div className="text-xs text-gray-400">{suite.description}</div>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-2 text-sm text-gray-500">No available suites</div>
+            )}
           </div>
-        ))
-      ) : (
-        <div className="px-4 py-2 text-sm text-gray-500">No available suites</div>
-      )}
-    </div>
-  )}
-</div>    
+        )}
+      </div>    
 
       {tableData.length > 0 && (
         <>
@@ -268,7 +316,10 @@ const TestPackageAssignmentForm = ({
                   <td className="p-3">{test.name}</td>
                   <td className="p-3">{test.description}</td>
                   <td className="p-3 text-center">
-                    <button onClick={() => handleDeleteRow(test.id)}>
+                    <button 
+                      onClick={() => handleDeleteRow(test.id)}
+                      disabled={isRemoving}
+                    >
                       <IconButton icon={FiTrash2} />
                     </button>
                   </td>
@@ -287,37 +338,49 @@ const TestPackageAssignmentForm = ({
               Cancel
             </button>
             <Button
-  onClick={async () => {
-    try {
-      const payload = {
-        requestMetaData: {
-          userId: localStorage.getItem("userId") || "001",
-          transactionId: Date.now().toString(),
-          timestamp: new Date().toISOString(),
-        },
-        data: tableData.map((s) => s.id),
-      };
+              onClick={async () => {
+                try {
+                  const payload = {
+                    requestMetaData: {
+                      userId: localStorage.getItem("userId") || "001",
+                      transactionId: Date.now().toString(),
+                      timestamp: new Date().toISOString(),
+                    },
+                    data: tableData.map((s) => s.id),
+                  };
 
-      const json = await api(`/api/v1/test-suites/associate-to-packages/${packageId}`, "POST", payload);
+                  const json = await api(`/api/v1/test-suites/associate-to-packages/${packageId}`, "POST", payload);
 
-      const { code, message } = json.result;
+                  const { code, message } = json.result;
 
-      if (code === "200") {
-        toast.success(message || "Test Suites associated successfully");
-      } else {
-        toast.error(message || "Failed to associate test suites");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Error associating test suites");
-    }
-  }}
->
-  Create
-</Button>
+                  if (code === "200") {
+                    toast.success(message || "Test Suites associated successfully");
+                  } else {
+                    toast.error(message || "Failed to associate test suites");
+                  }
+                } catch (error) {
+                  console.error(error);
+                  toast.error("Error associating test suites");
+                }
+              }}
+            >
+              Create
+            </Button>
           </div>
         </>
       )}
+
+      {/* Confirmation Modal for Removing Suite from Package */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSuiteToRemove(null);
+        }}
+        onConfirm={removeSuiteFromPackage}
+        title="Remove Test Suite"
+        message={`Are you sure you want to remove "${suiteToRemove?.name}" from this package? This action cannot be undone.`}
+      />
     </div>
   );
 };

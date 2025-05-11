@@ -134,7 +134,7 @@ const TestSuiteDetails = () => {
 
   return (
     <div className="p-6 font-inter">
-      {/* Breadcrumbs */}
+      {/* Breadcrumbs - Fixed to show "Update" when in update mode */}
       <Breadcrumb
         items={[
           { label: "Test Design" },
@@ -150,6 +150,7 @@ const TestSuiteDetails = () => {
         onCancel={() => navigate("/test-design/test-suite")}
         isUpdate={!!suiteId}
         defaultValues={suiteDetails}
+        isSaving={saving}
       />
       <hr className="my-6 border-gray-200" />
 

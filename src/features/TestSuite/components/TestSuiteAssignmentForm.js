@@ -6,6 +6,7 @@ import IconButton from "../../../components/common/IconButton";
 import Button from "../../../components/common/Button";
 import { api } from "../../../utils/api";
 import { nanoid } from "nanoid";
+import ConfirmationModal from "../../../components/common/ConfirmationModal";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -19,6 +20,10 @@ const TestSuiteAssignmentForm = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [associating, setAssociating] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [caseToRemove, setCaseToRemove] = useState(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [savingFinal, setSavingFinal] = useState(false);
   
   // Use refs to track API call status and prevent duplicate calls
   const availableCasesLoaded = useRef(false);
@@ -181,20 +186,93 @@ const TestSuiteAssignmentForm = ({
     }
   };
 
-  const handleDeleteRow = async (id) => {
-    // API call to disassociate the test case would go here when available
-    // For now, we'll just update the UI
-    const toRemove = associatedCases.find((item) => item.id === id);
+  // Function to handle removing a test case from a suite
+  const removeCaseFromSuite = async () => {
+    if (!caseToRemove || !suiteId) {
+      toast.error("Missing required information");
+      return;
+    }
+
+    setIsRemoving(true);
     
-    // Move from associated to available
-    setAssociatedCases(associatedCases.filter((item) => item.id !== id));
-    setAvailableCases([...availableCases, toRemove]);
-    
-    toast.success("Test case removed from suite");
+    try {
+      const payload = {
+        requestMetaData: {
+          userId: localStorage.getItem("userId") || "302",
+          transactionId: nanoid(),
+          timestamp: new Date().toISOString(),
+        },
+        data: {
+          testCaseId: caseToRemove.id,
+          testSuiteId: parseInt(suiteId)
+        }
+      };
+      
+      const response = await api("/api/v1/test-cases/remove-assoc-to-suite", "DELETE", payload);
+      
+      if (response.result?.code === "200") {
+        toast.success(response.result.message || "Test case removed from suite successfully");
+        
+        // Update the UI
+        setAssociatedCases(prev => prev.filter(item => item.id !== caseToRemove.id));
+        
+        // Add the test case back to available cases
+        setAvailableCases(prev => [...prev, caseToRemove]);
+      } else {
+        throw new Error(response.result?.message || "Failed to remove test case");
+      }
+    } catch (error) {
+      console.error("Error removing test case:", error);
+      toast.error(error.message || "Failed to remove test case from suite");
+    } finally {
+      setIsRemoving(false);
+      setShowDeleteModal(false);
+      setCaseToRemove(null);
+    }
   };
 
-  const handleComplete = () => {
-    if (onComplete) {
+  const handleDeleteRow = (id) => {
+    const testCase = associatedCases.find(item => item.id === id);
+    if (testCase) {
+      setCaseToRemove(testCase);
+      setShowDeleteModal(true);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (suiteId && associatedCases.length > 0) {
+      setSavingFinal(true);
+      try {
+        // Final save - ensure all associations are correct
+        const associatedIds = associatedCases.map(tc => tc.id);
+        const payload = {
+          requestMetaData: {
+            userId: localStorage.getItem("userId") || "302",
+            transactionId: nanoid(),
+            timestamp: new Date().toISOString(),
+          },
+          data: associatedIds
+        };
+        
+        const json = await api(`/api/v1/test-cases/associate-to-suite/${suiteId}`, "POST", payload);
+        const { code, message } = json.result;
+        
+        if (code === "200") {
+          toast.success("Test suite configuration saved successfully");
+          if (onComplete) {
+            onComplete();
+          }
+        } else {
+          toast.error(message || "Failed to save test suite configuration");
+        }
+      } catch (error) {
+        console.error("Error during final save:", error);
+        toast.error("Error saving test suite configuration");
+      } finally {
+        setSavingFinal(false);
+      }
+    } else if (onComplete) {
+      // If there's no suiteId or no test cases, just complete
       onComplete();
     }
   };
@@ -288,6 +366,7 @@ const TestSuiteAssignmentForm = ({
             onChange={handleSelectChange}
             className="outline-none flex-1 bg-transparent"
             value=""
+            disabled={associating}
           >
             <option value="">Select a test case</option>
             {availableCases.map((test) => (
@@ -302,7 +381,15 @@ const TestSuiteAssignmentForm = ({
           onClick={handleAddToSuite}
           disabled={selectedCases.length === 0 || associating}
         >
-          {associating ? "Adding..." : "Add to suite"}
+          {associating ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Adding...
+            </>
+          ) : "Add to suite"}
         </button>
       </div>
 
@@ -329,7 +416,10 @@ const TestSuiteAssignmentForm = ({
                   <td className="p-3">{test.name}</td>
                   <td className="p-3">{test.description}</td>
                   <td className="p-3 text-center">
-                    <button onClick={() => handleDeleteRow(test.id)}>
+                    <button 
+                      onClick={() => handleDeleteRow(test.id)}
+                      disabled={isRemoving}
+                    >
                       <IconButton icon={FiTrash2} />
                     </button>
                   </td>
@@ -346,12 +436,35 @@ const TestSuiteAssignmentForm = ({
         </div>
       )}
       
-      {/* Final action button - replaced Done button with Save button */}
+      {/* Final action button */}
       <div className="flex justify-end mt-4">
-        <Button onClick={() => handleComplete()}>
-          Save
+        <Button 
+          onClick={handleComplete}
+          disabled={savingFinal}
+        >
+          {savingFinal ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 inline text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Saving...
+            </>
+          ) : "Save"}
         </Button>
       </div>
+
+      {/* Confirmation Modal for removing test case */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setCaseToRemove(null);
+        }}
+        onConfirm={removeCaseFromSuite}
+        title="Remove Test Case"
+        message={`Are you sure you want to remove "${caseToRemove?.name}" from this suite? This action cannot be undone.`}
+      />
     </div>
   );
 };

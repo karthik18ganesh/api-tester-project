@@ -113,12 +113,12 @@ const TestPackageDetails = () => {
 
   return (
     <div className="p-6 font-inter">
-      {/* Breadcrumbs */}
+      {/* Breadcrumbs - Fixed to show "Update" when in update mode */}
       <Breadcrumb
         items={[
           { label: "Test Design" },
           { label: "Test Package", path: "/test-design/test-package" },
-          { label: "Create" },
+          { label: isUpdateMode ? "Update" : "Create" },
         ]}
       />
 

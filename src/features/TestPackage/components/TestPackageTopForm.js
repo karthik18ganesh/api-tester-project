@@ -48,9 +48,9 @@ const TestPackageTopForm = ({
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">
-      {isUpdate
-    ? `Edit ${defaultValues?.name || 'Test'}`
-    : "Create new Test Package"}
+        {isUpdate
+          ? `Edit ${defaultValues?.name || 'Test Package'}`
+          : "Create new Test Package"}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
