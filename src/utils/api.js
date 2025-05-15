@@ -46,6 +46,7 @@ export const apiRepository = {
         envId: apiData.environment,
         method: apiData.method,
         url: apiData.url,
+        description: apiData.description,
         request: {
           headers: apiData.headers
             .filter(h => h.enabled && h.key.trim())
@@ -84,6 +85,7 @@ export const apiRepository = {
         envId: apiData.environment,
         method: apiData.method,
         url: apiData.url,
+        description: apiData.description,
         request: {
           requestId: apiData.requestId,
           headers: apiData.headers

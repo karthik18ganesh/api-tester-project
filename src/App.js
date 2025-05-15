@@ -20,6 +20,10 @@ import TestCaseDetails from "./features/TestCase/components/TestCaseDetails";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import APIRepository from "./features/APIRepository/components/APIRepository";
 import APIRepositoryDetails from "./features/APIRepository/components/APIRepositoryDetails";
+import TestExecution from "./features/TestExecution/components/TestExecution";
+import { default as ExecutionTestCaseDetails } from "./features/TestExecution/components/TestCaseDetails";
+import TestResults from "./features/TestResults/components/TestResults";
+import ExecutionDetails from "./features/TestResults/components/ExecutionDetails";
 
 const App = () => {
   return (
@@ -57,6 +61,11 @@ const App = () => {
             path="/test-design/test-case/create"
             element={<ProtectedRoute><TestCaseDetails /></ProtectedRoute>}
           />
+          {/* Test Execution & Results */}
+          <Route path="/test-execution" element={<ProtectedRoute><TestExecution /></ProtectedRoute>} />
+          <Route path="/test-execution/results/:executionId/:testCaseId" element={<ProtectedRoute><ExecutionTestCaseDetails /></ProtectedRoute>} />
+          <Route path="/test-results" element={<ProtectedRoute><TestResults /></ProtectedRoute>} />
+          <Route path="/test-execution/results/:executionId" element={<ProtectedRoute><ExecutionDetails /></ProtectedRoute>} />
         </Route>
       </Routes>
     </Router>

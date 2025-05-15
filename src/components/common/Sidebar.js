@@ -56,7 +56,7 @@ const Sidebar = () => {
     }
 
     // Expand test execution section if on test execution or results pages
-    if (location.pathname.includes("/test-execution") || location.pathname.includes("/results")) {
+    if (location.pathname.includes("/test-execution") || location.pathname.includes("/test-results")) {
       setTestExecutionOpen(true);
     }
   }, [location.pathname]);
@@ -73,7 +73,7 @@ const Sidebar = () => {
     { 
       label: "Results", 
       icon: <FiBarChart2 />, 
-      route: "/results" 
+      route: "/test-results" 
     },
   ];
 
