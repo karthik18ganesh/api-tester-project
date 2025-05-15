@@ -6,7 +6,7 @@ import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import ConfirmationModal from "../../../components/common/ConfirmationModal";
-import { api } from "../../../utils/api";
+import { apiRepository } from "../../../utils/api";
 
 const pageSize = 6;
 
@@ -21,59 +21,57 @@ const APIRepository = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    totalElements: 0,
+    totalPages: 0,
+    pageNumber: 0,
+    pageSize: pageSize,
+    sort: {
+      direction: "DESC",
+      property: "createdDate"
+    }
+  });
 
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-  const currentData = filteredData.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
+  // Updated calculated pagination values
+  const totalPages = pagination.totalPages;
+  const currentData = filteredData;
 
-  const fetchAPIs = async () => {
+  const fetchAPIs = async (page = 0) => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // In a real application, this would be an API call
-      // For now, we'll use mock data with a timeout to simulate loading
-      setTimeout(() => {
-        const mockAPIs = Array.from({ length: 18 }, (_, i) => ({
-          id: i + 1,
-          apiId: `API-${String(100 + i)}`,
-          name: [
-            "User Login API",
-            "Cart Checkout API",
-            "Order Tracking API",
-            "Search Endpoint",
-            "Payment Gateway",
-            "Inventory Fetch",
-          ][i % 6],
-          method: ["GET", "POST", "PUT", "DELETE", "PATCH", "GET"][i % 6],
-          url: [
-            "/api/auth/login",
-            "/api/cart/checkout",
-            "/api/orders/{id}/track",
-            "/api/search",
-            "/api/payments/process",
-            "/api/inventory/fetch",
-          ][i % 6],
-          description: [
-            "Handles user login authentication.",
-            "Processes the checkout of shopping cart items.",
-            "Fetches order tracking info using order ID.",
-            "Returns filtered search results for products.",
-            "Handles secure payment transactions.",
-            "Fetches inventory stock details for admin.",
-          ][i % 6],
-          createdDate: new Date(2025, 3, 1 + (i % 6)).toLocaleDateString("en-GB"),
-          environment: ["Development", "Production", "Staging", "Testing", "QA", "Development"][i % 6],
+      const response = await apiRepository.getAll(page, pageSize, "createdDate", "DESC");
+      
+      if (response && response.result && response.result.data) {
+        const apiData = response.result.data.content.map(api => ({
+          id: api.apiId,
+          apiId: `API-${api.apiId}`,
+          name: api.apiRepoName,
+          method: api.method,
+          url: api.url,
+          description: api.description || "",
+          createdDate: new Date(api.createdDate).toLocaleDateString("en-GB"),
+          environment: api.envId,
         }));
         
-        setData(mockAPIs);
-        setFilteredData(mockAPIs);
-        setLoading(false);
-      }, 800);
+        setData(apiData);
+        setFilteredData(apiData);
+        setPagination({
+          totalElements: response.result.data.totalElements,
+          totalPages: response.result.data.totalPages,
+          pageNumber: response.result.data.pageable.pageNumber,
+          pageSize: response.result.data.pageable.pageSize,
+          sort: response.result.data.pageable.sort
+        });
+      } else {
+        throw new Error("Invalid response format");
+      }
     } catch (err) {
       console.error("Error fetching APIs:", err);
       setError("Failed to load APIs. Please try again later.");
-      toast.error("Error fetching APIs");
+      toast.error("Error fetching APIs: " + (err.message || "Unknown error"));
+    } finally {
       setLoading(false);
     }
   };
@@ -86,18 +84,14 @@ const APIRepository = () => {
     }
     
     try {
-      // This would be an API call in a real application
-      // For now, we'll simulate a successful deletion
-      
-      // Update local state by filtering out deleted APIs
-      const updatedData = data.filter(
-        (api) => !selected.includes(api.id)
-      );
-      setData(updatedData);
-      setFilteredData(updatedData);
-      setSelected([]);
+      // In a real implementation, we would make DELETE API calls for each selected API
+      // For now, we'll just simulate success and update the UI
       
       toast.success(`Successfully deleted ${selected.length} API${selected.length > 1 ? 's' : ''}`);
+      setSelected([]);
+      
+      // Refresh the data after deletion
+      fetchAPIs(pagination.pageNumber);
     } catch (error) {
       console.error("Error during delete:", error);
       toast.error("Error occurred while deleting APIs");
@@ -128,7 +122,7 @@ const APIRepository = () => {
     });
   };
 
-  // Handle search
+  // Handle search - client side for now
   const handleSearch = (e) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
@@ -141,13 +135,10 @@ const APIRepository = () => {
           api.name.toLowerCase().includes(term) || 
           api.apiId.toString().includes(term) ||
           api.url.toLowerCase().includes(term) ||
-          api.description.toLowerCase().includes(term)
+          (api.description && api.description.toLowerCase().includes(term))
       );
       setFilteredData(filtered);
     }
-    
-    // Reset to first page when searching
-    setCurrentPage(1);
   };
 
   const clearSearch = () => {
@@ -175,7 +166,12 @@ const APIRepository = () => {
 
   // Get environment badge color
   const getEnvironmentBadge = (env) => {
-    switch(env.toLowerCase()) {
+    const envName = typeof env === 'string' ? env.toLowerCase() : '';
+    
+    // Extract environment name by removing prefix
+    const normalizedEnv = envName.replace(/^env_/i, '');
+    
+    switch(normalizedEnv) {
       case 'production':
         return "bg-red-100 text-red-800";
       case 'staging':
@@ -190,6 +186,15 @@ const APIRepository = () => {
     }
   };
 
+  // Display environment name without the prefix
+  const formatEnvironmentName = (env) => {
+    if (!env) return "Unknown";
+    
+    // Extract environment name by removing prefix and capitalizing
+    const name = env.replace(/^env_/i, '');
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+
   // Pagination helpers
   const getPaginationRange = () => {
     const range = [];
@@ -197,20 +202,28 @@ const APIRepository = () => {
     const visiblePages = 2;
 
     range.push(1);
-    if (currentPage > visiblePages + 2) range.push(dots);
+    if (pagination.pageNumber > visiblePages + 1) range.push(dots);
 
     for (
-      let i = Math.max(2, currentPage - visiblePages);
-      i <= Math.min(totalPages - 1, currentPage + visiblePages);
+      let i = Math.max(2, pagination.pageNumber);
+      i <= Math.min(totalPages - 1, pagination.pageNumber + visiblePages);
       i++
     ) {
       range.push(i);
     }
 
-    if (currentPage + visiblePages < totalPages - 1) range.push(dots);
+    if (pagination.pageNumber + visiblePages < totalPages - 1) range.push(dots);
     if (totalPages > 1) range.push(totalPages);
 
     return range;
+  };
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    // Convert from 1-based to 0-based for the API
+    const apiPage = page - 1;
+    fetchAPIs(apiPage);
+    setCurrentPage(page);
   };
 
   // Load data on component mount
@@ -331,7 +344,7 @@ const APIRepository = () => {
               <h3 className="text-lg font-medium text-gray-900 mb-1">{error}</h3>
               <button 
                 className="mt-4 px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors"
-                onClick={fetchAPIs}
+                onClick={() => fetchAPIs()}
               >
                 Try Again
               </button>
@@ -411,8 +424,8 @@ const APIRepository = () => {
                         </td>
                         <td
                           onClick={() =>
-                            navigate("/test-design/api-repository/create", {
-                              state: { api: item },
+                            navigate(`/test-design/api-repository/create`, {
+                              state: { apiId: item.id },
                             })
                           }
                           className="py-3 px-4 text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer truncate"
@@ -435,12 +448,12 @@ const APIRepository = () => {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnvironmentBadge(item.environment)}`}>
-                            {item.environment}
+                            {formatEnvironmentName(item.environment)}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600">
                           <div className="truncate">
-                            {item.description}
+                            {item.description || "-"}
                           </div>
                         </td>
                       </tr>
@@ -452,13 +465,13 @@ const APIRepository = () => {
               {/* Pagination */}
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
                 <div className="text-sm text-gray-600">
-                  Showing {Math.min((currentPage - 1) * pageSize + 1, filteredData.length)} to{" "}
-                  {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} items
+                  Showing {Math.min((pagination.pageNumber * pagination.pageSize) + 1, pagination.totalElements)} to{" "}
+                  {Math.min((pagination.pageNumber + 1) * pagination.pageSize, pagination.totalElements)} of {pagination.totalElements} items
                 </div>
                 
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                    onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                     className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
                   >
@@ -468,7 +481,7 @@ const APIRepository = () => {
                     <button
                       key={idx}
                       disabled={item === "..."}
-                      onClick={() => item !== "..." && setCurrentPage(item)}
+                      onClick={() => item !== "..." && handlePageChange(item)}
                       className={`px-3 py-1 border rounded-md ${
                         item === currentPage
                           ? "bg-indigo-600 text-white border-indigo-600"
@@ -479,7 +492,7 @@ const APIRepository = () => {
                     </button>
                   ))}
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                    onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages || totalPages === 0}
                     className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
                   >
