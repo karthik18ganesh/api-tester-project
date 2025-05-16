@@ -1,3 +1,5 @@
+// Improved App.js with proper navigation for test execution and results
+
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -21,11 +23,12 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import APIRepository from "./features/APIRepository/components/APIRepository";
 import APIRepositoryDetails from "./features/APIRepository/components/APIRepositoryDetails";
 import TestExecution from "./features/TestExecution/components/TestExecution";
-import { default as ExecutionTestCaseDetails } from "./features/TestExecution/components/TestCaseDetails";
+import TestCaseDetailsView from "./features/TestExecution/components/TestCaseDetailsView";
 import TestResults from "./features/TestResults/components/TestResults";
-import ExecutionDetails from "./features/TestResults/components/ExecutionDetails";
+import ExecutionDetailsView from "./features/TestResults/components/ExecutionDetailsView";
 
-const App = () => {
+// Enhanced App component with updated routes for test execution flow
+const EnhancedApp = () => {
   return (
     <Router>
       <Toast />
@@ -61,15 +64,30 @@ const App = () => {
             path="/test-design/test-case/create"
             element={<ProtectedRoute><TestCaseDetails /></ProtectedRoute>}
           />
-          {/* Test Execution & Results */}
+          
+          {/* Test Execution & Results - Enhanced Routes */}
           <Route path="/test-execution" element={<ProtectedRoute><TestExecution /></ProtectedRoute>} />
-          <Route path="/test-execution/results/:executionId/:testCaseId" element={<ProtectedRoute><ExecutionTestCaseDetails /></ProtectedRoute>} />
+          
+          {/* Execution Results routes */}
+          <Route path="/test-execution/results/:executionId" element={
+            <ProtectedRoute>
+              <ExecutionDetailsView />
+            </ProtectedRoute>
+          } />
+          
+          {/* Specific Test Case Details */}
+          <Route path="/test-execution/results/:executionId/:testCaseId" element={
+            <ProtectedRoute>
+              <TestCaseDetailsView />
+            </ProtectedRoute>
+          } />
+          
+          {/* Test Results Dashboard */}
           <Route path="/test-results" element={<ProtectedRoute><TestResults /></ProtectedRoute>} />
-          <Route path="/test-execution/results/:executionId" element={<ProtectedRoute><ExecutionDetails /></ProtectedRoute>} />
         </Route>
       </Routes>
     </Router>
   );
 };
 
-export default App;
+export default EnhancedApp;
