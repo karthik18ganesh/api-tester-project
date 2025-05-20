@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
+import Breadcrumb from '../../../components/common/Breadcrumb';
 import { testHierarchy as mockTestHierarchy, executionResults as mockExecutionData } from '../data/mockData';
 
 const ModernTestExecution = () => {
@@ -23,6 +24,23 @@ const ModernTestExecution = () => {
 
   // Mock data for the component
   const testHierarchy = mockTestHierarchy;
+
+  // Get breadcrumb items based on view mode
+  const getBreadcrumbItems = () => {
+    const items = [{ label: "Test Execution" }];
+    
+    if (viewMode === 'execution') {
+      items.push({ label: "Execute Tests" });
+    } else if (viewMode === 'testcase' && executionResult) {
+      items.push(
+        { label: "Execute Tests", path: "/test-execution" },
+        { label: `Execution ${executionResult.id}` },
+        { label: "Test Case Details" }
+      );
+    }
+    
+    return items;
+  };
 
   // On component mount, check if there's a test case ID in the URL
   useEffect(() => {
@@ -289,18 +307,24 @@ const ModernTestExecution = () => {
   // If showing test case details view
   if (viewMode === 'testcase' && executionResult) {
     return (
-      <TestCaseDetailsNavigator
-        executionId={executionResult.id}
-        testCases={executionResult.results}
-        currentTestCaseId={selectedTestCaseId}
-        onNavigate={handleNavigateTestCase}
-        onBack={handleBackToExecution}
-      />
+      <div className="p-6 font-inter text-gray-800">
+        <Breadcrumb items={getBreadcrumbItems()} />
+        <TestCaseDetailsNavigator
+          executionId={executionResult.id}
+          testCases={executionResult.results}
+          currentTestCaseId={selectedTestCaseId}
+          onNavigate={handleNavigateTestCase}
+          onBack={handleBackToExecution}
+        />
+      </div>
     );
   }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Breadcrumb */}
+      <Breadcrumb items={getBreadcrumbItems()} />
+      
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Test Execution</h1>

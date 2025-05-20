@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaCheck, FaTimes, FaChevronLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import Breadcrumb from '../../../components/common/Breadcrumb';
 
 // Collapsible component for sections
 const Collapsible = ({ children, title, defaultOpen = false }) => {
@@ -32,6 +33,16 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
   const [testCase, setTestCase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentTestCaseIndex, setCurrentTestCaseIndex] = useState(0);
+  
+  // Get breadcrumb items
+  const getBreadcrumbItems = () => {
+    return [
+      { label: "Test Execution" },
+      { label: "Test Results", path: "/test-results" },
+      { label: `Execution ${executionId}`, path: `/test-execution/results/${executionId}` },
+      { label: "Test Case Details" }
+    ];
+  };
   
   // Mock execution data - in a real app, this would come from your API or state management
   const mockExecutionData = {
@@ -451,6 +462,8 @@ pm.test("Response contains error message", function () {
   if (!testCase || !execution) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
+        <Breadcrumb items={getBreadcrumbItems()} />
+        
         <div className="flex items-center mb-6">
           <button 
             onClick={onBack}
@@ -478,7 +491,7 @@ pm.test("Response contains error message", function () {
   const progressPercentage = calculateProgress();
   
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <button 
           onClick={onBack}
@@ -653,8 +666,6 @@ pm.test("Response contains error message", function () {
           )}
         </div>
       </div>
-      
-
     </div>
   );
 };
