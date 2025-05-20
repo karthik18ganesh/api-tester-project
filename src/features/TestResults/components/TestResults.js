@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { FaChevronDown, FaFilter, FaDownload, FaCalendarAlt, FaSync, FaSearch, FaEye } from 'react-icons/fa';
 import TestResultsTable from './TestResultsTable';
 import ExecutionDetailsView from './ExecutionDetailsView';
+import TestCaseDetailsView from '../../TestExecution/components/TestCaseDetailsView';
 
 const ModernTestResults = () => {
   const [selectedExecution, setSelectedExecution] = useState(null);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('results'); // 'results', 'execution', 'testcase'
+  const [selectedTestCaseId, setSelectedTestCaseId] = useState(null);
   const [filters, setFilters] = useState({
     status: 'all',
     date: 'all',
@@ -146,16 +149,46 @@ const ModernTestResults = () => {
     // Simulate API fetch delay
     setTimeout(() => {
       setSelectedExecution(executionData[executionId] || executionHistory.find(e => e.id === executionId));
+      setViewMode('execution'); // Set view mode to execution
       setLoading(false);
     }, 500);
   };
 
   const handleViewTestCase = (testCaseId) => {
-    console.log(`View test case: ${testCaseId}`);
+    setSelectedTestCaseId(testCaseId);
+    setViewMode('testcase');
+    
+    // Update URL for direct access
+    if (selectedExecution) {
+      window.history.pushState(
+        null, 
+        '', 
+        `/test-execution/results/${selectedExecution.id}/${testCaseId}`
+      );
+    }
+  };
+
+  const handleBackToExecution = () => {
+    setViewMode('execution');
+    setSelectedTestCaseId(null);
+    
+    // Update URL
+    if (selectedExecution) {
+      window.history.pushState(
+        null, 
+        '', 
+        `/test-execution/results/${selectedExecution.id}`
+      );
+    }
   };
 
   const handleBackToResults = () => {
     setSelectedExecution(null);
+    setViewMode('results');
+    setSelectedTestCaseId(null);
+    
+    // Update URL
+    window.history.pushState(null, '', '/test-results');
   };
 
   const handleRefresh = () => {
@@ -177,7 +210,19 @@ const ModernTestResults = () => {
     console.log(`Export as ${format}`);
   };
 
-  if (selectedExecution) {
+  // Show test case details view
+  if (viewMode === 'testcase' && selectedExecution && selectedTestCaseId) {
+    return (
+      <TestCaseDetailsView 
+        executionId={selectedExecution.id}
+        testCaseId={selectedTestCaseId}
+        onBack={handleBackToExecution}
+      />
+    );
+  }
+
+  // Show execution details view
+  if (viewMode === 'execution' && selectedExecution) {
     return (
       <ExecutionDetailsView 
         execution={selectedExecution} 

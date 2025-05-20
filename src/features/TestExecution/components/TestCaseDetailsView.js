@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaCheck, FaTimes, FaChevronLeft, FaChevronDown, FaChevronRight, FaCode, FaExternalLinkAlt } from 'react-icons/fa';
-import { executionResults as mockExecutionData } from '../data/mockData';
+import { FaCheck, FaTimes, FaChevronLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 
 // Collapsible component for sections
 const Collapsible = ({ children, title, defaultOpen = false }) => {
@@ -34,15 +33,354 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [currentTestCaseIndex, setCurrentTestCaseIndex] = useState(0);
   
+  // Mock execution data - in a real app, this would come from your API or state management
+  const mockExecutionData = {
+    'exec-202505091': {
+      id: 'exec-202505091',
+      status: 'Passed',
+      instanceId: 'exec-202505091',
+      executedBy: 'john.smith',
+      environment: 'Production',
+      executedAt: 'May 9, 2025 - 11:15 AM',
+      passedCount: 5,
+      failedCount: 0,
+      results: [
+        {
+          id: 'tc-001',
+          name: 'Valid Login Test',
+          status: 'Passed',
+          duration: '0.84s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/login',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer token123'
+            },
+            body: {
+              username: 'testuser',
+              password: 'password123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              success: true,
+              token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              user: {
+                id: 1,
+                username: 'testuser'
+              }
+            },
+            headers: {
+              'Content-Type': 'application/json',
+              'Set-Cookie': 'session=abc123; Path=/'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'Response has token property', status: 'Passed' },
+            { id: 3, description: 'Response time is less than 1000ms', status: 'Passed' }
+          ],
+          snippets: {
+            testCode: `// Test case: Valid Login Test
+pm.test("Status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response has token property", function () {
+    pm.expect(pm.response.json()).to.have.property('token');
+});
+
+pm.test("Response time is less than 1000ms", function () {
+    pm.expect(pm.response.responseTime).to.be.below(1000);
+});`
+          }
+        },
+        {
+          id: 'tc-002',
+          name: 'Invalid Credentials Test',
+          status: 'Passed',
+          duration: '0.92s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/login',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              username: 'invalid',
+              password: 'wrong'
+            }
+          },
+          response: {
+            status: 401,
+            data: {
+              success: false,
+              message: 'Invalid credentials'
+            },
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 401', status: 'Passed' },
+            { id: 2, description: 'Response contains error message', status: 'Passed' }
+          ],
+          snippets: {
+            testCode: `// Test case: Invalid Credentials Test
+pm.test("Status code is 401", function () {
+    pm.response.to.have.status(401);
+});
+
+pm.test("Response contains error message", function () {
+    pm.expect(pm.response.json()).to.have.property('message');
+});`
+          }
+        },
+        {
+          id: 'tc-003',
+          name: 'Password Reset Test',
+          status: 'Passed',
+          duration: '1.15s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/reset-password',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              email: 'user@example.com'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              success: true,
+              message: 'Password reset email sent'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'Response confirms email sent', status: 'Passed' }
+          ]
+        },
+        {
+          id: 'tc-004',
+          name: 'Admin Access Test',
+          status: 'Passed',
+          duration: '0.76s',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/admin/dashboard',
+            headers: {
+              'Authorization': 'Bearer admin_token123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              success: true,
+              stats: {
+                users: 1250,
+                activeUsers: 842,
+                revenue: '$12,400'
+              }
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'Response contains dashboard stats', status: 'Passed' }
+          ]
+        },
+        {
+          id: 'tc-005',
+          name: 'User Permissions Test',
+          status: 'Passed',
+          duration: '0.88s',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/user/permissions',
+            headers: {
+              'Authorization': 'Bearer user_token123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              permissions: ['read', 'write'],
+              role: 'user'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'User has required permissions', status: 'Passed' }
+          ]
+        }
+      ]
+    },
+    'exec-202505093': {
+      id: 'exec-202505093',
+      status: 'Failed',
+      instanceId: 'exec-202505093',
+      executedBy: 'jane.doe',
+      environment: 'Staging',
+      executedAt: 'May 8, 2025 - 04:45 PM',
+      passedCount: 3,
+      failedCount: 2,
+      results: [
+        {
+          id: 'tc-001',
+          name: 'Valid Login Test',
+          status: 'Passed',
+          duration: '0.86s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/login',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              username: 'testuser',
+              password: 'password123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              success: true,
+              token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+              user: {
+                id: 1,
+                username: 'testuser'
+              }
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'Response body contains token', status: 'Passed' }
+          ]
+        },
+        {
+          id: 'tc-002',
+          name: 'Invalid Credentials Test',
+          status: 'Passed',
+          duration: '0.90s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/login',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              username: 'invalid',
+              password: 'wrong'
+            }
+          },
+          response: {
+            status: 401,
+            data: {
+              success: false,
+              message: 'Invalid credentials'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 401', status: 'Passed' },
+            { id: 2, description: 'Response contains error message', status: 'Passed' }
+          ]
+        },
+        {
+          id: 'tc-003',
+          name: 'Password Reset Test',
+          status: 'Failed',
+          duration: '1.35s',
+          request: {
+            method: 'POST',
+            url: 'https://api.example.com/auth/reset-password',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {
+              email: 'invalid-email'
+            }
+          },
+          response: {
+            status: 400,
+            data: {
+              success: false,
+              message: 'Invalid email format'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Failed', error: 'Expected status 200 but got 400' },
+            { id: 2, description: 'Response confirms email sent', status: 'Failed', error: 'Response indicates failure, not success' }
+          ]
+        },
+        {
+          id: 'tc-004',
+          name: 'Admin Access Test',
+          status: 'Passed',
+          duration: '0.79s',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/admin/dashboard',
+            headers: {
+              'Authorization': 'Bearer admin_token123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              success: true,
+              stats: {
+                users: 1250,
+                activeUsers: 842,
+                revenue: '$12,400'
+              }
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'Response contains dashboard stats', status: 'Passed' }
+          ]
+        },
+        {
+          id: 'tc-005',
+          name: 'User Permissions Test',
+          status: 'Failed',
+          duration: '1.05s',
+          request: {
+            method: 'GET',
+            url: 'https://api.example.com/user/permissions',
+            headers: {
+              'Authorization': 'Bearer user_token123'
+            }
+          },
+          response: {
+            status: 200,
+            data: {
+              permissions: ['read', 'write'],
+              role: 'user'
+            }
+          },
+          assertions: [
+            { id: 1, description: 'Status code is 200', status: 'Passed' },
+            { id: 2, description: 'User has admin permission', status: 'Failed', error: 'Expected permissions to include "admin" but it was not found' },
+            { id: 3, description: 'Response time is less than 500ms', status: 'Failed', error: 'Response time was 1050ms which exceeds the limit of 500ms' }
+          ]
+        }
+      ]
+    }
+  };
+  
   // Fetch execution data and find the test case
   useEffect(() => {
     setLoading(true);
     
     // Simulate API call delay
     setTimeout(() => {
-      // Get execution data from mock or window data
-      const executionData = mockExecutionData[executionId] || 
-                          (window.mockExecutionData && window.mockExecutionData[executionId]);
+      // Get execution data from mock data
+      const executionData = mockExecutionData[executionId];
       
       if (executionData) {
         setExecution(executionData);
@@ -70,40 +408,26 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
       newIndex = (currentTestCaseIndex - 1 + execution.results.length) % execution.results.length;
     }
     
-    const newTestCaseId = execution.results[newIndex].id;
+    const newTestCase = execution.results[newIndex];
     
-    // In a real app with react-router, you would use:
-    // navigate(`/test-execution/results/${executionId}/${newTestCaseId}`);
-    
-    // For this demo, update state and URL
-    setTestCase(execution.results[newIndex]);
+    // Update state and URL
+    setTestCase(newTestCase);
     setCurrentTestCaseIndex(newIndex);
     
     window.history.pushState(
       null, 
       '', 
-      `/test-execution/results/${executionId}/${newTestCaseId}`
+      `/test-execution/results/${executionId}/${newTestCase.id}`
     );
-  };
-  
-  // Handle back navigation
-  const handleBack = () => {
-    if (onBack) {
-      onBack();
-    } else {
-      // Fallback if no onBack prop
-      window.history.pushState(
-        null, 
-        '', 
-        `/test-execution/results/${executionId}`
-      );
-      window.location.reload(); // In a real app with react-router, this wouldn't be needed
-    }
   };
 
   // Format JSON for display
   const formatJSON = (json) => {
-    return JSON.stringify(json, null, 2);
+    try {
+      return JSON.stringify(json, null, 2);
+    } catch (error) {
+      return String(json);
+    }
   };
 
   // Calculate progress percentage for assertions
@@ -129,7 +453,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="flex items-center mb-6">
           <button 
-            onClick={handleBack}
+            onClick={onBack}
             className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
           >
             <FaChevronLeft className="mr-2" />
@@ -141,7 +465,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">Test case not found</h3>
           <p className="text-gray-500 mb-4">The test case you're looking for doesn't exist or has been removed.</p>
           <button
-            onClick={handleBack}
+            onClick={onBack}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Go Back to Execution Results
@@ -157,7 +481,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex items-center justify-between mb-6">
         <button 
-          onClick={handleBack}
+          onClick={onBack}
           className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
         >
           <FaChevronLeft className="mr-2" />
@@ -330,51 +654,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
         </div>
       </div>
       
-      {testCase.snippets && (
-        <div className="border rounded-lg shadow-sm overflow-hidden bg-white">
-          <div className="bg-gray-50 p-4 border-b flex items-center">
-            <FaCode className="text-gray-500 mr-2" />
-            <h2 className="font-semibold text-lg text-gray-800">Code Snippets</h2>
-          </div>
-          <div className="p-4">
-            <Collapsible title="Test Code" defaultOpen={false}>
-              <pre className="bg-gray-50 p-3 rounded font-mono text-sm overflow-auto border border-gray-100">
-                {testCase.snippets.testCode || "// No test code available"}
-              </pre>
-            </Collapsible>
-          </div>
-        </div>
-      )}
-      
-      {/* Actions footer */}
-      <div className="mt-8 flex justify-between items-center">
-        <div className="flex gap-2">
-          <button 
-            onClick={() => navigateToTestCase('prev')}
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 flex items-center"
-          >
-            <FaChevronLeft className="mr-2" />
-            Previous Test
-          </button>
-          <button 
-            onClick={() => navigateToTestCase('next')}
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 flex items-center"
-          >
-            Next Test
-            <FaChevronRight className="ml-2" />
-          </button>
-        </div>
-        
-        <div>
-          <button 
-            onClick={handleBack}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
-          >
-            View All Results
-            <FaExternalLinkAlt className="ml-2 h-3 w-3" />
-          </button>
-        </div>
-      </div>
+
     </div>
   );
 };

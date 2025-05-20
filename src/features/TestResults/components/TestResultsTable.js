@@ -1,13 +1,21 @@
 import React from 'react';
 import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaFilter, FaDownload, FaSearch } from 'react-icons/fa';
 
-const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
+const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, currentPage, pageSize }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterStatus, setFilterStatus] = React.useState('all');
+  const [showFilterDropdown, setShowFilterDropdown] = React.useState(false);
+  const [showExportDropdown, setShowExportDropdown] = React.useState(false);
+  
+  // Ensure we have valid props with defaults
+  const safeResults = results || [];
+  const safeTotalResults = totalResults || 0;
+  const safeCurrentPage = currentPage || 1;
+  const safePageSize = pageSize || 10;
   
   // Filter results based on search term and status filter
   const filteredResults = React.useMemo(() => {
-    return results.filter(execution => {
+    return safeResults.filter(execution => {
       const matchesSearch = 
         execution.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         execution.executedBy.toLowerCase().includes(searchTerm.toLowerCase());
@@ -18,14 +26,35 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
         
       return matchesSearch && matchesStatus;
     });
-  }, [results, searchTerm, filterStatus]);
+  }, [safeResults, searchTerm, filterStatus]);
 
   const handleFilterChange = (status) => {
     setFilterStatus(status);
+    setShowFilterDropdown(false);
     if (onFilter) {
       onFilter(status);
     }
   };
+
+  const handleExport = (format) => {
+    console.log(`Exporting as ${format}`);
+    setShowExportDropdown(false);
+  };
+
+  // Close dropdowns when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.filter-dropdown')) {
+        setShowFilterDropdown(false);
+      }
+      if (!event.target.closest('.export-dropdown')) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
   
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -34,7 +63,7 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
         <h2 className="font-semibold text-lg text-gray-800 flex items-center">
           Test Results
           <span className="ml-2 bg-indigo-100 text-indigo-700 text-xs py-1 px-2 rounded-full">
-            {results.length} executions
+            {safeTotalResults} executions
           </span>
         </h2>
         
@@ -46,14 +75,25 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
               placeholder="Search executions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="pl-9 pr-4 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64"
             />
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            )}
           </div>
           
           {/* Filter dropdown */}
-          <div className="relative inline-block">
-            <button className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
+          <div className="relative inline-block filter-dropdown">
+            <button 
+              className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
+              onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+            >
               <FaFilter className="text-gray-500" />
               <span>
                 {filterStatus === 'all' ? 'All Status' : 
@@ -62,35 +102,73 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
               </span>
             </button>
             
-            <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg border border-gray-200 z-10 hidden">
-              <div className="py-1">
-                <button 
-                  onClick={() => handleFilterChange('all')}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  All Status
-                </button>
-                <button 
-                  onClick={() => handleFilterChange('passed')}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Passed
-                </button>
-                <button 
-                  onClick={() => handleFilterChange('failed')}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Failed
-                </button>
+            {showFilterDropdown && (
+              <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                <div className="py-1">
+                  <button 
+                    onClick={() => handleFilterChange('all')}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                      filterStatus === 'all' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-700'
+                    }`}
+                  >
+                    All Status
+                  </button>
+                  <button 
+                    onClick={() => handleFilterChange('passed')}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                      filterStatus === 'passed' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-700'
+                    }`}
+                  >
+                    Passed
+                  </button>
+                  <button 
+                    onClick={() => handleFilterChange('failed')}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
+                      filterStatus === 'failed' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-700'
+                    }`}
+                  >
+                    Failed
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
           
           {/* Export button */}
-          <button className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">
-            <FaDownload className="text-gray-500" />
-            <span>Export</span>
-          </button>
+          <div className="relative inline-block export-dropdown">
+            <button 
+              className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+            >
+              <FaDownload className="text-gray-500" />
+              <span>Export</span>
+            </button>
+            
+            {showExportDropdown && (
+              <div className="absolute right-0 mt-2 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                <div className="py-1">
+                  <button 
+                    onClick={() => handleExport('PDF')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    PDF
+                  </button>
+                  <button 
+                    onClick={() => handleExport('Excel')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Excel
+                  </button>
+                  <button 
+                    onClick={() => handleExport('CSV')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    CSV
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
@@ -106,6 +184,17 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
               ? 'Try adjusting your search or filter criteria'
               : 'No test executions available'}
           </p>
+          {(searchTerm || filterStatus !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFilterStatus('all');
+              }}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm"
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -124,8 +213,8 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
                 <tr key={execution.id} className="hover:bg-gray-50 transition-colors">
                   <td className="py-4 px-4">
                     <button 
-                      className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
-                      onClick={() => onViewExecution(execution.id)}
+                      className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                      onClick={() => onViewExecution && onViewExecution(execution.id)}
                     >
                       {execution.id}
                     </button>
@@ -145,21 +234,21 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center">
-                      <span className="text-green-600 font-medium mr-1">{execution.passedFailed.split('/')[0]}</span>
+                      <span className="text-green-600 font-medium mr-1">{execution.passedFailed?.split('/')[0] || '0'}</span>
                       <span className="text-gray-500">/</span>
-                      <span className="text-red-600 font-medium ml-1">{execution.passedFailed.split('/')[1]}</span>
+                      <span className="text-red-600 font-medium ml-1">{execution.passedFailed?.split('/')[1] || '0'}</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center text-gray-500">
                       <FaCalendarAlt className="mr-1 h-3 w-3" />
-                      {execution.executedAt}
+                      <span className="text-sm">{execution.executedAt}</span>
                     </div>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center text-gray-500">
                       <FaUser className="mr-1 h-3 w-3" />
-                      {execution.executedBy}
+                      <span className="text-sm">{execution.executedBy}</span>
                     </div>
                   </td>
                 </tr>
@@ -169,31 +258,16 @@ const TestResultsTable = ({ results, onViewExecution, onFilter }) => {
         </div>
       )}
       
-      {/* Pagination (simplified for the example) */}
+      {/* Results info footer */}
       <div className="bg-gray-50 py-3 px-4 border-t border-gray-200 flex justify-between items-center">
         <div className="text-sm text-gray-600">
-          Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredResults.length}</span> of{' '}
-          <span className="font-medium">{filteredResults.length}</span> results
+          Showing <span className="font-medium">{Math.min((safeCurrentPage - 1) * safePageSize + 1, safeTotalResults)}</span> to{' '}
+          <span className="font-medium">{Math.min(safeCurrentPage * safePageSize, safeTotalResults)}</span> of{' '}
+          <span className="font-medium">{safeTotalResults}</span> results
         </div>
         
-        <div className="flex gap-1">
-          <button
-            disabled={true}
-            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40 text-gray-600"
-          >
-            Previous
-          </button>
-          <button
-            className="px-3 py-1 border rounded bg-indigo-600 text-white"
-          >
-            1
-          </button>
-          <button
-            disabled={true}
-            className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40 text-gray-600"
-          >
-            Next
-          </button>
+        <div className="text-sm text-gray-500">
+          Page {safeCurrentPage} of {Math.max(1, Math.ceil(safeTotalResults / safePageSize))}
         </div>
       </div>
     </div>

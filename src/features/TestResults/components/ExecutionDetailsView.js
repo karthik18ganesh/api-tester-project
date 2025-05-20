@@ -18,6 +18,22 @@ const StatusBadge = ({ status }) => (
 );
 
 const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
+  const handleViewTestCase = (testCaseId) => {
+    // Navigate to test case details view
+    if (onViewTestCase) {
+      onViewTestCase(testCaseId);
+    } else {
+      // Fallback navigation using URL manipulation
+      window.history.pushState(
+        null, 
+        '', 
+        `/test-execution/results/${execution.id}/${testCaseId}`
+      );
+      // Trigger a page reload to show the test case details
+      window.location.reload();
+    }
+  };
+
   if (!execution) {
     return (
       <div className="p-6 text-center">
@@ -180,7 +196,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
             <div 
               key={result.id}
               className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between"
-              onClick={() => onViewTestCase(result.id)}
+              onClick={() => handleViewTestCase(result.id)}
             >
               <div>
                 <div className="font-medium">{result.name}</div>
@@ -206,7 +222,13 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                   )}
                 </div>
                 
-                <button className="text-indigo-600 hover:text-indigo-700 text-sm hover:underline">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent the row click
+                    handleViewTestCase(result.id);
+                  }}
+                  className="text-indigo-600 hover:text-indigo-700 text-sm hover:underline"
+                >
                   View Details
                 </button>
               </div>

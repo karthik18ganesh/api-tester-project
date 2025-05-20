@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlay, FaStop, FaChevronDown, FaCog } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import { testHierarchy as mockTestHierarchy, executionResults as mockExecutionData } from '../data/mockData';
 
 const ModernTestExecution = () => {
+  const navigate = useNavigate();
   const [selectedItem, setSelectedItem] = useState(null);
   const [executing, setExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState(null);
@@ -240,10 +242,16 @@ const ModernTestExecution = () => {
     }
   };
 
+  // Fixed: Navigate to test results page
   const handleViewAllResults = () => {
-    // In a real implementation, navigate to results page
-    // navigate(`/test-execution/results/${executionResult.id}`);
-    console.log('View all results for execution:', executionResult?.id);
+    if (executionResult) {
+      // Store the execution data for the results page
+      window.mockExecutionData = window.mockExecutionData || {};
+      window.mockExecutionData[executionResult.id] = executionResult;
+      
+      // Navigate to test results page
+      navigate('/test-results');
+    }
   };
 
   const handleNavigateTestCase = (executionId, testCaseId) => {
