@@ -32,6 +32,43 @@ const Breadcrumb = ({ items = [] }) => {
   );
 };
 
+// Helper component to highlight parameters in text
+const ParameterizedText = ({ text }) => {
+  if (!text) return null;
+  
+  // Match ${paramName} pattern
+  const parts = text.split(/(\\$\{[^}]+\})/g);
+  
+  return (
+    <span>
+      {parts.map((part, index) => {
+        if (part.match(/^\$\{[^}]+\}$/)) {
+          return (
+            <span key={index} className="bg-blue-100 text-blue-800 px-1 rounded">
+              {part}
+            </span>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </span>
+  );
+};
+
+// Helper function to extract parameters from a string
+const extractParameters = (text) => {
+  if (!text) return [];
+  const paramRegex = /\$\{([^}]+)\}/g;
+  const params = [];
+  let match;
+  
+  while ((match = paramRegex.exec(text)) !== null) {
+    params.push(match[1]);
+  }
+  
+  return [...new Set(params)]; // Remove duplicates
+};
+
 // Main component for API Repository Details
 const APIRepositoryDetails = () => {
   const responseRef = useRef(null);
@@ -40,6 +77,9 @@ const APIRepositoryDetails = () => {
   const apiId = location.state?.apiId;
   const [isLoading, setIsLoading] = useState(apiId ? true : false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+  // Parameters state
+  const [detectedParams, setDetectedParams] = useState([]);
   
   // Request configuration state
   const [requestConfig, setRequestConfig] = useState({
@@ -89,6 +129,36 @@ const APIRepositoryDetails = () => {
     { id: "env_production", name: "Production" },
   ]);
 
+  // Function to update detected parameters
+  const updateDetectedParams = (config) => {
+    const urlParams = extractParameters(config.url);
+    
+    const headerParams = config.headers
+      .filter(h => h.key || h.value)
+      .flatMap(h => [
+        ...extractParameters(h.key),
+        ...extractParameters(h.value)
+      ]);
+    
+    const queryParams = config.params
+      .filter(p => p.key || p.value)
+      .flatMap(p => [
+        ...extractParameters(p.key),
+        ...extractParameters(p.value)
+      ]);
+    
+    const bodyParams = extractParameters(config.body.raw);
+    
+    const allParams = [...new Set([
+      ...urlParams,
+      ...headerParams,
+      ...queryParams,
+      ...bodyParams
+    ])];
+    
+    setDetectedParams(allParams);
+  };
+
   // Fetch API details if editing an existing one
   useEffect(() => {
     if (apiId && !initialDataLoaded) {
@@ -131,7 +201,7 @@ const APIRepositoryDetails = () => {
               }
             }
             
-            setRequestConfig({
+            const updatedConfig = {
               id: apiData.apiId,
               requestId: apiData.request.requestId,
               method: apiData.method,
@@ -149,7 +219,10 @@ const APIRepositoryDetails = () => {
                 formData: [{ key: "", value: "", type: "text", enabled: true }],
                 urlEncoded: [{ key: "", value: "", enabled: true }],
               }
-            });
+            };
+            
+            setRequestConfig(updatedConfig);
+            updateDetectedParams(updatedConfig);
             
             setInitialDataLoaded(true);
             toast.success("API details loaded");
@@ -242,22 +315,68 @@ const APIRepositoryDetails = () => {
     try {
       setIsLoading(true);
       
-      // Determine if we're creating or updating
+      // Prepare request data for API
+      const headersObj = {};
+      requestConfig.headers
+        .filter(h => h.enabled && h.key)
+        .forEach(h => {
+          headersObj[h.key] = h.value;
+        });
+      
+      const paramsObj = {};
+      requestConfig.params
+        .filter(p => p.enabled && p.key)
+        .forEach(p => {
+          paramsObj[p.key] = p.value;
+        });
+      
+      // Build request payload in format expected by backend
+      const payload = {
+        requestMetaData: {
+          userId: "3", // Should come from auth context
+          transactionId: `tx-${Date.now()}`,
+          timestamp: new Date().toISOString()
+        },
+        data: {
+          apiRepoName: requestConfig.name,
+          envId: requestConfig.environment,
+          method: requestConfig.method,
+          url: requestConfig.url,
+          description: requestConfig.description,
+          request: {
+            headers: headersObj,
+            queryParams: paramsObj,
+            pathParams: {}
+          }
+        }
+      };
+      
+      // Add ID for update operations
+      if (requestConfig.id) {
+        payload.data.apiId = requestConfig.id;
+        
+        if (requestConfig.requestId) {
+          payload.data.request.requestId = requestConfig.requestId;
+        }
+      }
+      
       let response;
       if (requestConfig.id) {
-        // Update existing API
-        response = await apiRepository.update(requestConfig);
+        // Update existing API - pass the properly formatted payload directly
+        response = await apiRepository.update(payload);
         toast.success("API updated successfully");
       } else {
-        // Create new API
-        response = await apiRepository.create(requestConfig);
+        // Create new API - use the same payload format for consistency
+        response = await apiRepository.update(payload); // Using update here because it accepts our payload format
         toast.success("API created successfully");
       }
       
-      // Navigate back to list after save
-      navigate("/test-design/api-repository");
+      if (response && response.result && response.result.data) {
+        // Navigate back to the API Repository list
+        navigate("/test-design/api-repository");
+      }
     } catch (error) {
-      console.error("Error saving API:", error);
+      console.error("Save error:", error);
       toast.error("Failed to save API: " + (error.message || "Unknown error"));
     } finally {
       setIsLoading(false);
@@ -267,10 +386,17 @@ const APIRepositoryDetails = () => {
   // Method to handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setRequestConfig(prev => ({
-      ...prev,
+    const updatedConfig = {
+      ...requestConfig,
       [name]: value,
-    }));
+    };
+    
+    setRequestConfig(updatedConfig);
+    
+    // Update parameters when URL changes
+    if (name === 'url') {
+      updateDetectedParams(updatedConfig);
+    }
   };
 
   // Add a new row to an array (headers, params, etc.)
@@ -337,37 +463,41 @@ const APIRepositoryDetails = () => {
 
   // Handle changes to rows (headers, params, etc.)
   const handleRowChange = (field, index, key, value) => {
-    if (field === "headers") {
-      setRequestConfig(prev => {
-        const newHeaders = [...prev.headers];
-        newHeaders[index] = { ...newHeaders[index], [key]: value };
-        return { ...prev, headers: newHeaders };
-      });
-    } else if (field === "params") {
-      setRequestConfig(prev => {
-        const newParams = [...prev.params];
-        newParams[index] = { ...newParams[index], [key]: value };
-        return { ...prev, params: newParams };
-      });
-    } else if (field === "formData") {
-      setRequestConfig(prev => {
-        const newFormData = [...prev.body.formData];
-        newFormData[index] = { ...newFormData[index], [key]: value };
-        return { 
-          ...prev, 
-          body: { ...prev.body, formData: newFormData } 
-        };
-      });
-    } else if (field === "urlEncoded") {
-      setRequestConfig(prev => {
-        const newUrlEncoded = [...prev.body.urlEncoded];
-        newUrlEncoded[index] = { ...newUrlEncoded[index], [key]: value };
-        return { 
-          ...prev, 
-          body: { ...prev.body, urlEncoded: newUrlEncoded } 
-        };
-      });
+    let updatedItems;
+    
+    if (field === 'headers') {
+      updatedItems = [...requestConfig.headers];
+      updatedItems[index] = { ...updatedItems[index], [key]: value };
+    } else if (field === 'params') {
+      updatedItems = [...requestConfig.params];
+      updatedItems[index] = { ...updatedItems[index], [key]: value };
+    } else if (field === 'formData') {
+      updatedItems = [...requestConfig.body.formData];
+      updatedItems[index] = { ...updatedItems[index], [key]: value };
+    } else if (field === 'urlEncoded') {
+      updatedItems = [...requestConfig.body.urlEncoded];
+      updatedItems[index] = { ...updatedItems[index], [key]: value };
     }
+    
+    let updatedConfig;
+    
+    if (field === 'headers' || field === 'params') {
+      updatedConfig = {
+        ...requestConfig,
+        [field]: updatedItems
+      };
+    } else {
+      updatedConfig = {
+        ...requestConfig,
+        body: {
+          ...requestConfig.body,
+          [field]: updatedItems
+        }
+      };
+    }
+    
+    setRequestConfig(updatedConfig);
+    updateDetectedParams(updatedConfig);
   };
 
   // Toggle enabled state for a row
@@ -463,25 +593,26 @@ const APIRepositoryDetails = () => {
 
   // Handle raw body change
   const handleRawBodyChange = (value) => {
-    setRequestConfig(prev => ({
-      ...prev,
-      body: {
-        ...prev.body,
-        raw: value,
-      },
-    }));
-    
-    // Validate JSON if content type is application/json
-    if (requestConfig.body.contentType === "application/json") {
-      try {
-        if (value.trim()) {
-          JSON.parse(value);
-        }
+    try {
+      // Attempt to parse as JSON to validate
+      if (requestConfig.body.contentType === 'application/json') {
+        JSON.parse(value);
         setJsonError(null);
-      } catch (error) {
-        setJsonError(error.message);
       }
+    } catch (err) {
+      setJsonError(err.message);
     }
+    
+    const updatedConfig = {
+      ...requestConfig,
+      body: {
+        ...requestConfig.body,
+        raw: value
+      }
+    };
+    
+    setRequestConfig(updatedConfig);
+    updateDetectedParams(updatedConfig);
   };
 
   // Helper to get status badge color
@@ -511,8 +642,60 @@ const APIRepositoryDetails = () => {
     navigator.clipboard.writeText(textToCopy);
   };
 
+  // Parameters Summary Component
+  const ParametersSummary = () => {
+    if (detectedParams.length === 0) {
+      return (
+        <div className="text-sm text-gray-500 italic p-3 border-t">
+          No parameters detected. Use {"$"}{"{paramName}"} syntax in URL, headers, params or body to create parameters.
+        </div>
+      );
+    }
+    
+    return (
+      <div className="border-t pt-3">
+        <h3 className="text-sm font-semibold mb-2 px-3">Detected Parameters</h3>
+        <div className="px-3 pb-3 flex flex-wrap gap-2">
+          {detectedParams.map(param => (
+            <span 
+              key={param} 
+              className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+            >
+              {"$"}{"{" + param + "}"}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render URL input with parameter highlighting
+  const renderUrlInput = () => {
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+        <div className="flex items-center border border-gray-300 rounded overflow-hidden">
+          <input
+            type="text"
+            name="url"
+            className="flex-1 p-2 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            value={requestConfig.url}
+            onChange={handleInputChange}
+            placeholder="https://api.example.com/v1/resource/$\{resourceId\}"
+          />
+        </div>
+        {requestConfig.url && requestConfig.url.includes("${") && (
+          <div className="mt-1 text-xs">
+            <span className="font-medium">With parameters: </span>
+            <ParameterizedText text={requestConfig.url} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 bg-white">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -531,57 +714,32 @@ const APIRepositoryDetails = () => {
         <>
           {/* URL Bar */}
           <div className="bg-white border rounded-md shadow-sm overflow-hidden">
-            <div className="flex items-center border-b p-2 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-800 px-2">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-800">
                 {requestConfig.id ? "Edit API Request" : "New API Request"}
               </h2>
+              
+              {/* Save Button */}
+              <button
+                onClick={handleSave}
+                disabled={isLoading}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md flex items-center gap-1 hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiSave />
+                    <span>Save</span>
+                  </>
+                )}
+              </button>
             </div>
             
             <div className="p-4">
-              {/* Method + URL + Send Button */}
-              <div className="flex items-center gap-2 mb-4">
-                <select
-                  value={requestConfig.method}
-                  onChange={e => setRequestConfig(prev => ({ ...prev, method: e.target.value }))}
-                  className="bg-white border border-gray-300 rounded-md px-3 py-2 text-sm font-medium min-w-[100px]"
-                >
-                  <option>GET</option>
-                  <option>POST</option>
-                  <option>PUT</option>
-                  <option>PATCH</option>
-                  <option>DELETE</option>
-                  <option>OPTIONS</option>
-                  <option>HEAD</option>
-                </select>
-                
-                <input
-                  type="text"
-                  name="url"
-                  value={requestConfig.url}
-                  onChange={handleInputChange}
-                  placeholder="https://api.example.com/v1/endpoint"
-                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
-                />
-                
-                <button
-                  onClick={handleSend}
-                  disabled={responseData.isLoading || !requestConfig.url}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {responseData.isLoading ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                      <span>Sending...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiSend />
-                      <span>Send</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              
               {/* API Name, Environment, Description */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
@@ -624,25 +782,49 @@ const APIRepositoryDetails = () => {
                 </div>
               </div>
               
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={handleSave}
-                  disabled={isLoading}
-                  className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md flex items-center gap-1 hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiSave />
-                      <span>Save</span>
-                    </>
-                  )}
-                </button>
+              {/* Method + URL + Send Button */}
+              <div className="grid grid-cols-12 gap-4 mb-4 items-start">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                  <select
+                    value={requestConfig.method}
+                    onChange={e => setRequestConfig(prev => ({ ...prev, method: e.target.value }))}
+                    className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm font-medium"
+                  >
+                    <option>GET</option>
+                    <option>POST</option>
+                    <option>PUT</option>
+                    <option>PATCH</option>
+                    <option>DELETE</option>
+                    <option>OPTIONS</option>
+                    <option>HEAD</option>
+                  </select>
+                </div>
+                
+                <div className="col-span-8">
+                  {renderUrlInput()}
+                </div>
+                
+                <div className="col-span-2 flex flex-col justify-end">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 invisible">Send</label>
+                  <button
+                    onClick={handleSend}
+                    disabled={responseData.isLoading || !requestConfig.url}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 w-full"
+                  >
+                    {responseData.isLoading ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiSend />
+                        <span>Send</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -718,7 +900,7 @@ const APIRepositoryDetails = () => {
                                 type="text"
                                 value={param.value}
                                 onChange={e => handleRowChange("params", index, "value", e.target.value)}
-                                placeholder="Parameter value"
+                                placeholder="Parameter value or $\{paramName\}"
                                 className={`w-full border-0 p-0 focus:ring-0 ${!param.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                 disabled={!param.enabled}
                               />
@@ -789,7 +971,7 @@ const APIRepositoryDetails = () => {
                                 type="text"
                                 value={header.value}
                                 onChange={e => handleRowChange("headers", index, "value", e.target.value)}
-                                placeholder="Header value"
+                                placeholder="Header value or $\{paramName\}"
                                 className={`w-full border-0 p-0 focus:ring-0 ${!header.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                 disabled={!header.enabled}
                               />
@@ -834,7 +1016,7 @@ const APIRepositoryDetails = () => {
                         type="text"
                         value={requestConfig.auth.bearerToken}
                         onChange={e => handleAuthFieldChange("bearerToken", e.target.value)}
-                        placeholder="Your bearer token"
+                        placeholder="Your bearer token or $\{paramName\}"
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                       />
                       <p className="mt-1 text-xs text-gray-500">
@@ -851,7 +1033,7 @@ const APIRepositoryDetails = () => {
                           type="text"
                           value={requestConfig.auth.username}
                           onChange={e => handleAuthFieldChange("username", e.target.value)}
-                          placeholder="Username"
+                          placeholder="Username or $\{paramName\}"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -861,7 +1043,7 @@ const APIRepositoryDetails = () => {
                           type="password"
                           value={requestConfig.auth.password}
                           onChange={e => handleAuthFieldChange("password", e.target.value)}
-                          placeholder="Password"
+                          placeholder="Password or $\{paramName\}"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -886,7 +1068,7 @@ const APIRepositoryDetails = () => {
                           type="text"
                           value={requestConfig.auth.apiKeyValue}
                           onChange={e => handleAuthFieldChange("apiKeyValue", e.target.value)}
-                          placeholder="API key value"
+                          placeholder="API key value or $\{paramName\}"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                         />
                       </div>
@@ -963,7 +1145,9 @@ const APIRepositoryDetails = () => {
                           onChange={e => handleRawBodyChange(e.target.value)}
                           rows={10}
                           className={`w-full p-3 font-mono text-sm ${jsonError ? "border-red-300 focus:border-red-500 focus:ring-red-500" : ""}`}
-                          placeholder={requestConfig.body.contentType === "application/json" ? "{\n  \"key\": \"value\"\n}" : "Enter request body"}
+                          placeholder={requestConfig.body.contentType === "application/json" ? 
+                            '{\n  "key": "value",\n  "parameterized": "$\\{paramName\\}"\n}' : 
+                            "Enter request body"}
                         ></textarea>
                       </div>
                       
@@ -1025,7 +1209,7 @@ const APIRepositoryDetails = () => {
                                     type={item.type === "file" ? "text" : "text"}
                                     value={item.value}
                                     onChange={e => handleRowChange("formData", index, "value", e.target.value)}
-                                    placeholder={item.type === "file" ? "File path" : "Value"}
+                                    placeholder={item.type === "file" ? "File path" : "Value or $\\{paramName\\}"}
                                     className={`w-full border-0 p-0 focus:ring-0 ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                     disabled={!item.enabled}
                                   />
@@ -1106,7 +1290,7 @@ const APIRepositoryDetails = () => {
                                     type="text"
                                     value={item.value}
                                     onChange={e => handleRowChange("urlEncoded", index, "value", e.target.value)}
-                                    placeholder="Value"
+                                    placeholder="Value or $\\{paramName\\}"
                                     className={`w-full border-0 p-0 focus:ring-0 ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                     disabled={!item.enabled}
                                   />
@@ -1134,6 +1318,22 @@ const APIRepositoryDetails = () => {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Parameters info and help text */}
+              {detectedParams.length > 0 ? (
+                <div className="mt-6 bg-gray-50 p-3 rounded-md border border-gray-100">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Tip:</span> You can use <code className="bg-gray-100 px-1 py-0.5 rounded">{"$"}{"{paramName}"}</code> syntax in any field to create parameterized values.
+                    These parameters will be detected and can be filled with actual values when creating Test Cases.
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-6 bg-blue-50 p-3 rounded-md border border-blue-100">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-medium">Tip:</span> Use <code className="bg-blue-100 px-1 py-0.5 rounded">{"$"}{"{paramName}"}</code> syntax in URL, headers, or body to create parameterized APIs.
+                  </p>
                 </div>
               )}
             </div>
@@ -1216,6 +1416,11 @@ const APIRepositoryDetails = () => {
               )}
             </div>
           </div>
+          
+          {/* Parameters Summary displayed at bottom instead */}
+          {detectedParams.length > 0 && (
+            <ParametersSummary />
+          )}
         </>
       )}
     </div>

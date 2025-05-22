@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../../utils/api";
+import { FiInfo } from "react-icons/fi";
+import ParameterDiff from "../../../components/common/ParameterDiff";
 
 const TestCaseTopForm = () => {
   const location = useLocation();
@@ -9,15 +11,15 @@ const TestCaseTopForm = () => {
   const editMode = location.state?.testCase; // Check if we're editing an existing test case
   
   const [loading, setLoading] = useState(false);
+  const [loadingApis, setLoadingApis] = useState(false);
   
-  // Hardcoded API options
-  const apiOptions = [
-    { id: 1, name: "LoginAPI" },
-    { id: 2, name: "UserProfileAPI" },
-    { id: 3, name: "ProductsAPI" },
-    { id: 4, name: "OrdersAPI" },
-    { id: 5, name: "PaymentAPI" }
-  ];
+  // APIRepository state
+  const [apiOptions, setApiOptions] = useState([]);
+  const [selectedApiDetails, setSelectedApiDetails] = useState(null);
+  
+  // Parameters state
+  const [parameters, setParameters] = useState([]);
+  const [paramValues, setParamValues] = useState({});
   
   const [formData, setFormData] = useState({
     testCaseName: "",
@@ -43,6 +45,55 @@ const TestCaseTopForm = () => {
       transactionId: Date.now().toString(),
       timestamp: new Date().toISOString()
     };
+  };
+  
+  // Load available APIs from the API repository
+  useEffect(() => {
+    const fetchApis = async () => {
+      setLoadingApis(true);
+      try {
+        const response = await api('/api/v1/apirepos', 'GET');
+        if (response?.result?.data) {
+          // Transform API response to options format
+          const options = response.result.data.content.map(api => ({
+            id: api.apiId,
+            name: api.apiRepoName,
+            method: api.method,
+            url: api.url
+          }));
+          setApiOptions(options);
+        }
+      } catch (error) {
+        console.error("Error fetching APIs:", error);
+        toast.error("Failed to load APIs from repository");
+        // Fallback to mock data if API call fails
+        setApiOptions([
+          { id: 1, name: "LoginAPI", method: "POST", url: "/api/auth/login" },
+          { id: 2, name: "UserProfileAPI", method: "GET", url: "/api/users/${userId}" },
+          { id: 3, name: "ProductsAPI", method: "GET", url: "/api/products" },
+          { id: 4, name: "OrdersAPI", method: "POST", url: "/api/orders/${userId}" },
+          { id: 5, name: "PaymentAPI", method: "POST", url: "/api/payments" }
+        ]);
+      } finally {
+        setLoadingApis(false);
+      }
+    };
+    
+    fetchApis();
+  }, []);
+  
+  // Helper function to extract parameters from a string
+  const extractParameters = (text) => {
+    if (!text) return [];
+    const paramRegex = /\$\{([^}]+)\}/g;
+    const params = [];
+    let match;
+    
+    while ((match = paramRegex.exec(text)) !== null) {
+      params.push(match[1]);
+    }
+    
+    return [...new Set(params)]; // Remove duplicates
   };
 
   // Fetch test case details if in edit mode
@@ -73,12 +124,26 @@ const TestCaseTopForm = () => {
               const formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
               setRequestTemplate(formattedRequest);
               setUploadedRequestFileName("existing-request.json");
+              
+              // Load parameters from request template
+              if (testCase.apiName) {
+                // Find API by name and load its details
+                const api = apiOptions.find(a => a.name === testCase.apiName);
+                if (api) {
+                  await loadApiDetails(api.id);
+                }
+              }
             }
 
             if (testCase.responseTemplate) {
               const formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
               setResponseTemplate(formattedResponse);
               setUploadedResponseFileName("existing-response.json");
+            }
+            
+            // Load parameter values if stored with test case
+            if (testCase.parameterValues) {
+              setParamValues(testCase.parameterValues);
             }
           }
         } catch (err) {
@@ -113,12 +178,67 @@ const TestCaseTopForm = () => {
           setResponseTemplate(formattedResponse);
           setUploadedResponseFileName("existing-response.json");
         }
+        
+        // Load parameter values if stored with test case
+        if (testCase.parameterValues) {
+          setParamValues(testCase.parameterValues);
+        }
       }
     };
 
     fetchTestCaseDetails();
-  }, [editMode, location.state]);
+  }, [editMode, location.state, apiOptions]);
 
+  // Load API details and extract parameters
+  const loadApiDetails = async (apiId) => {
+    if (!apiId) return;
+    
+    try {
+      setLoadingApis(true);
+      const response = await api(`/api/v1/apirepos/${apiId}`, 'GET');
+      
+      if (response?.result?.data) {
+        const apiData = response.result.data;
+        setSelectedApiDetails(apiData);
+        
+        // Extract parameters from URL, headers, body
+        const urlParams = extractParameters(apiData.url);
+        const headerParams = Object.entries(apiData.request?.headers || {})
+          .flatMap(([k, v]) => [...extractParameters(k), ...extractParameters(v)]);
+        const bodyParams = extractParameters(JSON.stringify(apiData.request?.body));
+        
+        // Combine all parameters
+        const allParams = [...new Set([...urlParams, ...headerParams, ...bodyParams])];
+        setParameters(allParams);
+        
+        // Initialize values for parameters not already set
+        const initialValues = { ...paramValues };
+        allParams.forEach(param => {
+          if (!initialValues[param]) {
+            initialValues[param] = '';
+          }
+        });
+        setParamValues(initialValues);
+        
+        // Set URL and method from API
+        setFormData(prev => ({
+          ...prev,
+          url: apiData.url,
+          apiType: apiData.method
+        }));
+        
+      } else {
+        toast.error("Invalid API data format");
+      }
+    } catch (error) {
+      console.error("Error loading API details:", error);
+      toast.error("Failed to load API details");
+    } finally {
+      setLoadingApis(false);
+    }
+  };
+
+  // JSON preview modal component
   const JSONPreviewModal = ({ title, content, onClose }) => {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -138,11 +258,29 @@ const TestCaseTopForm = () => {
     );
   };
 
+  // Handle form field changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // If API selection changes, load API details
+    if (name === 'api' && value) {
+      const selectedApi = apiOptions.find(api => api.name === value);
+      if (selectedApi) {
+        loadApiDetails(selectedApi.id);
+      }
+    }
+  };
+  
+  // Handle parameter value changes
+  const handleParamChange = (paramName, value) => {
+    setParamValues(prev => ({
+      ...prev,
+      [paramName]: value
+    }));
   };
 
+  // Handle file uploads for request/response templates
   const handleFileUpload = (e, type) => {
     const file = e.target.files[0];
     if (file && file.type === "application/json") {
@@ -168,6 +306,7 @@ const TestCaseTopForm = () => {
     }
   };
 
+  // Form validation
   const validateForm = () => {
     const requiredFields = [
       { field: 'testCaseName', label: 'Test case name' },
@@ -197,6 +336,7 @@ const TestCaseTopForm = () => {
     return true;
   };
 
+  // Form submission
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
@@ -230,6 +370,7 @@ const TestCaseTopForm = () => {
           requestTemplate: requestTemplateObj,
           responseTemplate: responseTemplateObj,
           executionOrder: 1, // Default execution order
+          parameterValues: paramValues // Add parameter values
         }
       };
       
@@ -260,6 +401,63 @@ const TestCaseTopForm = () => {
 
   const handleCancel = () => {
     navigate("/test-design/test-case");
+  };
+
+  // Component to display parameter inputs
+  const ParameterInputs = () => {
+    if (parameters.length === 0) return null;
+    
+    return (
+      <div className="mt-6 border-t pt-6">
+        <h3 className="text-md font-semibold mb-3 flex items-center">
+          API Parameters 
+          <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+            {parameters.length}
+          </span>
+        </h3>
+        
+        <div className="bg-blue-50 p-2 rounded mb-4 text-sm flex items-center">
+          <FiInfo className="text-blue-500 mr-2 flex-shrink-0" />
+          <span>These parameters were detected in the selected API. Provide values that will be substituted during test execution.</span>
+        </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+          {parameters.map(param => (
+            <div key={param} className="mb-2">
+              <label className="block text-sm font-medium mb-1">
+                <span className="text-blue-600">${param}</span>
+              </label>
+              <input
+                type="text"
+                className="border border-gray-300 rounded p-2 w-full"
+                value={paramValues[param] || ''}
+                onChange={(e) => handleParamChange(param, e.target.value)}
+                placeholder={`Value for ${param}`}
+              />
+            </div>
+          ))}
+        </div>
+        
+        {/* Show URL with parameter values */}
+        <div className="mt-4 mb-2">
+          <h4 className="text-sm font-medium mb-2">Preview with parameter values:</h4>
+          <ParameterDiff 
+            template={formData.url}
+            values={paramValues}
+            title="API URL"
+          />
+          
+          {/* If there's a request body with parameters, show that too */}
+          {requestTemplate && requestTemplate.includes('${') && (
+            <ParameterDiff
+              template={requestTemplate}
+              values={paramValues}
+              title="Request Body"
+            />
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -326,15 +524,16 @@ const TestCaseTopForm = () => {
             className="border border-gray-300 rounded p-2 w-full"
             value={formData.api}
             onChange={handleChange}
-            disabled={loading}
+            disabled={loading || loadingApis}
           >
             <option value="">Select</option>
             {apiOptions.map((api) => (
               <option key={api.id} value={api.name}>
-                {api.name}
+                {api.name} ({api.method} {api.url})
               </option>
             ))}
           </select>
+          {loadingApis && <div className="text-xs text-gray-500 mt-1">Loading API details...</div>}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -345,7 +544,7 @@ const TestCaseTopForm = () => {
             className="border border-gray-300 rounded p-2 w-full"
             value={formData.apiType}
             onChange={handleChange}
-            disabled={loading}
+            disabled={loading || selectedApiDetails}
           >
             <option value="">Select</option>
             <option value="GET">GET</option>
@@ -354,6 +553,9 @@ const TestCaseTopForm = () => {
             <option value="DELETE">DELETE</option>
             <option value="PATCH">PATCH</option>
           </select>
+          {selectedApiDetails && (
+            <div className="text-xs text-gray-500 mt-1">Using method from selected API</div>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -366,8 +568,11 @@ const TestCaseTopForm = () => {
             value={formData.url}
             onChange={handleChange}
             placeholder="/api/endpoint"
-            disabled={loading}
+            disabled={loading || selectedApiDetails}
           />
+          {selectedApiDetails && (
+            <div className="text-xs text-gray-500 mt-1">Using URL from selected API</div>
+          )}
         </div>
 
         <div className="col-span-3">
@@ -382,6 +587,9 @@ const TestCaseTopForm = () => {
           />
         </div>
       </div>
+      
+      {/* Parameter inputs */}
+      <ParameterInputs />
 
       {/* File Uploads */}
       <div className="grid grid-cols-2 gap-4 mt-4">
@@ -502,33 +710,34 @@ const TestCaseTopForm = () => {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end mt-6 space-x-2">
-        <button 
-          onClick={handleCancel}
-          className="px-4 py-2 border text-sm rounded hover:bg-gray-50"
-          disabled={loading}
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
-          disabled={loading}
-        >
-          {loading && (
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-          )}
-          {editMode ? "Update" : "Save"}
-        </button>
-      </div>
+      {/* Modals */}
       {showPreview && (
         <JSONPreviewModal
-          title={`${showPreview.type === "request" ? "Request" : "Response"} Template Preview`}
+          title={showPreview.type === "request" ? "Request Template" : "Response Template"}
           content={showPreview.content}
           onClose={() => setShowPreview(null)}
         />
       )}
+
+      {/* Form Actions */}
+      <div className="flex justify-end gap-3 mt-8">
+        <button
+          type="button"
+          onClick={handleCancel}
+          className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] 
+            ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+          disabled={loading}
+        >
+          {loading ? "Saving..." : editMode ? "Update" : "Create"}
+        </button>
+      </div>
     </div>
   );
 };
