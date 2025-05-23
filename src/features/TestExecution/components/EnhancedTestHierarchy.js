@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaAngleDown, FaAngleRight, FaBoxOpen, FaLayerGroup, FaCodeBranch } from 'react-icons/fa';
+import { FaAngleDown, FaAngleRight, FaBoxOpen, FaLayerGroup, FaCodeBranch, FaVial } from 'react-icons/fa';
 
 // Modern Test Hierarchy component with enhanced styling and animations
 const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
@@ -20,7 +20,7 @@ const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
       case 'suite':
         return <FaLayerGroup className="text-blue-500" />;
       case 'case':
-        return <FaCodeBranch className="text-green-500" />;
+        return <FaVial  className="text-blue-500" />;
       default:
         return <FaCodeBranch className="text-gray-500" />;
     }
