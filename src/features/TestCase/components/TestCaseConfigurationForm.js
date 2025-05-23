@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FiTrash2, FiPlus, FiCheckCircle, FiAlertCircle, FiSettings } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiSettings } from "react-icons/fi";
 import { FaEdit } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -8,27 +8,26 @@ import ConfirmationModal from "../../../components/common/ConfirmationModal";
 
 const ITEMS_PER_PAGE = 6;
 
-const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTestCaseId, onVariablesCreated, onVariablesUpdated }) => {
+const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTestCaseId }) => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("Variables");
-  const [variables, setVariables] = useState([]);
+  const [existingVariables, setExistingVariables] = useState([]); // Variables from API
+  const [uiVariables, setUiVariables] = useState([]); // Combined UI variables
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteVariableId, setDeleteVariableId] = useState(null);
+  const [deleteVariable, setDeleteVariable] = useState(null);
   const [inputName, setInputName] = useState("");
   const [inputValue, setInputValue] = useState("");
-  const [editingVariableId, setEditingVariableId] = useState(null);
-  const [autoCreatingVariables, setAutoCreatingVariables] = useState(false);
-  const [parametersProcessed, setParametersProcessed] = useState(false);
+  const [editingVariable, setEditingVariable] = useState(null);
   
   // Get testCaseId from props or location state
   const testCaseId = propTestCaseId || location.state?.testCase?.testCaseId;
 
-  const totalPages = Math.ceil(variables.length / ITEMS_PER_PAGE);
-  const paginatedVariables = variables.slice(
+  const totalPages = Math.ceil(uiVariables.length / ITEMS_PER_PAGE);
+  const paginatedVariables = uiVariables.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -36,14 +35,14 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   // Generate metadata for API requests
   const generateMetadata = () => {
     return {
-      userId: "302", // This would typically come from auth context
+      userId: "302",
       transactionId: Date.now().toString(),
       timestamp: new Date().toISOString()
     };
   };
 
-  // Fetch variables for the current test case
-  const fetchVariables = async () => {
+  // Fetch existing variables from API
+  const fetchExistingVariables = async () => {
     if (!testCaseId) return;
     
     try {
@@ -52,14 +51,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       
       if (response.result?.data) {
         const variablesData = response.result.data || [];
-        setVariables(variablesData);
-        
-        // Notify parent component about variables update
-        if (onVariablesUpdated) {
-          onVariablesUpdated(variablesData);
-        }
-      } else {
-        throw new Error("Unexpected response format");
+        setExistingVariables(variablesData);
       }
     } catch (err) {
       console.error("Error fetching variables:", err);
@@ -69,131 +61,76 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // Auto-create variables for detected parameters
-  const autoCreateVariables = async (parameters) => {
-    if (!testCaseId || !parameters.length || parametersProcessed) return;
+  // Combine existing variables with detected parameters for UI display
+  const combineVariablesForUI = () => {
+    const combined = [...existingVariables];
     
-    setAutoCreatingVariables(true);
-    let createdCount = 0;
-    let skippedCount = 0;
+    // Add detected parameters that don't exist as variables yet
+    detectedParameters.forEach(param => {
+      const existsInVariables = existingVariables.some(v => v.name === param);
+      if (!existsInVariables) {
+        combined.push({
+          name: param,
+          value: "",
+          isDetectedParameter: true,
+          isNew: true, // Indicates this hasn't been saved to API yet
+          createdDate: "-",
+          updatedDate: "-"
+        });
+      }
+    });
     
-    try {
-      // Check which parameters already exist as variables
-      const existingVariableNames = variables.map(v => v.name);
-      const newParameters = parameters.filter(param => !existingVariableNames.includes(param));
-      
-      if (newParameters.length === 0) {
-        toast.info("All parameters already have corresponding variables");
-        setParametersProcessed(true);
-        return;
-      }
-
-      // Create variables for new parameters
-      for (const param of newParameters) {
-        try {
-          const requestBody = {
-            requestMetaData: generateMetadata(),
-            data: {
-              name: param,
-              value: "", // Empty value initially - user will fill this
-              testCase: {
-                testCaseId: testCaseId
-              }
-            }
-          };
-          
-          const response = await api("/api/v1/variables", "POST", requestBody);
-          
-          if (response.result?.code === "200") {
-            createdCount++;
-          } else {
-            skippedCount++;
-          }
-        } catch (error) {
-          console.error(`Error creating variable for parameter ${param}:`, error);
-          skippedCount++;
-        }
-      }
-
-      // Show success message
-      if (createdCount > 0) {
-        toast.success(`Auto-created ${createdCount} variable${createdCount > 1 ? 's' : ''} for detected parameters`);
-        await fetchVariables(); // Refresh the variables list
-      }
-      
-      if (skippedCount > 0) {
-        toast.warning(`${skippedCount} parameter${skippedCount > 1 ? 's' : ''} could not be created`);
-      }
-
-      setParametersProcessed(true);
-      
-      if (onVariablesCreated) {
-        onVariablesCreated(createdCount);
-      }
-
-    } catch (error) {
-      console.error("Error auto-creating variables:", error);
-      toast.error("Failed to auto-create variables");
-    } finally {
-      setAutoCreatingVariables(false);
-    }
+    setUiVariables(combined);
   };
 
-  // Load variables when component mounts or testCaseId changes
+  // Load existing variables when component mounts
   useEffect(() => {
     if (testCaseId) {
-      fetchVariables();
+      fetchExistingVariables();
     }
   }, [testCaseId]);
 
-  // Auto-create variables when parameters are detected
+  // Update UI variables when existing variables or detected parameters change
   useEffect(() => {
-    if (detectedParameters.length > 0 && testCaseId && variables.length >= 0 && !parametersProcessed) {
-      // Small delay to ensure variables are loaded first
-      setTimeout(() => {
-        autoCreateVariables(detectedParameters);
-      }, 500);
-    }
-  }, [detectedParameters, testCaseId, variables, parametersProcessed]);
+    combineVariablesForUI();
+  }, [existingVariables, detectedParameters]);
 
-  // Open add modal with empty form
+  // Open add modal
   const handleOpenAddModal = () => {
     setInputName("");
     setInputValue("");
+    setEditingVariable(null);
     setIsAddModalOpen(true);
   };
 
-  // Open edit modal with values from the selected variable
+  // Open edit modal
   const handleOpenEditModal = (index) => {
     const variable = paginatedVariables[index];
     setInputName(variable.name);
     setInputValue(variable.value);
-    setEditingVariableId(variable.variableId);
+    setEditingVariable(variable);
     setIsEditModalOpen(true);
   };
 
-  // Close both modals
+  // Close modals
   const handleCloseModals = () => {
     setIsAddModalOpen(false);
     setIsEditModalOpen(false);
     setInputName("");
     setInputValue("");
-    setEditingVariableId(null);
+    setEditingVariable(null);
   };
 
-  // Add new variable
-  const handleAddVariable = async () => {
-    // Get values directly from DOM elements
-    const nameInput = document.getElementById('add-variable-name');
-    const valueInput = document.getElementById('add-variable-value');
+  // Add or update variable
+  const handleSaveVariable = async (isUpdate = false) => {
+    const nameInput = document.getElementById(isUpdate ? 'edit-variable-name' : 'add-variable-name');
+    const valueInput = document.getElementById(isUpdate ? 'edit-variable-value' : 'add-variable-value');
     
-    // Extract values
     const name = nameInput ? nameInput.value.trim() : '';
     const value = valueInput ? valueInput.value.trim() : '';
     
-    // Validate
-    if (name === "" || value === "") {
-      toast.error("Name and value cannot be empty");
+    if (name === "") {
+      toast.error("Name cannot be empty");
       return;
     }
     
@@ -210,66 +147,27 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           }
         }
       };
-      
-      const response = await api("/api/v1/variables", "POST", requestBody);
-      
-      if (response.result?.code === "200") {
-        toast.success("Variable created successfully");
-        fetchVariables(); // Refresh the data
-      } else {
-        throw new Error(response.result?.message || "Failed to create variable");
-      }
-    } catch (err) {
-      console.error("Error creating variable:", err);
-      toast.error(err.message || "Failed to create variable");
-    } finally {
-      setLoading(false);
-      handleCloseModals();
-    }
-  };
 
-  // Update existing variable
-  const handleUpdateVariable = async () => {
-    // Get values directly from DOM elements
-    const nameInput = document.getElementById('edit-variable-name');
-    const valueInput = document.getElementById('edit-variable-value');
-    
-    // Extract values
-    const name = nameInput ? nameInput.value.trim() : '';
-    const value = valueInput ? valueInput.value.trim() : '';
-    
-    // Validate
-    if (name === "" || value === "") {
-      toast.error("Name and value cannot be empty");
-      return;
-    }
-    
-    try {
-      setLoading(true);
+      let response;
       
-      const requestBody = {
-        requestMetaData: generateMetadata(),
-        data: {
-          variableId: editingVariableId,
-          name: name,
-          value: value,
-          testCase: {
-            testCaseId: testCaseId
-          }
-        }
-      };
-      
-      const response = await api("/api/v1/variables", "PUT", requestBody);
+      if (isUpdate && editingVariable && !editingVariable.isNew) {
+        // Update existing variable
+        requestBody.data.variableId = editingVariable.variableId;
+        response = await api("/api/v1/variables", "PUT", requestBody);
+      } else {
+        // Create new variable
+        response = await api("/api/v1/variables", "POST", requestBody);
+      }
       
       if (response.result?.code === "200") {
-        toast.success("Variable updated successfully");
-        fetchVariables(); // Refresh the data
+        toast.success(`Variable ${isUpdate ? 'updated' : 'created'} successfully`);
+        await fetchExistingVariables(); // Refresh from API
       } else {
-        throw new Error(response.result?.message || "Failed to update variable");
+        throw new Error(response.result?.message || `Failed to ${isUpdate ? 'update' : 'create'} variable`);
       }
     } catch (err) {
-      console.error("Error updating variable:", err);
-      toast.error(err.message || "Failed to update variable");
+      console.error(`Error ${isUpdate ? 'updating' : 'creating'} variable:`, err);
+      toast.error(err.message || `Failed to ${isUpdate ? 'update' : 'create'} variable`);
     } finally {
       setLoading(false);
       handleCloseModals();
@@ -277,20 +175,26 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   };
 
   // Delete variable
-  const handleDelete = async () => {
-    if (!deleteVariableId) {
-      toast.error("Cannot delete variable: Missing ID");
+  const handleDeleteVariable = async () => {
+    if (!deleteVariable) return;
+    
+    if (deleteVariable.isNew) {
+      // Just remove from UI for detected parameters that haven't been saved
+      setUiVariables(prev => prev.filter(v => v.name !== deleteVariable.name));
+      toast.success("Parameter removed from list");
+      setIsDeleteModalOpen(false);
+      setDeleteVariable(null);
       return;
     }
     
     try {
       setLoading(true);
       
-      const response = await api(`/api/v1/variables/${deleteVariableId}`, "DELETE");
+      const response = await api(`/api/v1/variables/${deleteVariable.variableId}`, "DELETE");
       
       if (response.result?.code === "200") {
         toast.success("Variable deleted successfully");
-        fetchVariables(); // Refresh the data
+        await fetchExistingVariables(); // Refresh from API
       } else {
         throw new Error(response.result?.message || "Failed to delete variable");
       }
@@ -300,19 +204,21 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     } finally {
       setLoading(false);
       setIsDeleteModalOpen(false);
-      setDeleteVariableId(null);
+      setDeleteVariable(null);
     }
   };
   
   // Open delete confirmation modal
   const openDeleteModal = (index) => {
     const variable = paginatedVariables[index];
-    setDeleteVariableId(variable.variableId);
+    setDeleteVariable(variable);
     setIsDeleteModalOpen(true);
   };
 
   // Simple pagination rendering
   const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
     const pageNumbers = [];
     const maxButtons = 5;
     const half = Math.floor(maxButtons / 2);
@@ -363,62 +269,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     );
   };
 
-  // Get variable status (whether it has a value or not)
-  const getVariableStatus = (variable) => {
-    const hasValue = variable.value && variable.value.trim() !== '';
-    const isFromParameter = detectedParameters.includes(variable.name);
-    
-    return {
-      hasValue,
-      isFromParameter,
-      statusColor: hasValue ? 'text-green-600' : 'text-yellow-600',
-      statusIcon: hasValue ? FiCheckCircle : FiAlertCircle,
-      statusText: hasValue ? 'Configured' : 'Needs Value'
-    };
-  };
-
-  // Parameter Status Summary Component
-  const ParameterStatusSummary = () => {
-    if (detectedParameters.length === 0) return null;
-    
-    const parameterVariables = variables.filter(v => detectedParameters.includes(v.name));
-    const configuredCount = parameterVariables.filter(v => v.value && v.value.trim() !== '').length;
-    const totalCount = detectedParameters.length;
-    const isComplete = configuredCount === totalCount;
-    
-    return (
-      <div className={`mb-4 p-4 rounded-lg border ${isComplete ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            {isComplete ? (
-              <FiCheckCircle className="text-green-600 mr-2" />
-            ) : (
-              <FiAlertCircle className="text-yellow-600 mr-2" />
-            )}
-            <div>
-              <h4 className={`font-medium ${isComplete ? 'text-green-800' : 'text-yellow-800'}`}>
-                Parameter Configuration Status
-              </h4>
-              <p className={`text-sm ${isComplete ? 'text-green-700' : 'text-yellow-700'}`}>
-                {configuredCount} of {totalCount} parameters configured
-              </p>
-            </div>
-          </div>
-          <div className={`text-2xl font-bold ${isComplete ? 'text-green-600' : 'text-yellow-600'}`}>
-            {Math.round((configuredCount / totalCount) * 100)}%
-          </div>
-        </div>
-        
-        {!isComplete && (
-          <div className="mt-2 text-sm text-yellow-700">
-            Please provide values for all detected parameters to ensure proper test execution.
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Enhanced Add Variable Modal
+  // Add Variable Modal
   const AddVariableModal = () => {
     if (!isAddModalOpen) return null;
 
@@ -466,7 +317,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
             </button>
             <button
               type="button"
-              onClick={handleAddVariable}
+              onClick={() => handleSaveVariable(false)}
               className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
               disabled={loading}
             >
@@ -481,7 +332,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     );
   };
 
-  // Enhanced Edit Variable Modal
+  // Edit Variable Modal
   const EditVariableModal = () => {
     if (!isEditModalOpen) return null;
 
@@ -529,14 +380,14 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
             </button>
             <button
               type="button"
-              onClick={handleUpdateVariable}
+              onClick={() => handleSaveVariable(true)}
               className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
               disabled={loading}
             >
               {loading && (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               )}
-              Update
+              {editingVariable?.isNew ? 'Save' : 'Update'}
             </button>
           </div>
         </div>
@@ -554,23 +405,12 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         <button
           onClick={handleOpenAddModal}
           className="px-3 py-1 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
-          disabled={!testCaseId || loading || autoCreatingVariables}
+          disabled={!testCaseId || loading}
         >
           <FiPlus className="mr-1" />
           Add Variable
         </button>
       </div>
-
-      {/* Parameter Status Summary */}
-      <ParameterStatusSummary />
-
-      {/* Auto-creation indicator */}
-      {autoCreatingVariables && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-          <span className="text-blue-700 text-sm">Auto-creating variables for detected parameters...</span>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="flex mb-4 border-b">
@@ -585,9 +425,9 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
             onClick={() => setActiveTab(tab)}
           >
             {tab}
-            {tab === "Variables" && variables.length > 0 && (
+            {tab === "Variables" && uiVariables.length > 0 && (
               <span className="ml-1 bg-gray-200 text-gray-700 text-xs px-1.5 py-0.5 rounded-full">
-                {variables.length}
+                {uiVariables.length}
               </span>
             )}
           </button>
@@ -599,19 +439,17 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         <table className="w-full text-sm">
           <thead className="bg-gray-100 text-left text-xs uppercase text-gray-500 border-b">
             <tr>
-              <th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Name</th>
               <th className="p-3 font-medium">Value</th>
               <th className="p-3 font-medium">Source</th>
-              <th className="p-3 font-medium">Created Date</th>
-              <th className="p-3 font-medium">Updated Date</th>
+              <th className="p-3 font-medium">Status</th>
               <th className="p-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {loading && variables.length === 0 ? (
+            {loading && uiVariables.length === 0 ? (
               <tr>
-                <td colSpan="7" className="p-4 text-center">
+                <td colSpan="5" className="p-4 text-center">
                   <div className="flex justify-center items-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
                     Loading variables...
@@ -620,33 +458,24 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
               </tr>
             ) : paginatedVariables.length === 0 ? (
               <tr>
-                <td colSpan="7" className="p-4 text-center text-gray-500">
+                <td colSpan="5" className="p-4 text-center text-gray-500">
                   {testCaseId 
-                    ? detectedParameters.length > 0 
-                      ? "Variables will be auto-created for detected parameters..."
-                      : "No variables found. Click \"Add Variable\" to create one."
+                    ? "No variables found. Click \"Add Variable\" to create one."
                     : "Please save the test case before adding variables."}
                 </td>
               </tr>
             ) : (
               paginatedVariables.map((item, idx) => {
-                const status = getVariableStatus(item);
-                const StatusIcon = status.statusIcon;
+                const isFromParameter = detectedParameters.includes(item.name);
+                const hasValue = item.value && item.value.trim() !== '';
+                const isNewParameter = item.isNew;
                 
                 return (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="p-3">
-                      <div className="flex items-center">
-                        <StatusIcon className={`h-4 w-4 ${status.statusColor} mr-1`} />
-                        <span className={`text-xs ${status.statusColor} font-medium`}>
-                          {status.statusText}
-                        </span>
-                      </div>
-                    </td>
+                  <tr key={`${item.name}-${idx}`} className="hover:bg-gray-50">
                     <td className="p-3">
                       <div className="flex items-center">
                         <span className="font-medium">{item.name}</span>
-                        {status.isFromParameter && (
+                        {isFromParameter && (
                           <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
                             Parameter
                           </span>
@@ -655,24 +484,31 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                     </td>
                     <td className="p-3">
                       <div className="truncate max-w-xs">
-                        {item.value ? (
+                        {hasValue ? (
                           <span className="text-gray-900">{item.value}</span>
                         ) : (
-                          <span className="text-yellow-600 italic">Empty</span>
+                          <span className="text-gray-400 italic">Empty</span>
                         )}
                       </div>
                     </td>
                     <td className="p-3">
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        status.isFromParameter 
+                        isFromParameter 
                           ? 'bg-blue-100 text-blue-700' 
                           : 'bg-gray-100 text-gray-700'
                       }`}>
-                        {status.isFromParameter ? 'Auto-detected' : 'Manual'}
+                        {isFromParameter ? 'Auto-detected' : 'Manual'}
                       </span>
                     </td>
-                    <td className="p-3 text-gray-600">{item.createdDate}</td>
-                    <td className="p-3 text-gray-600">{item.updatedDate}</td>
+                    <td className="p-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        isNewParameter 
+                          ? 'bg-yellow-100 text-yellow-700' 
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {isNewParameter ? 'Not Saved' : 'Saved'}
+                      </span>
+                    </td>
                     <td className="p-3">
                       <div className="flex space-x-2">
                         <button
@@ -686,7 +522,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                         <button
                           onClick={() => openDeleteModal(idx)}
                           className="text-gray-400 hover:text-red-500 transition-colors"
-                          title="Delete"
+                          title={isNewParameter ? "Remove from list" : "Delete"}
                           disabled={loading}
                         >
                           <FiTrash2 size={16} />
@@ -702,7 +538,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       </div>
 
       {/* Pagination */}
-      {variables.length > ITEMS_PER_PAGE && renderPagination()}
+      {renderPagination()}
 
       {/* Modals */}
       <AddVariableModal />
@@ -713,11 +549,15 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
-          setDeleteVariableId(null);
+          setDeleteVariable(null);
         }}
-        onConfirm={handleDelete}
-        title="Delete Variable"
-        message="Are you sure you want to delete this variable? This action cannot be undone."
+        onConfirm={handleDeleteVariable}
+        title={deleteVariable?.isNew ? "Remove Parameter" : "Delete Variable"}
+        message={
+          deleteVariable?.isNew 
+            ? `Are you sure you want to remove "${deleteVariable?.name}" from the list? This will only remove it from the UI.`
+            : `Are you sure you want to delete "${deleteVariable?.name}"? This action cannot be undone.`
+        }
       />
     </div>
   );

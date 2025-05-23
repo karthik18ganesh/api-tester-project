@@ -2,18 +2,15 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../../utils/api";
-import { FiInfo, FiCheckCircle, FiAlertCircle, FiSave, FiEdit3 } from "react-icons/fi";
-import ParameterDiff from "../../../components/common/ParameterDiff";
+import { FiSave } from "react-icons/fi";
 
-const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseNameChange }) => {
+const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const editMode = location.state?.testCase; // Check if we're editing an existing test case
   
   const [loading, setLoading] = useState(false);
   const [loadingApis, setLoadingApis] = useState(false);
-  const [testCaseSaved, setTestCaseSaved] = useState(false);
-  const [savedTestCaseId, setSavedTestCaseId] = useState(null);
   
   // APIRepository state
   const [apiOptions, setApiOptions] = useState([]);
@@ -21,7 +18,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
   
   // Parameters state
   const [parameters, setParameters] = useState([]);
-  const [paramValues, setParamValues] = useState({});
   
   const [formData, setFormData] = useState({
     testCaseName: "",
@@ -112,7 +108,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
             
             setFormData({
               testCaseName: testCase.name || "",
-              // Keep type and responseType as lowercase
               type: testCase.type || "",
               responseType: testCase.responseType || "",
               api: testCase.apiName || "",
@@ -137,15 +132,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
               setUploadedResponseFileName("existing-response.json");
             }
             
-            // Load parameter values if stored with test case
-            if (testCase.parameterValues) {
-              setParamValues(testCase.parameterValues);
-            }
-
-            // Mark as saved since we're editing and extract parameters
-            setTestCaseSaved(true);
-            setSavedTestCaseId(testCase.testCaseId);
-            
             // Extract parameters from the loaded test case
             const detectedParams = [...new Set([
               ...extractParameters(testCase.url || ""),
@@ -157,7 +143,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
               setParameters(detectedParams);
               // Notify parent component about parameters
               if (onParametersDetected) {
-                onParametersDetected(detectedParams, testCase.parameterValues || {});
+                onParametersDetected(detectedParams);
               }
               if (onTestCaseSaved) {
                 onTestCaseSaved(testCase.testCaseId, detectedParams);
@@ -208,15 +194,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           setUploadedResponseFileName("existing-response.json");
         }
         
-        // Load parameter values if stored with test case
-        if (testCase.parameterValues) {
-          setParamValues(testCase.parameterValues);
-        }
-
-        // Mark as saved since we're editing
-        setTestCaseSaved(true);
-        setSavedTestCaseId(testCase.testCaseId);
-        
         // Extract parameters
         const detectedParams = [...new Set([
           ...extractParameters(testCase.url || ""),
@@ -227,7 +204,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
         if (detectedParams.length > 0) {
           setParameters(detectedParams);
           if (onParametersDetected) {
-            onParametersDetected(detectedParams, testCase.parameterValues || {});
+            onParametersDetected(detectedParams);
           }
           if (onTestCaseSaved) {
             onTestCaseSaved(testCase.testCaseId, detectedParams);
@@ -251,24 +228,26 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
         const apiData = response.result.data;
         setSelectedApiDetails(apiData);
         
-        // Extract parameters from URL, headers, body
+        // Extract parameters from URL
         const urlParams = extractParameters(apiData.url);
+        
+        // Extract parameters from headers
         const headerParams = Object.entries(apiData.request?.headers || {})
           .flatMap(([k, v]) => [...extractParameters(k), ...extractParameters(v)]);
-        const bodyParams = extractParameters(JSON.stringify(apiData.request?.body));
+        
+        // Extract parameters from query params
+        const queryParams = Object.entries(apiData.request?.queryParams || {})
+          .flatMap(([k, v]) => [...extractParameters(k), ...extractParameters(v)]);
+        
+        // Extract parameters from body (if it exists)
+        let bodyParams = [];
+        if (apiData.request?.body) {
+          bodyParams = extractParameters(JSON.stringify(apiData.request.body));
+        }
         
         // Combine all parameters
-        const allParams = [...new Set([...urlParams, ...headerParams, ...bodyParams])];
+        const allParams = [...new Set([...urlParams, ...headerParams, ...queryParams, ...bodyParams])];
         setParameters(allParams);
-        
-        // Initialize values for parameters not already set
-        const initialValues = { ...paramValues };
-        allParams.forEach(param => {
-          if (!initialValues[param]) {
-            initialValues[param] = '';
-          }
-        });
-        setParamValues(initialValues);
         
         // Set URL and method from API
         setFormData(prev => ({
@@ -277,7 +256,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           apiType: apiData.method
         }));
         
-        // Update parameters from all sources
+        // Update parameters from all sources including templates
         setTimeout(updateParametersFromTemplates, 100);
         
       } else {
@@ -299,19 +278,10 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
     
     const allParams = [...new Set([...urlParams, ...requestParams, ...responseParams])];
     setParameters(allParams);
-    
-    // Initialize values for new parameters
-    const updatedValues = { ...paramValues };
-    allParams.forEach(param => {
-      if (!updatedValues[param]) {
-        updatedValues[param] = '';
-      }
-    });
-    setParamValues(updatedValues);
 
     // Notify parent component about parameters
     if (onParametersDetected && allParams.length > 0) {
-      onParametersDetected(allParams, updatedValues);
+      onParametersDetected(allParams);
     }
   };
 
@@ -340,11 +310,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     
-    // Notify parent about test case name changes
-    if (name === 'testCaseName' && onTestCaseNameChange) {
-      onTestCaseNameChange(value);
-    }
-    
     // If API selection changes, load API details
     if (name === 'api' && value) {
       const selectedApi = apiOptions.find(api => api.name === value);
@@ -356,20 +321,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
     // If URL changes, update parameters
     if (name === 'url') {
       setTimeout(updateParametersFromTemplates, 100);
-    }
-  };
-  
-  // Handle parameter value changes
-  const handleParamChange = (paramName, value) => {
-    const updatedValues = {
-      ...paramValues,
-      [paramName]: value
-    };
-    setParamValues(updatedValues);
-    
-    // Notify parent component about parameter changes
-    if (onParametersDetected) {
-      onParametersDetected(parameters, updatedValues);
     }
   };
 
@@ -455,7 +406,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
         requestMetaData: generateMetadata(),
         data: {
           name: formData.testCaseName,
-          // Values are already lowercase from the dropdown
           type: formData.type,
           responseType: formData.responseType,
           apiName: formData.api,
@@ -465,7 +415,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           requestTemplate: requestTemplateObj,
           responseTemplate: responseTemplateObj,
           executionOrder: 1, // Default execution order
-          parameterValues: paramValues // Add parameter values
         }
       };
       
@@ -477,7 +426,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
         payload.data.testCaseId = location.state.testCase.testCaseId;
         testCaseId = location.state.testCase.testCaseId;
         
-        // Update existing test case - the endpoint doesn't include the ID in the URL
+        // Update existing test case
         response = await api("/api/v1/test-cases", "PUT", payload);
         toast.success("Test Case updated successfully!");
       } else {
@@ -494,30 +443,19 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
         ...extractParameters(responseTemplate)
       ])];
 
-      // Save the test case info for configuration
-      setTestCaseSaved(true);
-      setSavedTestCaseId(testCaseId);
-
-      // If parameters detected, notify parent and don't redirect
+      // If parameters detected, notify parent and show configuration
       if (detectedParams.length > 0) {
         if (onParametersDetected) {
-          onParametersDetected(detectedParams, paramValues);
+          onParametersDetected(detectedParams);
         }
         if (onTestCaseSaved) {
           onTestCaseSaved(testCaseId, detectedParams);
         }
-        // Show success message with next steps
-        toast.success(
-          `Test Case ${editMode ? 'updated' : 'created'} successfully! ${detectedParams.length} parameter${detectedParams.length > 1 ? 's' : ''} detected. Please configure ${detectedParams.length > 1 ? 'them' : 'it'} below.`, 
-          { autoClose: 5000 }
-        );
       } else {
-        // No parameters detected, notify parent and redirect
+        // No parameters detected, redirect to list
         if (onTestCaseSaved) {
           onTestCaseSaved(testCaseId, []);
         }
-        toast.success(`Test Case ${editMode ? 'updated' : 'created'} successfully! No parameters detected.`);
-        // Small delay to show the success message before redirecting
         setTimeout(() => {
           navigate("/test-design/test-case");
         }, 1500);
@@ -535,106 +473,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
     navigate("/test-design/test-case");
   };
 
-  // Component to display parameter inputs
-  const ParameterInputs = () => {
-    if (parameters.length === 0) return null;
-    
-    return (
-      <div className="mt-6 border-t pt-6">
-        <h3 className="text-md font-semibold mb-3 flex items-center">
-          <FiEdit3 className="mr-2 text-indigo-600" />
-          Detected Parameters
-          <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
-            {parameters.length}
-          </span>
-        </h3>
-        
-        <div className="bg-blue-50 p-3 rounded mb-4 text-sm flex items-center">
-          <FiInfo className="text-blue-500 mr-2 flex-shrink-0" />
-          <span>
-            These parameters were detected in your test case. You can provide values here or configure them in the 
-            <strong className="mx-1">Test Case Configuration</strong> section below after saving.
-          </span>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-          {parameters.map(param => (
-            <div key={param} className="mb-2">
-              <label className="block text-sm font-medium mb-1">
-                <span className="text-blue-600">${param}</span>
-              </label>
-              <input
-                type="text"
-                className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={paramValues[param] || ''}
-                onChange={(e) => handleParamChange(param, e.target.value)}
-                placeholder={`Value for ${param}`}
-              />
-            </div>
-          ))}
-        </div>
-        
-        {/* Show URL with parameter values */}
-        <div className="mt-4 mb-2">
-          <h4 className="text-sm font-medium mb-2">Preview with parameter values:</h4>
-          <ParameterDiff 
-            template={formData.url}
-            values={paramValues}
-            title="API URL"
-          />
-          
-          {/* If there's a request body with parameters, show that too */}
-          {requestTemplate && requestTemplate.includes('${') && (
-            <ParameterDiff
-              template={requestTemplate}
-              values={paramValues}
-              title="Request Body Preview"
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Status indicator component
-  const StatusIndicator = () => {
-    if (!testCaseSaved) return null;
-
-    const hasParameters = parameters.length > 0;
-    const allParametersFilled = parameters.every(param => paramValues[param]?.trim());
-
-    return (
-      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-        <div className="flex items-center mb-2">
-          <FiCheckCircle className="text-green-600 mr-2" />
-          <span className="font-medium text-green-800">
-            Test Case {editMode ? 'Updated' : 'Created'} Successfully!
-          </span>
-        </div>
-        
-        {hasParameters && (
-          <div className="ml-6">
-            <div className="flex items-center text-sm">
-              {allParametersFilled ? (
-                <>
-                  <FiCheckCircle className="text-green-600 mr-1" />
-                  <span className="text-green-700">All parameters have values</span>
-                </>
-              ) : (
-                <>
-                  <FiAlertCircle className="text-yellow-600 mr-1" />
-                  <span className="text-yellow-700">
-                    {parameters.filter(p => !paramValues[p]?.trim()).length} parameter{parameters.filter(p => !paramValues[p]?.trim()).length > 1 ? 's' : ''} need{parameters.filter(p => !paramValues[p]?.trim()).length === 1 ? 's' : ''} values
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -642,17 +480,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           <FiSave className="mr-2 text-indigo-600" />
           {editMode ? "Edit test case" : "Create new test case"}
         </h2>
-        
-        {testCaseSaved && (
-          <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-            <FiCheckCircle className="mr-1" />
-            {editMode ? 'Updated' : 'Created'}
-          </div>
-        )}
       </div>
-
-      {/* Status Indicator */}
-      <StatusIndicator />
 
       <div className="grid grid-cols-3 gap-4 mt-4">
         <div>
@@ -775,9 +603,6 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           />
         </div>
       </div>
-      
-      {/* Parameter inputs */}
-      <ParameterInputs />
 
       {/* File Uploads */}
       <div className="grid grid-cols-2 gap-4 mt-6">
@@ -915,30 +740,28 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseName
           className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
           disabled={loading}
         >
-          {testCaseSaved ? "Back to List" : "Cancel"}
+          Cancel
         </button>
-        {!testCaseSaved && (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] transition-colors flex items-center ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              <>
-                <FiSave className="mr-2" />
-                {editMode ? "Update" : "Create"}
-              </>
-            )}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] transition-colors flex items-center ${
+            loading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <FiSave className="mr-2" />
+              {editMode ? "Update" : "Save"}
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
