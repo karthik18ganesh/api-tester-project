@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../../utils/api";
-import { FiInfo } from "react-icons/fi";
+import { FiInfo, FiCheckCircle, FiAlertCircle, FiSave, FiEdit3 } from "react-icons/fi";
 import ParameterDiff from "../../../components/common/ParameterDiff";
 
-const TestCaseTopForm = () => {
+const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved, onTestCaseNameChange }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const editMode = location.state?.testCase; // Check if we're editing an existing test case
   
   const [loading, setLoading] = useState(false);
   const [loadingApis, setLoadingApis] = useState(false);
+  const [testCaseSaved, setTestCaseSaved] = useState(false);
+  const [savedTestCaseId, setSavedTestCaseId] = useState(null);
   
   // APIRepository state
   const [apiOptions, setApiOptions] = useState([]);
@@ -120,23 +122,17 @@ const TestCaseTopForm = () => {
             });
 
             // Set template data if available
+            let formattedRequest = "";
+            let formattedResponse = "";
+            
             if (testCase.requestTemplate) {
-              const formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+              formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
               setRequestTemplate(formattedRequest);
               setUploadedRequestFileName("existing-request.json");
-              
-              // Load parameters from request template
-              if (testCase.apiName) {
-                // Find API by name and load its details
-                const api = apiOptions.find(a => a.name === testCase.apiName);
-                if (api) {
-                  await loadApiDetails(api.id);
-                }
-              }
             }
 
             if (testCase.responseTemplate) {
-              const formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+              formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
               setResponseTemplate(formattedResponse);
               setUploadedResponseFileName("existing-response.json");
             }
@@ -144,6 +140,36 @@ const TestCaseTopForm = () => {
             // Load parameter values if stored with test case
             if (testCase.parameterValues) {
               setParamValues(testCase.parameterValues);
+            }
+
+            // Mark as saved since we're editing and extract parameters
+            setTestCaseSaved(true);
+            setSavedTestCaseId(testCase.testCaseId);
+            
+            // Extract parameters from the loaded test case
+            const detectedParams = [...new Set([
+              ...extractParameters(testCase.url || ""),
+              ...extractParameters(formattedRequest || ""),
+              ...extractParameters(formattedResponse || "")
+            ])];
+            
+            if (detectedParams.length > 0) {
+              setParameters(detectedParams);
+              // Notify parent component about parameters
+              if (onParametersDetected) {
+                onParametersDetected(detectedParams, testCase.parameterValues || {});
+              }
+              if (onTestCaseSaved) {
+                onTestCaseSaved(testCase.testCaseId, detectedParams);
+              }
+            }
+
+            // Load API details if API is selected
+            if (testCase.apiName) {
+              const api = apiOptions.find(a => a.name === testCase.apiName);
+              if (api) {
+                await loadApiDetails(api.id);
+              }
             }
           }
         } catch (err) {
@@ -167,14 +193,17 @@ const TestCaseTopForm = () => {
         });
 
         // Set template data if available
+        let formattedRequest = "";
+        let formattedResponse = "";
+        
         if (testCase.requestTemplate) {
-          const formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+          formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
           setRequestTemplate(formattedRequest);
           setUploadedRequestFileName("existing-request.json");
         }
 
         if (testCase.responseTemplate) {
-          const formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+          formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
           setResponseTemplate(formattedResponse);
           setUploadedResponseFileName("existing-response.json");
         }
@@ -182,6 +211,27 @@ const TestCaseTopForm = () => {
         // Load parameter values if stored with test case
         if (testCase.parameterValues) {
           setParamValues(testCase.parameterValues);
+        }
+
+        // Mark as saved since we're editing
+        setTestCaseSaved(true);
+        setSavedTestCaseId(testCase.testCaseId);
+        
+        // Extract parameters
+        const detectedParams = [...new Set([
+          ...extractParameters(testCase.url || ""),
+          ...extractParameters(formattedRequest || ""),
+          ...extractParameters(formattedResponse || "")
+        ])];
+        
+        if (detectedParams.length > 0) {
+          setParameters(detectedParams);
+          if (onParametersDetected) {
+            onParametersDetected(detectedParams, testCase.parameterValues || {});
+          }
+          if (onTestCaseSaved) {
+            onTestCaseSaved(testCase.testCaseId, detectedParams);
+          }
         }
       }
     };
@@ -227,6 +277,9 @@ const TestCaseTopForm = () => {
           apiType: apiData.method
         }));
         
+        // Update parameters from all sources
+        setTimeout(updateParametersFromTemplates, 100);
+        
       } else {
         toast.error("Invalid API data format");
       }
@@ -235,6 +288,30 @@ const TestCaseTopForm = () => {
       toast.error("Failed to load API details");
     } finally {
       setLoadingApis(false);
+    }
+  };
+
+  // Update parameters when templates change
+  const updateParametersFromTemplates = () => {
+    const urlParams = extractParameters(formData.url);
+    const requestParams = extractParameters(requestTemplate);
+    const responseParams = extractParameters(responseTemplate);
+    
+    const allParams = [...new Set([...urlParams, ...requestParams, ...responseParams])];
+    setParameters(allParams);
+    
+    // Initialize values for new parameters
+    const updatedValues = { ...paramValues };
+    allParams.forEach(param => {
+      if (!updatedValues[param]) {
+        updatedValues[param] = '';
+      }
+    });
+    setParamValues(updatedValues);
+
+    // Notify parent component about parameters
+    if (onParametersDetected && allParams.length > 0) {
+      onParametersDetected(allParams, updatedValues);
     }
   };
 
@@ -263,6 +340,11 @@ const TestCaseTopForm = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     
+    // Notify parent about test case name changes
+    if (name === 'testCaseName' && onTestCaseNameChange) {
+      onTestCaseNameChange(value);
+    }
+    
     // If API selection changes, load API details
     if (name === 'api' && value) {
       const selectedApi = apiOptions.find(api => api.name === value);
@@ -270,14 +352,25 @@ const TestCaseTopForm = () => {
         loadApiDetails(selectedApi.id);
       }
     }
+
+    // If URL changes, update parameters
+    if (name === 'url') {
+      setTimeout(updateParametersFromTemplates, 100);
+    }
   };
   
   // Handle parameter value changes
   const handleParamChange = (paramName, value) => {
-    setParamValues(prev => ({
-      ...prev,
+    const updatedValues = {
+      ...paramValues,
       [paramName]: value
-    }));
+    };
+    setParamValues(updatedValues);
+    
+    // Notify parent component about parameter changes
+    if (onParametersDetected) {
+      onParametersDetected(parameters, updatedValues);
+    }
   };
 
   // Handle file uploads for request/response templates
@@ -296,6 +389,8 @@ const TestCaseTopForm = () => {
             setUploadedResponseFileName(file.name);
             setResponseTemplate(formatted);
           }
+          // Update parameters after template change
+          setTimeout(updateParametersFromTemplates, 100);
         } catch (error) {
           toast.error("Invalid JSON file. Please check the file format.");
         }
@@ -375,10 +470,12 @@ const TestCaseTopForm = () => {
       };
       
       let response;
+      let testCaseId;
       
       if (editMode) {
         // Add testCaseId to the payload for update
         payload.data.testCaseId = location.state.testCase.testCaseId;
+        testCaseId = location.state.testCase.testCaseId;
         
         // Update existing test case - the endpoint doesn't include the ID in the URL
         response = await api("/api/v1/test-cases", "PUT", payload);
@@ -387,10 +484,45 @@ const TestCaseTopForm = () => {
         // Create new test case
         response = await api("/api/v1/test-cases", "POST", payload);
         toast.success("Test Case created successfully!");
+        testCaseId = response?.result?.data?.testCaseId;
       }
       
-      // Navigate back to the test case list
-      navigate("/test-design/test-case");
+      // Check if parameters were detected
+      const detectedParams = [...new Set([
+        ...extractParameters(formData.url),
+        ...extractParameters(requestTemplate),
+        ...extractParameters(responseTemplate)
+      ])];
+
+      // Save the test case info for configuration
+      setTestCaseSaved(true);
+      setSavedTestCaseId(testCaseId);
+
+      // If parameters detected, notify parent and don't redirect
+      if (detectedParams.length > 0) {
+        if (onParametersDetected) {
+          onParametersDetected(detectedParams, paramValues);
+        }
+        if (onTestCaseSaved) {
+          onTestCaseSaved(testCaseId, detectedParams);
+        }
+        // Show success message with next steps
+        toast.success(
+          `Test Case ${editMode ? 'updated' : 'created'} successfully! ${detectedParams.length} parameter${detectedParams.length > 1 ? 's' : ''} detected. Please configure ${detectedParams.length > 1 ? 'them' : 'it'} below.`, 
+          { autoClose: 5000 }
+        );
+      } else {
+        // No parameters detected, notify parent and redirect
+        if (onTestCaseSaved) {
+          onTestCaseSaved(testCaseId, []);
+        }
+        toast.success(`Test Case ${editMode ? 'updated' : 'created'} successfully! No parameters detected.`);
+        // Small delay to show the success message before redirecting
+        setTimeout(() => {
+          navigate("/test-design/test-case");
+        }, 1500);
+      }
+      
     } catch (err) {
       console.error("Error saving test case:", err);
       toast.error(err.message || "Failed to save test case");
@@ -410,15 +542,19 @@ const TestCaseTopForm = () => {
     return (
       <div className="mt-6 border-t pt-6">
         <h3 className="text-md font-semibold mb-3 flex items-center">
-          API Parameters 
+          <FiEdit3 className="mr-2 text-indigo-600" />
+          Detected Parameters
           <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
             {parameters.length}
           </span>
         </h3>
         
-        <div className="bg-blue-50 p-2 rounded mb-4 text-sm flex items-center">
+        <div className="bg-blue-50 p-3 rounded mb-4 text-sm flex items-center">
           <FiInfo className="text-blue-500 mr-2 flex-shrink-0" />
-          <span>These parameters were detected in the selected API. Provide values that will be substituted during test execution.</span>
+          <span>
+            These parameters were detected in your test case. You can provide values here or configure them in the 
+            <strong className="mx-1">Test Case Configuration</strong> section below after saving.
+          </span>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
@@ -429,7 +565,7 @@ const TestCaseTopForm = () => {
               </label>
               <input
                 type="text"
-                className="border border-gray-300 rounded p-2 w-full"
+                className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 value={paramValues[param] || ''}
                 onChange={(e) => handleParamChange(param, e.target.value)}
                 placeholder={`Value for ${param}`}
@@ -452,7 +588,7 @@ const TestCaseTopForm = () => {
             <ParameterDiff
               template={requestTemplate}
               values={paramValues}
-              title="Request Body"
+              title="Request Body Preview"
             />
           )}
         </div>
@@ -460,11 +596,63 @@ const TestCaseTopForm = () => {
     );
   };
 
+  // Status indicator component
+  const StatusIndicator = () => {
+    if (!testCaseSaved) return null;
+
+    const hasParameters = parameters.length > 0;
+    const allParametersFilled = parameters.every(param => paramValues[param]?.trim());
+
+    return (
+      <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center mb-2">
+          <FiCheckCircle className="text-green-600 mr-2" />
+          <span className="font-medium text-green-800">
+            Test Case {editMode ? 'Updated' : 'Created'} Successfully!
+          </span>
+        </div>
+        
+        {hasParameters && (
+          <div className="ml-6">
+            <div className="flex items-center text-sm">
+              {allParametersFilled ? (
+                <>
+                  <FiCheckCircle className="text-green-600 mr-1" />
+                  <span className="text-green-700">All parameters have values</span>
+                </>
+              ) : (
+                <>
+                  <FiAlertCircle className="text-yellow-600 mr-1" />
+                  <span className="text-yellow-700">
+                    {parameters.filter(p => !paramValues[p]?.trim()).length} parameter{parameters.filter(p => !paramValues[p]?.trim()).length > 1 ? 's' : ''} need{parameters.filter(p => !paramValues[p]?.trim()).length === 1 ? 's' : ''} values
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white p-6 rounded border shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-800">
-        {editMode ? "Edit test case" : "Create new test case"}
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+          <FiSave className="mr-2 text-indigo-600" />
+          {editMode ? "Edit test case" : "Create new test case"}
+        </h2>
+        
+        {testCaseSaved && (
+          <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+            <FiCheckCircle className="mr-1" />
+            {editMode ? 'Updated' : 'Created'}
+          </div>
+        )}
+      </div>
+
+      {/* Status Indicator */}
+      <StatusIndicator />
 
       <div className="grid grid-cols-3 gap-4 mt-4">
         <div>
@@ -474,7 +662,7 @@ const TestCaseTopForm = () => {
           <input
             type="text"
             name="testCaseName"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.testCaseName}
             onChange={handleChange}
             disabled={loading}
@@ -486,7 +674,7 @@ const TestCaseTopForm = () => {
           </label>
           <select
             name="type"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.type}
             onChange={handleChange}
             disabled={loading}
@@ -503,7 +691,7 @@ const TestCaseTopForm = () => {
           </label>
           <select
             name="responseType"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.responseType}
             onChange={handleChange}
             disabled={loading}
@@ -521,7 +709,7 @@ const TestCaseTopForm = () => {
           </label>
           <select
             name="api"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.api}
             onChange={handleChange}
             disabled={loading || loadingApis}
@@ -541,7 +729,7 @@ const TestCaseTopForm = () => {
           </label>
           <select
             name="apiType"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.apiType}
             onChange={handleChange}
             disabled={loading || selectedApiDetails}
@@ -564,7 +752,7 @@ const TestCaseTopForm = () => {
           <input
             type="text"
             name="url"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.url}
             onChange={handleChange}
             placeholder="/api/endpoint"
@@ -580,7 +768,7 @@ const TestCaseTopForm = () => {
           <textarea
             name="description"
             rows="3"
-            className="border border-gray-300 rounded p-2 w-full"
+            className="border border-gray-300 rounded p-2 w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             value={formData.description}
             onChange={handleChange}
             disabled={loading}
@@ -592,7 +780,7 @@ const TestCaseTopForm = () => {
       <ParameterInputs />
 
       {/* File Uploads */}
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-2 gap-4 mt-6">
         {/* Request Template */}
         <div>
           <label className="block font-medium mb-2 text-sm">
@@ -609,7 +797,7 @@ const TestCaseTopForm = () => {
             />
             <label
               htmlFor="request-template"
-              className={`cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100 ${
+              className={`cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100 transition-colors ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
@@ -635,7 +823,7 @@ const TestCaseTopForm = () => {
                 </span>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] transition-colors"
                   onClick={() =>
                     setShowPreview({
                       type: "request",
@@ -667,7 +855,7 @@ const TestCaseTopForm = () => {
             />
             <label
               htmlFor="response-template"
-              className={`cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100 ${
+              className={`cursor-pointer border px-4 py-2 text-sm rounded bg-white hover:bg-gray-100 transition-colors ${
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
@@ -693,7 +881,7 @@ const TestCaseTopForm = () => {
                 </span>
                 <button
                   type="button"
-                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA]"
+                  className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] transition-colors"
                   onClick={() =>
                     setShowPreview({
                       type: "response",
@@ -724,19 +912,33 @@ const TestCaseTopForm = () => {
         <button
           type="button"
           onClick={handleCancel}
-          className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] 
-            ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+          className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
           disabled={loading}
         >
-          {loading ? "Saving..." : editMode ? "Update" : "Create"}
+          {testCaseSaved ? "Back to List" : "Cancel"}
         </button>
+        {!testCaseSaved && (
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] transition-colors flex items-center ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                <FiSave className="mr-2" />
+                {editMode ? "Update" : "Create"}
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
