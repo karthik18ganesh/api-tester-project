@@ -1,3 +1,4 @@
+// src/components/common/Sidebar.js - Updated with Project Check
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -16,9 +17,11 @@ import {
   FiFileText,
   FiChevronRight,
   FiTrello,
+  FiAlertTriangle,
 } from "react-icons/fi";
-import { FaBars, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaChevronUp, FaProjectDiagram } from "react-icons/fa";
 import Logo from "../../assets/Logo.svg";
+import { useProjectActivation } from "./ProjectActivationGuard";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,23 +30,7 @@ const Sidebar = () => {
   const [testExecutionOpen, setTestExecutionOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeProject, setActiveProject] = useState(() => {
-    const storedProject = localStorage.getItem("activeProject");
-    return storedProject ? JSON.parse(storedProject) : null;
-  });
-
-  // Listen for active project changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const storedProject = localStorage.getItem("activeProject");
-      if (storedProject) {
-        setActiveProject(JSON.parse(storedProject));
-      }
-    };
-    
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  const { activeProject, hasActiveProject } = useProjectActivation();
 
   useEffect(() => {
     // Auto-expand sections based on current route
@@ -63,17 +50,35 @@ const Sidebar = () => {
 
   const isActive = (route) => location.pathname === route;
 
+  // Check if navigation should be allowed
+  const canNavigate = (requiresProject = true) => {
+    if (!requiresProject) return true;
+    return hasActiveProject;
+  };
+
+  // Handle navigation with project check
+  const handleNavigation = (route, requiresProject = true) => {
+    if (canNavigate(requiresProject)) {
+      navigate(route);
+    } else {
+      // Show warning or redirect to project setup
+      navigate('/admin/project-setup');
+    }
+  };
+
   // Test Execution submenu items
   const testExecutionSubMenus = [
     {
       label: "Test Execution",
       icon: <FiPlayCircle />,
       route: "/test-execution",
+      requiresProject: true,
     },
     { 
       label: "Results", 
       icon: <FiBarChart2 />, 
-      route: "/test-results" 
+      route: "/test-results",
+      requiresProject: true,
     },
   ];
 
@@ -82,26 +87,31 @@ const Sidebar = () => {
       label: "API Repository",
       route: "/test-design/api-repository",
       icon: <FiDatabase />,
+      requiresProject: true,
     },
     {
       label: "Test Case",
       route: "/test-design/test-case",
       icon: <FiFileText />,
+      requiresProject: true,
     },
     {
       label: "Test Suite",
       route: "/test-design/test-suite",
       icon: <FiLayers />,
+      requiresProject: true,
     },
     {
       label: "Test Package",
       route: "/test-design/test-package",
       icon: <FiArchive />,
+      requiresProject: true,
     },
     {
       label: "Functions & Variables",
       route: "/test-design/functions-variables",
       icon: <FiCode />,
+      requiresProject: true,
     },
   ];
 
@@ -110,13 +120,20 @@ const Sidebar = () => {
       label: "Environment Setup",
       route: "/admin/environment-setup",
       icon: <FiGlobe />,
+      requiresProject: true,
     },
     {
       label: "Project Setup",
       route: "/admin/project-setup",
       icon: <FiFolder />,
+      requiresProject: false, // Project setup doesn't require active project
     },
-    { label: "User Settings", route: "/admin/user-settings", icon: <FiUser /> },
+    { 
+      label: "User Settings", 
+      route: "/admin/user-settings", 
+      icon: <FiUser />,
+      requiresProject: false,
+    },
   ];
 
   const MenuSection = ({ title, open, setOpen, items, icon }) => {
@@ -149,21 +166,31 @@ const Sidebar = () => {
           }`}
         >
           {!collapsed &&
-            items.map(({ label, route, icon }) => (
-              <div
-                key={label}
-                onClick={() => navigate(route)}
-                className={`flex items-center gap-3 pl-9 pr-3 py-2.5 my-0.5 rounded-md cursor-pointer transition-colors text-sm ${
-                  isActive(route)
-                    ? "bg-indigo-50 text-indigo-600 font-medium"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <div className="text-[14px]">{icon}</div>
-                <span>{label}</span>
-                {isActive(route) && <FiChevronRight className="ml-auto text-indigo-500" />}
-              </div>
-            ))}
+            items.map(({ label, route, icon, requiresProject = true }) => {
+              const canAccess = canNavigate(requiresProject);
+              const isActiveRoute = isActive(route);
+              
+              return (
+                <div
+                  key={label}
+                  onClick={() => handleNavigation(route, requiresProject)}
+                  className={`flex items-center gap-3 pl-9 pr-3 py-2.5 my-0.5 rounded-md cursor-pointer transition-colors text-sm ${
+                    isActiveRoute
+                      ? "bg-indigo-50 text-indigo-600 font-medium"
+                      : canAccess 
+                        ? "text-gray-700 hover:bg-gray-100"
+                        : "text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  <div className="text-[14px]">{icon}</div>
+                  <span className="flex-1">{label}</span>
+                  {!canAccess && requiresProject && (
+                    <FiAlertTriangle className="text-amber-500 h-3 w-3" title="Requires active project" />
+                  )}
+                  {isActiveRoute && canAccess && <FiChevronRight className="text-indigo-500" />}
+                </div>
+              );
+            })}
         </div>
       </div>
     );
@@ -198,41 +225,66 @@ const Sidebar = () => {
         </button>
       </div>
 
-      {/* Active Project (when sidebar is expanded) */}
-      {!collapsed && activeProject && (
-        <div className="px-4 py-3 border-b border-gray-100">
+      {/* Active Project Section */}
+      {!collapsed && (
+        <div className={`px-4 py-3 border-b border-gray-100 ${!hasActiveProject ? 'bg-amber-50' : ''}`}>
           <div className="flex flex-col">
-            <div className="text-xs text-gray-500 mb-1">ACTIVE PROJECT</div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-800 truncate">
-                {activeProject.name}
-              </span>
-              <span className="bg-indigo-100 text-indigo-800 text-xs py-0.5 px-1.5 rounded-full">
-                {activeProject.projectId}
-              </span>
+            <div className="text-xs text-gray-500 mb-1 flex items-center">
+              <FaProjectDiagram className="mr-1" />
+              ACTIVE PROJECT
             </div>
+            {hasActiveProject ? (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-800 truncate">
+                  {activeProject.name}
+                </span>
+                <span className="bg-indigo-100 text-indigo-800 text-xs py-0.5 px-1.5 rounded-full">
+                  {activeProject.projectId}
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <div className="flex items-center text-amber-700 mb-2">
+                  <FiAlertTriangle className="mr-1 h-3 w-3" />
+                  <span className="text-xs font-medium">No Active Project</span>
+                </div>
+                <button
+                  onClick={() => navigate('/admin/project-setup')}
+                  className="text-xs bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-700 transition-colors"
+                >
+                  Select Project
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Main Menu */}
       <div className="flex-1 overflow-y-auto px-2 pt-4 pb-6 text-sm text-gray-700">
-        {/* Dashboard (without section heading) */}
+        {/* Dashboard */}
         <div
-          onClick={() => navigate("/dashboard")}
+          onClick={() => handleNavigation("/dashboard", true)}
           className={`flex ${
             collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
           } gap-3 px-3 py-2.5 my-1 rounded-md cursor-pointer transition-all duration-200 ease-in-out ${
             isActive("/dashboard")
               ? "bg-indigo-50 text-indigo-600 font-medium"
-              : "text-gray-700 hover:bg-gray-100"
+              : canNavigate(true)
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
           }`}
         >
           <div className="text-[18px]"><FiGrid /></div>
           {!collapsed && (
             <div className="flex justify-between items-center flex-1">
               <span className="text-sm">Dashboard</span>
-              {isActive("/dashboard") && <FiChevronRight className="text-indigo-500" />}
+              <div className="flex items-center">
+                {!canNavigate(true) && (
+                  <FiAlertTriangle className="text-amber-500 h-3 w-3 mr-1" title="Requires active project" />
+                )}
+                {isActive("/dashboard") && canNavigate(true) && <FiChevronRight className="text-indigo-500" />}
+              </div>
             </div>
           )}
         </div>

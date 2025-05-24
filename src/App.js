@@ -1,4 +1,4 @@
-// Improved App.js with proper navigation for test execution and results
+// Updated App.js with Project Activation Guard
 
 import React from "react";
 import {
@@ -20,6 +20,8 @@ import Toast from "./components/common/Toast";
 import TestCase from "./features/TestCase/components/TestCase";
 import TestCaseDetails from "./features/TestCase/components/TestCaseDetails";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import ProjectActivationGuard from "./components/common/ProjectActivationGuard";
+import ProjectProtectedRoute from "./components/common/ProjectProtectedRoute";
 import APIRepository from "./features/APIRepository/components/APIRepository";
 import APIRepositoryDetails from "./features/APIRepository/components/APIRepositoryDetails";
 import TestExecution from "./features/TestExecution/components/TestExecution";
@@ -27,7 +29,6 @@ import TestCaseDetailsView from "./features/TestExecution/components/TestCaseDet
 import TestResults from "./features/TestResults/components/TestResults";
 import ExecutionDetailsView from "./features/TestResults/components/ExecutionDetailsView";
 
-// Enhanced App component with updated routes for test execution flow
 const EnhancedApp = () => {
   return (
     <Router>
@@ -36,54 +37,194 @@ const EnhancedApp = () => {
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          {/* Admin Settings */}
+          {/* Dashboard - requires active project */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <Dashboard />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Admin Settings - Project Setup doesn't require active project */}
+          <Route
+            path="/admin/project-setup"
+            element={
+              <ProtectedRoute>
+                <ProjectSetup />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Environment Setup - requires active project */}
           <Route
             path="/admin/environment-setup"
-            element={<ProtectedRoute><EnvironmentSetup /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <EnvironmentSetup />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            }
           />
-          <Route path="/admin/project-setup" element={<ProtectedRoute><ProjectSetup /></ProtectedRoute>} />
-          {/* Test Design */}
-          <Route path="/test-design/api-repository" element={<ProtectedRoute><APIRepository /></ProtectedRoute>} />
+          
+          {/* Test Design - all require active project */}
+          <Route 
+            path="/test-design/api-repository" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <APIRepository />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           <Route
             path="/test-design/api-repository/create"
-            element={<ProtectedRoute><APIRepositoryDetails /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <APIRepositoryDetails />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            }
           />
-          <Route path="/test-design/test-suite" element={<ProtectedRoute><TestSuite /></ProtectedRoute>} />
+          <Route 
+            path="/test-design/test-suite" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestSuite />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           <Route
             path="/test-design/test-suite/create"
-            element={<ProtectedRoute><TestSuiteDetails /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestSuiteDetails />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            }
           />
-          <Route path="/test-design/test-package" element={<ProtectedRoute><TestPackage /></ProtectedRoute>} />
+          <Route 
+            path="/test-design/test-package" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestPackage />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           <Route
             path="/test-design/test-package/create"
-            element={<ProtectedRoute><TestPackageDetails /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestPackageDetails />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            }
           />
-          <Route path="/test-design/test-case" element={<ProtectedRoute><TestCase /></ProtectedRoute>} />
+          <Route 
+            path="/test-design/test-case" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestCase />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           <Route
             path="/test-design/test-case/create"
-            element={<ProtectedRoute><TestCaseDetails /></ProtectedRoute>}
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestCaseDetails />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            }
           />
           
-          {/* Test Execution & Results - Enhanced Routes */}
-          <Route path="/test-execution" element={<ProtectedRoute><TestExecution /></ProtectedRoute>} />
+          {/* Test Execution & Results - require active project */}
+          <Route 
+            path="/test-execution" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestExecution />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* Execution Results routes */}
-          <Route path="/test-execution/results/:executionId" element={
-            <ProtectedRoute>
-              <ExecutionDetailsView />
-            </ProtectedRoute>
-          } />
+          <Route 
+            path="/test-execution/results/:executionId" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <ExecutionDetailsView />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* Specific Test Case Details */}
-          <Route path="/test-execution/results/:executionId/:testCaseId" element={
-            <ProtectedRoute>
-              <TestCaseDetailsView />
-            </ProtectedRoute>
-          } />
+          <Route 
+            path="/test-execution/results/:executionId/:testCaseId" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestCaseDetailsView />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
           
-          {/* Test Results Dashboard */}
-          <Route path="/test-results" element={<ProtectedRoute><TestResults /></ProtectedRoute>} />
+          <Route 
+            path="/test-results" 
+            element={
+              <ProtectedRoute>
+                <ProjectActivationGuard>
+                  <ProjectProtectedRoute>
+                    <TestResults />
+                  </ProjectProtectedRoute>
+                </ProjectActivationGuard>
+              </ProtectedRoute>
+            } 
+          />
         </Route>
       </Routes>
     </Router>

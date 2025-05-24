@@ -1,3 +1,4 @@
+// src/features/Login/components/Login.js - Updated with Project Check
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -53,7 +54,17 @@ const Login = () => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("userId", data.userId);
         toast.success(message);
-        navigate("/dashboard");
+        
+        // Check if user has an active project
+        const activeProject = localStorage.getItem("activeProject");
+        
+        if (activeProject) {
+          // User has an active project, navigate to dashboard
+          navigate("/dashboard");
+        } else {
+          // No active project, navigate to project setup or dashboard (which will show project selection)
+          navigate("/dashboard"); // The ProjectActivationGuard will handle the project selection modal
+        }
       } else {
         setError(message);
         toast.error(message);
