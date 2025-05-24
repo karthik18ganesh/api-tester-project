@@ -1,3 +1,4 @@
+// src/utils/api.js
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 const API_PREFIX = '/api/v1/apirepos';
 
@@ -125,5 +126,45 @@ export const apiRepository = {
     };
 
     return api(`${API_PREFIX}/executeAPI`, "POST", requestBody);
+  }
+};
+
+// Test Execution specific endpoints
+export const testExecution = {
+  // Execute test package
+  executePackage: async (packageId, executedBy) => {
+    const requestBody = {
+      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+    };
+    
+    return api(`/api/v1/test-execution/package/${packageId}`, "POST", requestBody);
+  },
+
+  // Execute test suite
+  executeSuite: async (suiteId, executedBy) => {
+    const requestBody = {
+      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+    };
+    
+    return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
+  },
+
+  // Execute individual test case
+  executeTestCase: async (testCaseId, executedBy) => {
+    const requestBody = {
+      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+    };
+    
+    return api(`/api/v1/test-execution/testcase/${testCaseId}`, "POST", requestBody);
+  },
+
+  // Get execution details by execution ID
+  getExecutionDetails: async (executionId) => {
+    return api(`/api/v1/test-execution/${executionId}`, "GET");
+  },
+
+  // Get execution history/results
+  getExecutionHistory: async (pageNo = 0, limit = 10, sortBy = "executionDate", sortDir = "DESC") => {
+    return api(`/api/v1/test-execution/history?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
   }
 };

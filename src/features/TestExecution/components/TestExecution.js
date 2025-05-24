@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlay, FaStop, FaChevronDown, FaCog, FaExclamationTriangle, FaSync } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api } from '../../../utils/api';
+import { api, testExecution } from '../../../utils/api';
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const ModernTestExecution = () => {
   const [testHierarchy, setTestHierarchy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [executionDetails, setExecutionDetails] = useState({});
 
   // Fetch the hierarchy from the API
   const fetchHierarchy = async () => {
@@ -36,13 +38,10 @@ const ModernTestExecution = () => {
       // Handle different response formats
       let data;
       if (Array.isArray(response)) {
-        // Direct array response
         data = response;
       } else if (response && response.result && response.result.data) {
-        // Nested response format
         data = response.result.data;
       } else if (response && Array.isArray(response.data)) {
-        // Response with data property
         data = response.data;
       } else {
         console.warn('Unexpected API response format:', response);
@@ -50,7 +49,6 @@ const ModernTestExecution = () => {
         return;
       }
       
-      // Ensure data is an array
       if (!Array.isArray(data)) {
         console.warn('Expected array but received:', data);
         setError('Invalid data format - expected array of packages');
@@ -92,6 +90,127 @@ const ModernTestExecution = () => {
     }
   };
 
+  // Fetch execution details for all execution IDs
+  const fetchExecutionDetails = async (executionIds) => {
+    const details = {};
+    
+    try {
+      const promises = executionIds.map(async (executionId) => {
+        try {
+          const response = await testExecution.getExecutionDetails(executionId);
+          return { executionId, data: response };
+        } catch (error) {
+          console.error(`Error fetching details for execution ${executionId}:`, error);
+          return { executionId, error: error.message };
+        }
+      });
+      
+      const results = await Promise.all(promises);
+      
+      results.forEach(({ executionId, data, error }) => {
+        if (data) {
+          details[executionId] = data;
+        } else {
+          details[executionId] = { error };
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error fetching execution details:', error);
+    }
+    
+    return details;
+  };
+
+  // Transform API execution details to component format
+  const transformExecutionDetails = (executionIds, details) => {
+    const results = [];
+    let totalPassed = 0;
+    let totalFailed = 0;
+
+    executionIds.forEach((executionId, index) => {
+      const detail = details[executionId];
+      
+      if (detail && !detail.error) {
+        const testCase = {
+          id: `tc-${executionId}`,
+          name: detail.testCase?.name || `Test Case ${index + 1}`,
+          status: detail.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+          duration: `${detail.executionTimeMs}ms`,
+          request: {
+            method: detail.httpMethod,
+            url: detail.url,
+            headers: detail.requestHeaders || {},
+            body: detail.requestBody
+          },
+          response: {
+            status: detail.statusCode,
+            data: detail.responseBody,
+            headers: {}
+          },
+          assertions: [
+            {
+              id: 1,
+              description: `Status code validation`,
+              status: detail.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              ...(detail.executionStatus !== 'PASSED' && { 
+                error: `Expected successful response but got status ${detail.statusCode}` 
+              })
+            }
+          ],
+          executionId: executionId,
+          executedBy: detail.executedBy,
+          executionDate: detail.executionDate
+        };
+        
+        results.push(testCase);
+        
+        if (detail.executionStatus === 'PASSED') {
+          totalPassed++;
+        } else {
+          totalFailed++;
+        }
+      } else {
+        // Handle error case
+        const testCase = {
+          id: `tc-${executionId}`,
+          name: `Test Case ${index + 1} (Error)`,
+          status: 'Failed',
+          duration: '0ms',
+          request: {
+            method: 'UNKNOWN',
+            url: 'Error fetching details',
+            headers: {},
+            body: {}
+          },
+          response: {
+            status: 0,
+            data: { error: detail?.error || 'Failed to fetch execution details' },
+            headers: {}
+          },
+          assertions: [
+            {
+              id: 1,
+              description: 'Execution details fetch',
+              status: 'Failed',
+              error: detail?.error || 'Failed to fetch execution details'
+            }
+          ],
+          executionId: executionId
+        };
+        
+        results.push(testCase);
+        totalFailed++;
+      }
+    });
+
+    return {
+      results,
+      passedCount: totalPassed,
+      failedCount: totalFailed
+    };
+  };
+
   useEffect(() => {
     fetchHierarchy();
   }, []);
@@ -116,115 +235,121 @@ const ModernTestExecution = () => {
     setSelectedItem(item);
   };
 
-  const handleRun = () => {
+  const handleRun = async () => {
     if (!selectedItem) return;
     
     setExecuting(true);
     setExecutionResult(null);
 
-    // Simulate API call for test execution
-    setTimeout(() => {
-      setExecuting(false);
-      const executionId = `exec-${Date.now().toString().substring(6)}`;
+    try {
+      let executionResponse;
+      const executedBy = localStorage.getItem('userId') || 'current.user';
+
+      // Call appropriate execution API based on selected item type
+      if (selectedItem.type === 'package') {
+        executionResponse = await testExecution.executePackage(selectedItem.packageId, executedBy);
+      } else if (selectedItem.type === 'suite') {
+        executionResponse = await testExecution.executeSuite(selectedItem.suiteId, executedBy);
+      } else if (selectedItem.type === 'case') {
+        executionResponse = await testExecution.executeTestCase(selectedItem.caseId, executedBy);
+      } else {
+        throw new Error('Invalid selection type for execution');
+      }
+
+      console.log('Execution response:', executionResponse);
+
+      // Extract execution IDs from response
+      const executionIds = executionResponse.executionId || [];
       
-      // Create mock execution result based on selected item
+      if (executionIds.length === 0) {
+        throw new Error('No execution IDs returned from the API');
+      }
+
+      // Fetch detailed execution information for each execution ID
+      const details = await fetchExecutionDetails(executionIds);
+      setExecutionDetails(details);
+
+      // Transform the execution details into the expected format
+      const { results, passedCount, failedCount } = transformExecutionDetails(executionIds, details);
+
+      // Create execution result object
+      const executionId = `exec-${Date.now()}`;
       const newResult = {
         id: executionId,
-        status: Math.random() > 0.7 ? 'Failed' : 'Passed',
+        status: failedCount > 0 ? 'Failed' : 'Passed',
         instanceId: executionId,
-        executedBy: 'current.user',
+        executedBy: executedBy,
         environment: settings.environment,
         executedAt: new Date().toLocaleString(),
-        passedCount: Math.floor(Math.random() * 5) + 1,
-        failedCount: Math.floor(Math.random() * 2),
-        results: [
-          {
-            id: 'tc-001',
-            name: 'Valid Login Test',
-            status: 'Passed',
-            duration: '0.84s',
-            request: {
-              method: 'POST',
-              url: 'https://api.example.com/auth/login',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer token123'
-              }
-            },
-            response: {
-              status: 200,
-              data: {
-                success: true,
-                token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-                user: {
-                  id: 1,
-                  username: 'testuser'
-                }
-              }
-            },
-            assertions: [
-              { id: 1, description: 'Status code is 200', status: 'Passed' },
-              { id: 2, description: 'Response has token property', status: 'Passed' },
-              { id: 3, description: 'Response time is less than 1000ms', status: 'Passed' }
-            ]
-          },
-          {
-            id: 'tc-002',
-            name: 'Invalid Credentials Test',
-            status: 'Passed',
-            duration: '0.92s',
-            request: {
-              method: 'POST',
-              url: 'https://api.example.com/auth/login',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            },
-            response: {
-              status: 401,
-              data: {
-                success: false,
-                message: 'Invalid credentials'
-              }
-            },
-            assertions: [
-              { id: 1, description: 'Status code is 401', status: 'Passed' },
-              { id: 2, description: 'Response contains error message', status: 'Passed' }
-            ]
-          },
-          {
-            id: 'tc-003',
-            name: 'Password Reset Test',
-            status: Math.random() > 0.5 ? 'Passed' : 'Failed',
-            duration: '1.15s',
-            request: {
-              method: 'POST',
-              url: 'https://api.example.com/auth/reset-password',
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            },
-            response: {
-              status: 200,
-              data: {
-                success: true,
-                message: 'Password reset email sent'
-              }
-            },
-            assertions: [
-              { id: 1, description: 'Status code is 200', status: 'Passed' },
-              { id: 2, description: 'Response confirms email sent', status: 'Passed' }
-            ]
-          }
-        ]
+        passedCount: passedCount,
+        failedCount: failedCount,
+        totalTests: executionResponse.totalTests || results.length,
+        results: results,
+        rawExecutionIds: executionIds,
+        selectedItem: selectedItem
       };
       
       setExecutionResult(newResult);
       
-      // Store in global object for navigation
+      // Store execution data for navigation
       window.mockExecutionData = window.mockExecutionData || {};
       window.mockExecutionData[executionId] = newResult;
-    }, 3000);
+
+      // Show success toast
+      toast.success(
+        `Execution completed: ${passedCount} passed, ${failedCount} failed`
+      );
+
+    } catch (error) {
+      console.error('Execution error:', error);
+      toast.error(`Execution failed: ${error.message}`);
+      
+      // Create error result
+      const executionId = `exec-${Date.now()}-error`;
+      const errorResult = {
+        id: executionId,
+        status: 'Failed',
+        instanceId: executionId,
+        executedBy: localStorage.getItem('userId') || 'current.user',
+        environment: settings.environment,
+        executedAt: new Date().toLocaleString(),
+        passedCount: 0,
+        failedCount: 1,
+        totalTests: 1,
+        results: [
+          {
+            id: 'error-case',
+            name: 'Execution Error',
+            status: 'Failed',
+            duration: '0ms',
+            request: {
+              method: 'UNKNOWN',
+              url: selectedItem?.name || 'Unknown',
+              headers: {},
+              body: {}
+            },
+            response: {
+              status: 0,
+              data: { error: error.message },
+              headers: {}
+            },
+            assertions: [
+              {
+                id: 1,
+                description: 'Execution attempt',
+                status: 'Failed',
+                error: error.message
+              }
+            ]
+          }
+        ],
+        error: error.message
+      };
+      
+      setExecutionResult(errorResult);
+    } finally {
+      setExecuting(false);
+    }
   };
 
   const handleViewDetails = (testCaseId) => {

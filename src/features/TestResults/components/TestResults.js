@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FaChevronDown, FaFilter, FaDownload, FaCalendarAlt, FaSync, FaSearch, FaEye, FaTimes } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import TestResultsTable from './TestResultsTable';
 import ExecutionDetailsView from './ExecutionDetailsView';
 import TestCaseDetailsView from '../../TestExecution/components/TestCaseDetailsView';
 import Breadcrumb from '../../../components/common/Breadcrumb';
+import { testExecution } from '../../../utils/api';
+
 const ModernTestResults = () => {
   const [selectedExecution, setSelectedExecution] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -20,100 +23,157 @@ const ModernTestResults = () => {
     status: 'all',
     executedBy: '',
   });
+  const [executionHistory, setExecutionHistory] = useState([]);
+  const [pagination, setPagination] = useState({
+    pageNo: 0,
+    pageSize: 10,
+    totalElements: 0,
+    totalPages: 0
+  });
 
-  // Example execution history data with more entries and dates
-  const executionHistory = [
-    {
-      id: 'exec-202505091',
-      status: 'Passed',
-      passedFailed: '5/0',
-      executedAt: 'May 9, 2025 - 11:15 AM',
-      executedBy: 'john.smith',
-      date: '2025-05-09'
-    },
-    {
-      id: 'exec-202505092',
-      status: 'Passed',
-      passedFailed: '5/0',
-      executedAt: 'May 9, 2025 - 10:30 AM',
-      executedBy: 'john.smith',
-      date: '2025-05-09'
-    },
-    {
-      id: 'exec-202505093',
-      status: 'Failed',
-      passedFailed: '3/2',
-      executedAt: 'May 8, 2025 - 04:45 PM',
-      executedBy: 'jane.doe',
-      date: '2025-05-08'
-    },
-    {
-      id: 'exec-202505094',
-      status: 'Failed',
-      passedFailed: '2/3',
-      executedAt: 'May 8, 2025 - 02:30 PM',
-      executedBy: 'jane.doe',
-      date: '2025-05-08'
-    },
-    {
-      id: 'exec-202505095',
-      status: 'Failed',
-      passedFailed: '0/5',
-      executedAt: 'May 7, 2025 - 09:15 AM',
-      executedBy: 'admin.user',
-      date: '2025-05-07'
-    },
-    {
-      id: 'exec-202505096',
-      status: 'Passed',
-      passedFailed: '8/0',
-      executedAt: 'May 6, 2025 - 03:20 PM',
-      executedBy: 'test.engineer',
-      date: '2025-05-06'
-    },
-    {
-      id: 'exec-202505097',
-      status: 'Failed',
-      passedFailed: '4/4',
-      executedAt: 'May 5, 2025 - 01:10 PM',
-      executedBy: 'john.smith',
-      date: '2025-05-05'
-    },
-    {
-      id: 'exec-202505098',
-      status: 'Passed',
-      passedFailed: '6/0',
-      executedAt: 'May 4, 2025 - 11:45 AM',
-      executedBy: 'jane.doe',
-      date: '2025-05-04'
-    },
-    {
-      id: 'exec-202505099',
-      status: 'Failed',
-      passedFailed: '1/7',
-      executedAt: 'May 3, 2025 - 09:30 AM',
-      executedBy: 'test.engineer',
-      date: '2025-05-03'
-    },
-    {
-      id: 'exec-202505100',
-      status: 'Passed',
-      passedFailed: '10/0',
-      executedAt: 'May 2, 2025 - 02:15 PM',
-      executedBy: 'admin.user',
-      date: '2025-05-02'
+  // Fetch execution history from API
+  const fetchExecutionHistory = async (pageNo = 0, additionalFilters = {}) => {
+    setLoading(true);
+    try {
+      const response = await testExecution.getExecutionHistory(
+        pageNo, 
+        pagination.pageSize, 
+        'executionDate', 
+        'DESC'
+      );
+      
+      console.log('Execution history response:', response);
+      
+      // Handle different response formats
+      let data = [];
+      let totalElements = 0;
+      let totalPages = 0;
+      
+      if (response && Array.isArray(response)) {
+        // Direct array response
+        data = response;
+        totalElements = response.length;
+        totalPages = Math.ceil(totalElements / pagination.pageSize);
+      } else if (response && response.result && response.result.data) {
+        // Nested response format
+        if (Array.isArray(response.result.data)) {
+          data = response.result.data;
+          totalElements = data.length;
+          totalPages = Math.ceil(totalElements / pagination.pageSize);
+        } else if (response.result.data.content) {
+          // Paginated response
+          data = response.result.data.content;
+          totalElements = response.result.data.totalElements || 0;
+          totalPages = response.result.data.totalPages || 0;
+        }
+      } else if (response && response.data) {
+        // Response with data property
+        if (Array.isArray(response.data)) {
+          data = response.data;
+          totalElements = data.length;
+          totalPages = Math.ceil(totalElements / pagination.pageSize);
+        } else if (response.data.content) {
+          data = response.data.content;
+          totalElements = response.data.totalElements || 0;
+          totalPages = response.data.totalPages || 0;
+        }
+      }
+      
+      // Transform API data to the expected format
+      const formattedHistory = data.map(execution => ({
+        id: `exec-${execution.executionId}`,
+        status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+        passedFailed: execution.executionStatus === 'PASSED' ? '1/0' : '0/1',
+        executedAt: formatExecutionDate(execution.executionDate),
+        executedBy: execution.executedBy || 'Unknown',
+        date: execution.executionDate ? execution.executionDate.split(' ')[0] : new Date().toISOString().split('T')[0],
+        rawData: execution // Store raw data for detailed view
+      }));
+      
+      setExecutionHistory(formattedHistory);
+      setPagination(prev => ({
+        ...prev,
+        pageNo: pageNo,
+        totalElements: totalElements,
+        totalPages: totalPages
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching execution history:', error);
+      toast.error('Failed to load execution history');
+      
+      // Fallback to mock data if API fails
+      const fallbackData = generateMockExecutionHistory();
+      setExecutionHistory(fallbackData);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Format execution date for display
+  const formatExecutionDate = (dateString) => {
+    if (!dateString) return 'Unknown';
+    
+    try {
+      // Handle different date formats
+      const date = new Date(dateString.replace(' ', 'T'));
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return dateString; // Return original if parsing fails
+    }
+  };
+
+  // Generate mock data as fallback
+  const generateMockExecutionHistory = () => {
+    return [
+      {
+        id: 'exec-202505091',
+        status: 'Passed',
+        passedFailed: '5/0',
+        executedAt: 'May 9, 2025 - 11:15 AM',
+        executedBy: 'john.smith',
+        date: '2025-05-09'
+      },
+      {
+        id: 'exec-202505092',
+        status: 'Passed',
+        passedFailed: '5/0',
+        executedAt: 'May 9, 2025 - 10:30 AM',
+        executedBy: 'john.smith',
+        date: '2025-05-09'
+      },
+      {
+        id: 'exec-202505093',
+        status: 'Failed',
+        passedFailed: '3/2',
+        executedAt: 'May 8, 2025 - 04:45 PM',
+        executedBy: 'jane.doe',
+        date: '2025-05-08'
+      }
+    ];
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchExecutionHistory();
+  }, []);
 
   // Helper function to check if a date falls within the selected range
   const isDateInRange = (executionDate, range) => {
     const execDate = new Date(executionDate);
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    today.setHours(23, 59, 59, 999);
     
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0); // Start of yesterday
+    yesterday.setHours(0, 0, 0, 0);
     
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -140,7 +200,7 @@ const ModernTestResults = () => {
         if (!customDateRange.startDate || !customDateRange.endDate) return true;
         const startDate = new Date(customDateRange.startDate);
         const endDate = new Date(customDateRange.endDate);
-        endDate.setHours(23, 59, 59, 999); // End of the selected end date
+        endDate.setHours(23, 59, 59, 999);
         return execDate >= startDate && execDate <= endDate;
       default:
         return true;
@@ -165,102 +225,100 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Mock execution data with detailed results
-  const executionData = {
-    'exec-202505091': {
-      id: 'exec-202505091',
-      status: 'Passed',
-      instanceId: 'exec-202505091',
-      executedBy: 'john.smith',
-      environment: 'Production',
-      executedAt: 'May 9, 2025 - 11:15 AM',
-      passedCount: 5,
-      failedCount: 0,
-      results: [
-        {
-          id: 'tc-001',
-          name: 'Valid Login Test',
-          status: 'Passed',
-          duration: '0.84s',
-        },
-        {
-          id: 'tc-002',
-          name: 'Invalid Credentials Test',
-          status: 'Passed',
-          duration: '0.92s',
-        },
-        {
-          id: 'tc-003',
-          name: 'Password Reset Test',
-          status: 'Passed',
-          duration: '1.15s',
-        },
-        {
-          id: 'tc-004',
-          name: 'Admin Access Test',
-          status: 'Passed',
-          duration: '0.76s',
-        },
-        {
-          id: 'tc-005',
-          name: 'User Permissions Test',
-          status: 'Passed',
-          duration: '0.88s',
-        }
-      ]
-    },
-    'exec-202505093': {
-      id: 'exec-202505093',
-      status: 'Failed',
-      instanceId: 'exec-202505093',
-      executedBy: 'jane.doe',
-      environment: 'Staging',
-      executedAt: 'May 8, 2025 - 04:45 PM',
-      passedCount: 3,
-      failedCount: 2,
-      results: [
-        {
-          id: 'tc-001',
-          name: 'Valid Login Test',
-          status: 'Passed',
-          duration: '0.86s',
-        },
-        {
-          id: 'tc-002',
-          name: 'Invalid Credentials Test',
-          status: 'Passed',
-          duration: '0.90s',
-        },
-        {
-          id: 'tc-003',
-          name: 'Password Reset Test',
-          status: 'Failed',
-          duration: '1.35s',
-        },
-        {
-          id: 'tc-004',
-          name: 'Admin Access Test',
-          status: 'Passed',
-          duration: '0.79s',
-        },
-        {
-          id: 'tc-005',
-          name: 'User Permissions Test',
-          status: 'Failed',
-          duration: '1.05s',
-        }
-      ]
+  // Mock execution data for detailed views
+  const createDetailedExecutionData = (execution) => {
+    const isFromAPI = execution.rawData;
+    
+    if (isFromAPI) {
+      // Use real API data
+      const rawData = execution.rawData;
+      return {
+        id: execution.id,
+        status: execution.status,
+        instanceId: execution.id,
+        executedBy: rawData.executedBy,
+        environment: 'API Environment', // This might need to come from API
+        executedAt: execution.executedAt,
+        passedCount: execution.status === 'Passed' ? 1 : 0,
+        failedCount: execution.status === 'Failed' ? 1 : 0,
+        results: [
+          {
+            id: `tc-${rawData.executionId}`,
+            name: rawData.testCase?.name || 'API Test Case',
+            status: execution.status,
+            duration: `${rawData.executionTimeMs || 0}ms`,
+            request: {
+              method: rawData.httpMethod,
+              url: rawData.url,
+              headers: rawData.requestHeaders || {},
+              body: rawData.requestBody
+            },
+            response: {
+              status: rawData.statusCode,
+              data: rawData.responseBody,
+              headers: {}
+            },
+            assertions: [
+              {
+                id: 1,
+                description: 'API Response Validation',
+                status: execution.status,
+                ...(execution.status === 'Failed' && {
+                  error: `Request failed with status ${rawData.statusCode}`
+                })
+              }
+            ]
+          }
+        ]
+      };
+    } else {
+      // Use mock data structure for fallback
+      return window.mockExecutionData?.[execution.id] || {
+        id: execution.id,
+        status: execution.status,
+        instanceId: execution.id,
+        executedBy: execution.executedBy,
+        environment: 'Mock Environment',
+        executedAt: execution.executedAt,
+        passedCount: parseInt(execution.passedFailed.split('/')[0]) || 0,
+        failedCount: parseInt(execution.passedFailed.split('/')[1]) || 0,
+        results: []
+      };
     }
   };
 
-  const handleViewExecution = (executionId) => {
+  const handleViewExecution = async (executionId) => {
     setLoading(true);
-    // Simulate API fetch delay
-    setTimeout(() => {
-      setSelectedExecution(executionData[executionId] || executionHistory.find(e => e.id === executionId));
-      setViewMode('execution'); // Set view mode to execution
+    
+    try {
+      // Find the execution in our history
+      const execution = executionHistory.find(e => e.id === executionId);
+      
+      if (!execution) {
+        toast.error('Execution not found');
+        return;
+      }
+
+      // If we have raw API data, fetch additional details if needed
+      if (execution.rawData) {
+        try {
+          const detailedResponse = await testExecution.getExecutionDetails(execution.rawData.executionId);
+          execution.rawData = { ...execution.rawData, ...detailedResponse };
+        } catch (error) {
+          console.warn('Could not fetch additional execution details:', error);
+        }
+      }
+
+      const detailedExecution = createDetailedExecutionData(execution);
+      setSelectedExecution(detailedExecution);
+      setViewMode('execution');
+      
+    } catch (error) {
+      console.error('Error loading execution details:', error);
+      toast.error('Failed to load execution details');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const handleViewTestCase = (testCaseId) => {
@@ -301,11 +359,7 @@ const ModernTestResults = () => {
   };
 
   const handleRefresh = () => {
-    setLoading(true);
-    // Simulate refresh delay
-    setTimeout(() => {
-      setLoading(false);
-    }, 800);
+    fetchExecutionHistory(pagination.pageNo);
   };
 
   const handleFilterChange = (name, value) => {
@@ -681,6 +735,8 @@ const ModernTestResults = () => {
           totalResults={filteredResults.length}
           onViewExecution={handleViewExecution}
           onFilter={(status) => handleFilterChange('status', status)}
+          currentPage={pagination.pageNo + 1}
+          pageSize={pagination.pageSize}
         />
       )}
     </div>

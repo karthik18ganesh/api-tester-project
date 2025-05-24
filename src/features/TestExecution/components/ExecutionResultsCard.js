@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { FaCheck, FaTimes, FaFileAlt, FaClock, FaUser, FaServer, FaCalendarAlt, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaFileAlt, FaClock, FaUser, FaServer, FaCalendarAlt, FaExternalLinkAlt, FaLayerGroup, FaVial } from 'react-icons/fa';
 
 const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllResults }) => {
   if (!results && !inProgress) {
@@ -22,16 +21,33 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
     executedAt: '-',
     passedCount: 0,
     failedCount: 0,
+    totalTests: 0,
     results: []
   };
+
+  // Calculate additional statistics
+  const totalTests = executionInfo.totalTests || executionInfo.results.length;
+  const successRate = totalTests > 0 ? Math.round((executionInfo.passedCount / totalTests) * 100) : 0;
+  const avgDuration = executionInfo.results.length > 0 
+    ? Math.round(executionInfo.results.reduce((sum, result) => {
+        const duration = parseFloat(result.duration?.replace('ms', '') || '0');
+        return sum + duration;
+      }, 0) / executionInfo.results.length)
+    : 0;
 
   return (
     <div className="border rounded-md p-5 h-full overflow-auto bg-white shadow-sm">
       <div className="mb-6">
         <div className="flex justify-between items-center mb-5">
           <h2 className="font-semibold text-lg text-gray-800">Execution Details</h2>
-          <div className={`px-3 py-1 rounded-md text-white text-sm font-medium shadow-sm ${inProgress ? 'bg-yellow-500' : results?.failedCount > 0 ? 'bg-red-500' : 'bg-green-500'}`}>
-            {inProgress ? 'In Progress' : results?.failedCount > 0 ? 'Failed' : 'Passed'}
+          <div className={`px-3 py-1 rounded-md text-white text-sm font-medium shadow-sm ${
+            inProgress 
+              ? 'bg-yellow-500' 
+              : executionInfo.failedCount > 0 
+                ? 'bg-red-500' 
+                : 'bg-green-500'
+          }`}>
+            {inProgress ? 'In Progress' : executionInfo.failedCount > 0 ? 'Failed' : 'Passed'}
           </div>
         </div>
         
@@ -66,24 +82,82 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
           </div>
         </div>
 
-        <div className="bg-indigo-50 rounded-lg p-4 mb-6 flex justify-around">
-          <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">Total Tests</div>
-            <div className="text-2xl font-bold text-indigo-700">
-              {executionInfo.passedCount + executionInfo.failedCount}
+        {/* Statistics Grid */}
+        <div className="bg-indigo-50 rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">Total Tests</div>
+              <div className="text-2xl font-bold text-indigo-700">
+                {totalTests}
+              </div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">Passed</div>
+              <div className="text-2xl font-bold text-green-600">{executionInfo.passedCount}</div>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">Failed</div>
+              <div className="text-2xl font-bold text-red-600">{executionInfo.failedCount}</div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">Success Rate</div>
+              <div className={`text-2xl font-bold ${
+                successRate >= 80 ? 'text-green-600' : 
+                successRate >= 50 ? 'text-yellow-600' : 'text-red-600'
+              }`}>
+                {successRate}%
+              </div>
             </div>
           </div>
-          
-          <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">Passed</div>
-            <div className="text-2xl font-bold text-green-600">{executionInfo.passedCount}</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-xs text-gray-500 mb-1">Failed</div>
-            <div className="text-2xl font-bold text-red-600">{executionInfo.failedCount}</div>
-          </div>
+
+          {/* Progress Bar */}
+          {totalTests > 0 && (
+            <div className="mt-4">
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Progress</span>
+                <span>{executionInfo.passedCount + executionInfo.failedCount} / {totalTests}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="flex h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-green-500 transition-all duration-500"
+                    style={{ width: `${(executionInfo.passedCount / totalTests) * 100}%` }}
+                  ></div>
+                  <div 
+                    className="bg-red-500 transition-all duration-500"
+                    style={{ width: `${(executionInfo.failedCount / totalTests) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Additional Statistics */}
+        {!inProgress && executionInfo.results.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+              <div className="flex items-center text-xs text-blue-600 mb-1">
+                <FaClock className="mr-1" /> Avg Duration
+              </div>
+              <div className="font-medium text-sm text-blue-700">{avgDuration}ms</div>
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+              <div className="flex items-center text-xs text-purple-600 mb-1">
+                <FaLayerGroup className="mr-1" /> Test Type
+              </div>
+              <div className="font-medium text-sm text-purple-700">
+                {executionInfo.selectedItem?.type === 'package' ? 'Package' :
+                 executionInfo.selectedItem?.type === 'suite' ? 'Suite' :
+                 executionInfo.selectedItem?.type === 'case' ? 'Test Case' : 'Mixed'}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div>
@@ -109,7 +183,7 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
               <p className="text-gray-400 text-xs mt-1">This may take a few moments</p>
             </div>
           ) : results?.results.length > 0 ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
               {results.results.map((result) => (
                 <div 
                   key={result.id}
@@ -118,9 +192,31 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
                   <div className="flex items-center justify-between">
                     <div className="flex-grow">
                       <div className="font-medium">{result.name}</div>
-                      <div className="flex items-center text-sm text-gray-500 mt-1">
-                        <FaClock className="mr-1 h-3 w-3" /> {result.duration}
+                      <div className="flex items-center text-sm text-gray-500 mt-1 space-x-3">
+                        <div className="flex items-center">
+                          <FaClock className="mr-1 h-3 w-3" /> 
+                          {result.duration}
+                        </div>
+                        {result.executedBy && (
+                          <div className="flex items-center">
+                            <FaUser className="mr-1 h-3 w-3" /> 
+                            {result.executedBy}
+                          </div>
+                        )}
+                        {result.request?.method && (
+                          <div className="flex items-center">
+                            <FaVial className="mr-1 h-3 w-3" /> 
+                            {result.request.method}
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Show execution details */}
+                      {result.executionDate && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          Executed: {result.executionDate}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-3 ${
@@ -143,11 +239,25 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Show failed assertions count */}
+                  {result.assertions && result.status === 'Failed' && (
+                    <div className="mt-2 text-xs text-red-600">
+                      {result.assertions.filter(a => a.status === 'Failed').length} assertion(s) failed
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+          ) : results?.error ? (
+            <div className="p-6 text-center text-red-600">
+              <FaTimes className="h-8 w-8 mx-auto mb-2" />
+              <div className="font-medium">Execution Error</div>
+              <div className="text-sm mt-1">{results.error}</div>
+            </div>
           ) : (
             <div className="p-6 text-center text-gray-500">
+              <FaVial className="h-8 w-8 mx-auto mb-2" />
               No test results available
             </div>
           )}

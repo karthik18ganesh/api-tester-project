@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaCheck, FaTimes, FaChevronLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 import Breadcrumb from '../../../components/common/Breadcrumb';
+import { testExecution } from '../../../utils/api';
 
 // Collapsible component for sections
 const Collapsible = ({ children, title, defaultOpen = false }) => {
@@ -33,6 +35,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
   const [testCase, setTestCase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentTestCaseIndex, setCurrentTestCaseIndex] = useState(0);
+  const [error, setError] = useState(null);
   
   // Get breadcrumb items
   const getBreadcrumbItems = () => {
@@ -43,370 +46,134 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
       { label: "Test Case Details" }
     ];
   };
-  
-  // Mock execution data - in a real app, this would come from your API or state management
-  const mockExecutionData = {
-    'exec-202505091': {
-      id: 'exec-202505091',
-      status: 'Passed',
-      instanceId: 'exec-202505091',
-      executedBy: 'john.smith',
-      environment: 'Production',
-      executedAt: 'May 9, 2025 - 11:15 AM',
-      passedCount: 5,
-      failedCount: 0,
-      results: [
-        {
-          id: 'tc-001',
-          name: 'Valid Login Test',
-          status: 'Passed',
-          duration: '0.84s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/login',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer token123'
-            },
-            body: {
-              username: 'testuser',
-              password: 'password123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              success: true,
-              token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-              user: {
-                id: 1,
-                username: 'testuser'
-              }
-            },
-            headers: {
-              'Content-Type': 'application/json',
-              'Set-Cookie': 'session=abc123; Path=/'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'Response has token property', status: 'Passed' },
-            { id: 3, description: 'Response time is less than 1000ms', status: 'Passed' }
-          ],
-          snippets: {
-            testCode: `// Test case: Valid Login Test
-pm.test("Status code is 200", function () {
-    pm.response.to.have.status(200);
-});
 
-pm.test("Response has token property", function () {
-    pm.expect(pm.response.json()).to.have.property('token');
-});
-
-pm.test("Response time is less than 1000ms", function () {
-    pm.expect(pm.response.responseTime).to.be.below(1000);
-});`
+  // Fetch execution data and test case details
+  useEffect(() => {
+    const fetchExecutionData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // First, try to get data from global storage (for mock data compatibility)
+        const globalData = window.mockExecutionData?.[executionId];
+        
+        if (globalData) {
+          // Use global mock data
+          setExecution(globalData);
+          
+          const testCaseIndex = globalData.results.findIndex(tc => tc.id === testCaseId);
+          if (testCaseIndex !== -1) {
+            setTestCase(globalData.results[testCaseIndex]);
+            setCurrentTestCaseIndex(testCaseIndex);
+          } else {
+            setError('Test case not found in execution results');
           }
-        },
-        {
-          id: 'tc-002',
-          name: 'Invalid Credentials Test',
-          status: 'Passed',
-          duration: '0.92s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/login',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {
-              username: 'invalid',
-              password: 'wrong'
+        } else {
+          // Extract execution ID from the executionId string if it contains 'exec-'
+          const numericExecutionId = executionId.replace('exec-', '');
+          
+          try {
+            // Fetch real execution data from API
+            const executionData = await testExecution.getExecutionDetails(numericExecutionId);
+            
+            // Transform API data to component format
+            const transformedExecution = {
+              id: executionId,
+              status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              instanceId: executionId,
+              executedBy: executionData.executedBy,
+              environment: 'API Environment',
+              executedAt: formatExecutionDate(executionData.executionDate),
+              passedCount: executionData.executionStatus === 'PASSED' ? 1 : 0,
+              failedCount: executionData.executionStatus === 'FAILED' ? 1 : 0,
+              results: [
+                {
+                  id: testCaseId,
+                  name: executionData.testCase?.name || 'API Test Case',
+                  status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                  duration: `${executionData.executionTimeMs || 0}ms`,
+                  request: {
+                    method: executionData.httpMethod,
+                    url: executionData.url,
+                    headers: executionData.requestHeaders || {},
+                    body: executionData.requestBody
+                  },
+                  response: {
+                    status: executionData.statusCode,
+                    data: executionData.responseBody,
+                    headers: {}
+                  },
+                  assertions: [
+                    {
+                      id: 1,
+                      description: 'API Response Status Validation',
+                      status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                      ...(executionData.executionStatus === 'FAILED' && {
+                        error: `Expected successful response but got status ${executionData.statusCode}`
+                      })
+                    },
+                    {
+                      id: 2,
+                      description: 'Response Time Validation',
+                      status: (executionData.executionTimeMs <= 5000) ? 'Passed' : 'Failed',
+                      ...(executionData.executionTimeMs > 5000 && {
+                        error: `Response time ${executionData.executionTimeMs}ms exceeded 5000ms limit`
+                      })
+                    }
+                  ]
+                }
+              ]
+            };
+            
+            setExecution(transformedExecution);
+            
+            // Find the test case
+            const testCaseData = transformedExecution.results.find(tc => tc.id === testCaseId);
+            if (testCaseData) {
+              setTestCase(testCaseData);
+              setCurrentTestCaseIndex(0);
+            } else {
+              setError('Test case not found');
             }
-          },
-          response: {
-            status: 401,
-            data: {
-              success: false,
-              message: 'Invalid credentials'
-            },
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 401', status: 'Passed' },
-            { id: 2, description: 'Response contains error message', status: 'Passed' }
-          ],
-          snippets: {
-            testCode: `// Test case: Invalid Credentials Test
-pm.test("Status code is 401", function () {
-    pm.response.to.have.status(401);
-});
-
-pm.test("Response contains error message", function () {
-    pm.expect(pm.response.json()).to.have.property('message');
-});`
+            
+          } catch (apiError) {
+            console.error('Error fetching from API:', apiError);
+            // Fall back to mock data if API fails
+            setError('Failed to load test case details from API');
           }
-        },
-        {
-          id: 'tc-003',
-          name: 'Password Reset Test',
-          status: 'Passed',
-          duration: '1.15s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/reset-password',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {
-              email: 'user@example.com'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              success: true,
-              message: 'Password reset email sent'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'Response confirms email sent', status: 'Passed' }
-          ]
-        },
-        {
-          id: 'tc-004',
-          name: 'Admin Access Test',
-          status: 'Passed',
-          duration: '0.76s',
-          request: {
-            method: 'GET',
-            url: 'https://api.example.com/admin/dashboard',
-            headers: {
-              'Authorization': 'Bearer admin_token123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              success: true,
-              stats: {
-                users: 1250,
-                activeUsers: 842,
-                revenue: '$12,400'
-              }
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'Response contains dashboard stats', status: 'Passed' }
-          ]
-        },
-        {
-          id: 'tc-005',
-          name: 'User Permissions Test',
-          status: 'Passed',
-          duration: '0.88s',
-          request: {
-            method: 'GET',
-            url: 'https://api.example.com/user/permissions',
-            headers: {
-              'Authorization': 'Bearer user_token123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              permissions: ['read', 'write'],
-              role: 'user'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'User has required permissions', status: 'Passed' }
-          ]
         }
-      ]
-    },
-    'exec-202505093': {
-      id: 'exec-202505093',
-      status: 'Failed',
-      instanceId: 'exec-202505093',
-      executedBy: 'jane.doe',
-      environment: 'Staging',
-      executedAt: 'May 8, 2025 - 04:45 PM',
-      passedCount: 3,
-      failedCount: 2,
-      results: [
-        {
-          id: 'tc-001',
-          name: 'Valid Login Test',
-          status: 'Passed',
-          duration: '0.86s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/login',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {
-              username: 'testuser',
-              password: 'password123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              success: true,
-              token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-              user: {
-                id: 1,
-                username: 'testuser'
-              }
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'Response body contains token', status: 'Passed' }
-          ]
-        },
-        {
-          id: 'tc-002',
-          name: 'Invalid Credentials Test',
-          status: 'Passed',
-          duration: '0.90s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/login',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {
-              username: 'invalid',
-              password: 'wrong'
-            }
-          },
-          response: {
-            status: 401,
-            data: {
-              success: false,
-              message: 'Invalid credentials'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 401', status: 'Passed' },
-            { id: 2, description: 'Response contains error message', status: 'Passed' }
-          ]
-        },
-        {
-          id: 'tc-003',
-          name: 'Password Reset Test',
-          status: 'Failed',
-          duration: '1.35s',
-          request: {
-            method: 'POST',
-            url: 'https://api.example.com/auth/reset-password',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {
-              email: 'invalid-email'
-            }
-          },
-          response: {
-            status: 400,
-            data: {
-              success: false,
-              message: 'Invalid email format'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Failed', error: 'Expected status 200 but got 400' },
-            { id: 2, description: 'Response confirms email sent', status: 'Failed', error: 'Response indicates failure, not success' }
-          ]
-        },
-        {
-          id: 'tc-004',
-          name: 'Admin Access Test',
-          status: 'Passed',
-          duration: '0.79s',
-          request: {
-            method: 'GET',
-            url: 'https://api.example.com/admin/dashboard',
-            headers: {
-              'Authorization': 'Bearer admin_token123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              success: true,
-              stats: {
-                users: 1250,
-                activeUsers: 842,
-                revenue: '$12,400'
-              }
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'Response contains dashboard stats', status: 'Passed' }
-          ]
-        },
-        {
-          id: 'tc-005',
-          name: 'User Permissions Test',
-          status: 'Failed',
-          duration: '1.05s',
-          request: {
-            method: 'GET',
-            url: 'https://api.example.com/user/permissions',
-            headers: {
-              'Authorization': 'Bearer user_token123'
-            }
-          },
-          response: {
-            status: 200,
-            data: {
-              permissions: ['read', 'write'],
-              role: 'user'
-            }
-          },
-          assertions: [
-            { id: 1, description: 'Status code is 200', status: 'Passed' },
-            { id: 2, description: 'User has admin permission', status: 'Failed', error: 'Expected permissions to include "admin" but it was not found' },
-            { id: 3, description: 'Response time is less than 500ms', status: 'Failed', error: 'Response time was 1050ms which exceeds the limit of 500ms' }
-          ]
-        }
-      ]
+        
+      } catch (error) {
+        console.error('Error loading execution data:', error);
+        setError('Failed to load test case details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (executionId && testCaseId) {
+      fetchExecutionData();
+    }
+  }, [executionId, testCaseId]);
+
+  // Format execution date
+  const formatExecutionDate = (dateString) => {
+    if (!dateString) return 'Unknown';
+    
+    try {
+      const date = new Date(dateString.replace(' ', 'T'));
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return dateString;
     }
   };
-  
-  // Fetch execution data and find the test case
-  useEffect(() => {
-    setLoading(true);
-    
-    // Simulate API call delay
-    setTimeout(() => {
-      // Get execution data from mock data
-      const executionData = mockExecutionData[executionId];
-      
-      if (executionData) {
-        setExecution(executionData);
-        
-        // Find the test case and its index
-        const testCaseIndex = executionData.results.findIndex(tc => tc.id === testCaseId);
-        if (testCaseIndex !== -1) {
-          setTestCase(executionData.results[testCaseIndex]);
-          setCurrentTestCaseIndex(testCaseIndex);
-        }
-      }
-      
-      setLoading(false);
-    }, 500);
-  }, [executionId, testCaseId]);
 
   // Navigate to next or previous test case
   const navigateToTestCase = (direction) => {
@@ -435,6 +202,15 @@ pm.test("Response contains error message", function () {
   // Format JSON for display
   const formatJSON = (json) => {
     try {
+      if (typeof json === 'string') {
+        // Try to parse if it's a JSON string
+        try {
+          const parsed = JSON.parse(json);
+          return JSON.stringify(parsed, null, 2);
+        } catch {
+          return json; // Return as-is if not valid JSON
+        }
+      }
       return JSON.stringify(json, null, 2);
     } catch (error) {
       return String(json);
@@ -459,7 +235,7 @@ pm.test("Response contains error message", function () {
     );
   }
 
-  if (!testCase || !execution) {
+  if (error || !testCase || !execution) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <Breadcrumb items={getBreadcrumbItems()} />
@@ -475,8 +251,14 @@ pm.test("Response contains error message", function () {
         </div>
         
         <div className="bg-white rounded-lg shadow-sm p-10 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Test case not found</h3>
-          <p className="text-gray-500 mb-4">The test case you're looking for doesn't exist or has been removed.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            {error || 'Test case not found'}
+          </h3>
+          <p className="text-gray-500 mb-4">
+            {error 
+              ? 'There was an error loading the test case details.' 
+              : 'The test case you\'re looking for doesn\'t exist or has been removed.'}
+          </p>
           <button
             onClick={onBack}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
@@ -501,25 +283,27 @@ pm.test("Response contains error message", function () {
           Back to Execution Results
         </button>
         
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigateToTestCase('prev')}
-            className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
-            title="Previous test case"
-          >
-            <FaChevronLeft size={14} />
-          </button>
-          <div className="text-sm text-gray-600">
-            Test {currentTestCaseIndex + 1} of {execution.results.length}
+        {execution.results && execution.results.length > 1 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigateToTestCase('prev')}
+              className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
+              title="Previous test case"
+            >
+              <FaChevronLeft size={14} />
+            </button>
+            <div className="text-sm text-gray-600">
+              Test {currentTestCaseIndex + 1} of {execution.results.length}
+            </div>
+            <button
+              onClick={() => navigateToTestCase('next')}
+              className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
+              title="Next test case"
+            >
+              <FaChevronRight size={14} />
+            </button>
           </div>
-          <button
-            onClick={() => navigateToTestCase('next')}
-            className="p-2 rounded-md border border-gray-200 hover:bg-gray-50 text-gray-600"
-            title="Next test case"
-          >
-            <FaChevronRight size={14} />
-          </button>
-        </div>
+        )}
       </div>
       
       <div className="flex justify-between items-center mb-6">
@@ -556,7 +340,7 @@ pm.test("Response contains error message", function () {
             </div>
           </div>
           
-          {testCase.request?.headers && (
+          {testCase.request?.headers && Object.keys(testCase.request.headers).length > 0 && (
             <div className="mb-3">
               <Collapsible title="Headers" defaultOpen={false}>
                 <pre className="bg-gray-50 p-3 rounded font-mono text-sm overflow-auto border border-gray-100 max-h-60">
@@ -601,7 +385,7 @@ pm.test("Response contains error message", function () {
             </div>
           )}
           
-          {testCase.response?.headers && (
+          {testCase.response?.headers && Object.keys(testCase.response.headers).length > 0 && (
             <div className="mt-3">
               <Collapsible title="Response Headers" defaultOpen={false}>
                 <pre className="bg-gray-50 p-3 rounded font-mono text-sm overflow-auto border border-gray-100 max-h-60">
@@ -666,6 +450,58 @@ pm.test("Response contains error message", function () {
           )}
         </div>
       </div>
+
+      {/* Execution Metadata */}
+      <div className="border rounded-lg shadow-sm overflow-hidden bg-white mb-6">
+        <div className="bg-gray-50 p-4 border-b">
+          <h2 className="font-semibold text-lg text-gray-800">Execution Details</h2>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Duration</div>
+              <div className="font-medium">{testCase.duration}</div>
+            </div>
+            {testCase.executedBy && (
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Executed By</div>
+                <div className="font-medium">{testCase.executedBy}</div>
+              </div>
+            )}
+            {testCase.executionDate && (
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Execution Date</div>
+                <div className="font-medium">{testCase.executionDate}</div>
+              </div>
+            )}
+            {execution.environment && (
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Environment</div>
+                <div className="font-medium">{execution.environment}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Code Snippets (if available) */}
+      {testCase.snippets && (
+        <div className="border rounded-lg shadow-sm overflow-hidden bg-white">
+          <div className="bg-gray-50 p-4 border-b flex items-center">
+            <svg className="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <h2 className="font-semibold text-lg text-gray-800">Code Snippets</h2>
+          </div>
+          <div className="p-4">
+            <Collapsible title="Test Code" defaultOpen={false}>
+              <pre className="bg-gray-50 p-3 rounded font-mono text-sm overflow-auto border border-gray-100">
+                {testCase.snippets.testCode || "// No test code available"}
+              </pre>
+            </Collapsible>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
