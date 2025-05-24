@@ -168,3 +168,298 @@ export const testExecution = {
     return api(`/api/v1/test-execution/history?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
   }
 };
+
+// Test Case specific endpoints
+export const testCases = {
+  // Get all test cases with pagination
+  getAll: async (pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC") => {
+    return api(`/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  },
+
+  // Get test case by ID
+  getById: async (testCaseId) => {
+    return api(`/api/v1/test-cases/${testCaseId}`, "GET");
+  },
+
+  // Create new test case
+  create: async (testCaseData) => {
+    return api("/api/v1/test-cases", "POST", testCaseData);
+  },
+
+  // Update existing test case
+  update: async (testCaseData) => {
+    return api("/api/v1/test-cases", "PUT", testCaseData);
+  },
+
+  // Delete test cases (bulk)
+  delete: async (testCaseIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: testCaseIds
+    };
+    
+    return api("/api/v1/test-cases/delete", "DELETE", requestBody);
+  },
+
+  // Export test cases
+  export: async (format, testCaseIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        format: format,
+        testCaseIds: testCaseIds
+      }
+    };
+    
+    return api("/api/v1/test-cases/export", "POST", requestBody);
+  }
+};
+
+// Test Suite specific endpoints
+export const testSuites = {
+  // Get all test suites with pagination
+  getAll: async (pageNo = 0, limit = 100, sortBy = "createdDate", sortDir = "DESC") => {
+    return api(`/api/v1/test-suites?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  },
+
+  // Get test suite by ID
+  getById: async (suiteId) => {
+    return api(`/api/v1/test-suites/${suiteId}`, "GET");
+  },
+
+  // Create new test suite
+  create: async (suiteData) => {
+    return api("/api/v1/test-suites", "POST", suiteData);
+  },
+
+  // Update existing test suite
+  update: async (suiteData) => {
+    return api("/api/v1/test-suites", "PUT", suiteData);
+  },
+
+  // Delete test suites (bulk)
+  delete: async (suiteIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: suiteIds
+    };
+    
+    return api("/api/v1/test-suites/delete", "DELETE", requestBody);
+  },
+
+  // Get test cases associated with a suite
+  getTestCases: async (suiteId) => {
+    return api(`/api/v1/test-suites/${suiteId}/test-cases`, "GET");
+  },
+
+  // Associate test cases to suite
+  associateTestCases: async (suiteId, testCaseIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: testCaseIds
+    };
+    
+    return api(`/api/v1/test-cases/associate-to-suite/${suiteId}`, "POST", requestBody);
+  },
+
+  // Remove test case association from suite
+  removeTestCaseAssociation: async (testCaseId, testSuiteId) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        testCaseId: testCaseId,
+        testSuiteId: testSuiteId
+      }
+    };
+    
+    return api("/api/v1/test-cases/remove-assoc-to-suite", "DELETE", requestBody);
+  }
+};
+
+// Test Package specific endpoints
+export const testPackages = {
+  // Get all test packages with pagination
+  getAll: async (pageNo = 0, limit = 100, sortBy = "createdDate", sortDir = "DESC") => {
+    return api(`/api/v1/packages?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  },
+
+  // Get test package by ID
+  getById: async (packageId) => {
+    return api(`/api/v1/packages/${packageId}`, "GET");
+  },
+
+  // Create new test package
+  create: async (packageData) => {
+    return api("/api/v1/packages", "POST", packageData);
+  },
+
+  // Update existing test package
+  update: async (packageData) => {
+    return api("/api/v1/packages", "PUT", packageData);
+  },
+
+  // Delete test packages (bulk)
+  delete: async (packageIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: packageIds
+    };
+    
+    return api("/api/v1/packages/delete", "DELETE", requestBody);
+  },
+
+  // Get test suites associated with a package
+  getTestSuites: async (packageId) => {
+    return api(`/api/v1/packages/${packageId}/test-suites`, "GET");
+  },
+
+  // Associate test suites to package
+  associateTestSuites: async (packageId, testSuiteIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: testSuiteIds
+    };
+    
+    return api(`/api/v1/test-suites/associate-to-packages/${packageId}`, "POST", requestBody);
+  },
+
+  // Remove test suite association from package
+  removeTestSuiteAssociation: async (testPackageId, testSuiteId) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        testPackageId: testPackageId,
+        testSuiteId: testSuiteId
+      }
+    };
+    
+    return api("/api/v1/test-suites/remove-assoc-to-packages", "DELETE", requestBody);
+  },
+
+  // Get package hierarchy for test execution
+  getHierarchy: async () => {
+    return api('/api/v1/packages/hierarchy', 'GET');
+  }
+};
+
+// Variables specific endpoints
+export const variables = {
+  // Get variables for a test case
+  getByTestCase: async (testCaseId) => {
+    return api(`/api/v1/variables/${testCaseId}`, "GET");
+  },
+
+  // Create new variable
+  create: async (variableData) => {
+    return api("/api/v1/variables", "POST", variableData);
+  },
+
+  // Update existing variable
+  update: async (variableData) => {
+    return api("/api/v1/variables", "PUT", variableData);
+  },
+
+  // Delete variable
+  delete: async (variableId) => {
+    return api(`/api/v1/variables/${variableId}`, "DELETE");
+  }
+};
+
+// Project specific endpoints
+export const projects = {
+  // Get all projects with pagination
+  getAll: async (pageNo = 0, limit = 100, sortBy = "updatedDate", sortDir = "DESC") => {
+    return api(`/api/v1/projects?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  },
+
+  // Get project by ID
+  getById: async (projectId) => {
+    return api(`/api/v1/projects/${projectId}`, "GET");
+  },
+
+  // Create new project
+  create: async (projectData) => {
+    return api("/api/v1/projects", "POST", projectData);
+  },
+
+  // Update existing project
+  update: async (projectData) => {
+    return api("/api/v1/projects", "PUT", projectData);
+  },
+
+  // Delete project
+  delete: async (projectId) => {
+    return api(`/api/v1/projects/${projectId}`, "DELETE");
+  }
+};
+
+// Environment specific endpoints
+export const environments = {
+  // Get all environments
+  getAll: async () => {
+    return api("/api/v1/environments", "GET");
+  },
+
+  // Get environment by ID
+  getById: async (envId) => {
+    return api(`/api/v1/environments/${envId}`, "GET");
+  },
+
+  // Create new environment
+  create: async (envData) => {
+    return api("/api/v1/environments", "POST", envData);
+  },
+
+  // Update existing environment
+  update: async (envData) => {
+    return api("/api/v1/environments", "PUT", envData);
+  },
+
+  // Delete environment
+  delete: async (envId) => {
+    return api(`/api/v1/environments/${envId}`, "DELETE");
+  }
+};
+
+// Global Search endpoint
+export const globalSearch = {
+  // Search across all entities
+  search: async (keyword) => {
+    return api(`/api/global-search?keyword=${encodeURIComponent(keyword)}`, "GET");
+  }
+};
+
+// Default export for backward compatibility
+export default api;

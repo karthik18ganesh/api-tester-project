@@ -90,9 +90,20 @@ const ModernTestExecution = () => {
     }
   };
 
-  // Fetch execution details for all execution IDs
+  // Fetch execution details for all execution IDs (for package execution)
   const fetchExecutionDetails = async (executionIds) => {
     const details = {};
+    
+    // Validate that executionIds is an array
+    if (!Array.isArray(executionIds)) {
+      console.error('executionIds is not an array:', executionIds);
+      throw new Error('Invalid execution IDs format - expected array');
+    }
+    
+    if (executionIds.length === 0) {
+      console.warn('Empty executionIds array provided');
+      return details;
+    }
     
     try {
       const promises = executionIds.map(async (executionId) => {
@@ -122,11 +133,17 @@ const ModernTestExecution = () => {
     return details;
   };
 
-  // Transform API execution details to component format
+  // Transform API execution details to component format (for package execution)
   const transformExecutionDetails = (executionIds, details) => {
     const results = [];
     let totalPassed = 0;
     let totalFailed = 0;
+
+    // Validate that executionIds is an array
+    if (!Array.isArray(executionIds)) {
+      console.error('executionIds is not an array:', executionIds);
+      throw new Error('Invalid execution IDs format - expected array');
+    }
 
     executionIds.forEach((executionId, index) => {
       const detail = details[executionId];
@@ -211,6 +228,158 @@ const ModernTestExecution = () => {
     };
   };
 
+  // Transform suite execution results to component format
+  const transformSuiteExecutionResults = (suiteResponse) => {
+    const testCaseResults = suiteResponse.testCaseResult || [];
+    let totalPassed = 0;
+    let totalFailed = 0;
+
+    const results = testCaseResults
+      .filter(testCase => {
+        // Filter out non-object items (like standalone numbers)
+        return testCase && typeof testCase === 'object' && testCase.testCaseId;
+      })
+      .map((testCase) => {
+        const isSuccessful = testCase.executionStatus === 'PASSED';
+        
+        if (isSuccessful) {
+          totalPassed++;
+        } else {
+          totalFailed++;
+        }
+
+        return {
+          id: `tc-${testCase.testCaseId}`,
+          name: testCase.testCaseName || `Test Case ${testCase.testCaseId}`,
+          status: isSuccessful ? 'Passed' : 'Failed',
+          duration: `${testCase.executionTimeMs}ms`,
+          request: {
+            method: testCase.httpMethod,
+            url: testCase.url,
+            headers: testCase.requestHeaders || {},
+            body: testCase.requestBody
+          },
+          response: {
+            status: testCase.statusCode,
+            data: testCase.responseBody,
+            headers: testCase.responseHeaders || {}
+          },
+          assertions: [
+            {
+              id: 1,
+              description: `HTTP ${testCase.httpMethod} request validation`,
+              status: isSuccessful ? 'Passed' : 'Failed',
+              ...(testCase.errorMessage && { 
+                error: testCase.errorMessage 
+              })
+            },
+            {
+              id: 2,
+              description: 'Response status validation',
+              status: (testCase.statusCode >= 200 && testCase.statusCode < 300) ? 'Passed' : 'Failed',
+              ...(testCase.statusCode >= 400 && { 
+                error: `HTTP ${testCase.statusCode} error response` 
+              })
+            }
+          ],
+          executionId: testCase.id,
+          executedBy: suiteResponse.executedBy,
+          executionDate: formatExecutionDate(suiteResponse.executionDate),
+          testSuiteId: testCase.testSuiteId,
+          testSuiteName: testCase.testSuiteName
+        };
+      });
+
+    // Check if we have execution summary data and use it for counts
+    if (suiteResponse.testExecution && suiteResponse.testExecution.executionSummary) {
+      const summary = suiteResponse.testExecution.executionSummary;
+      totalPassed = summary.passedTests || totalPassed;
+      totalFailed = summary.failedTests || totalFailed;
+    } else {
+      // Use the top-level counts if available
+      totalPassed = suiteResponse.passed || totalPassed;
+      totalFailed = suiteResponse.failed || totalFailed;
+    }
+
+    return {
+      results,
+      passedCount: totalPassed,
+      failedCount: totalFailed,
+      totalTests: suiteResponse.totalTests || results.length
+    };
+  };
+
+  // Transform single test case execution results to component format
+  const transformSingleTestCaseExecution = (testCaseResponse) => {
+    const isSuccessful = testCaseResponse.executionStatus === 'PASSED';
+    
+    const result = {
+      id: `tc-${testCaseResponse.testCaseId}`,
+      name: testCaseResponse.testCaseName || `Test Case ${testCaseResponse.testCaseId}`,
+      status: isSuccessful ? 'Passed' : 'Failed',
+      duration: `${testCaseResponse.executionTimeMs}ms`,
+      request: {
+        method: testCaseResponse.httpMethod,
+        url: testCaseResponse.url,
+        headers: testCaseResponse.requestHeaders || {},
+        body: testCaseResponse.requestBody
+      },
+      response: {
+        status: testCaseResponse.statusCode,
+        data: testCaseResponse.responseBody,
+        headers: testCaseResponse.responseHeaders || {}
+      },
+      assertions: [
+        {
+          id: 1,
+          description: `HTTP ${testCaseResponse.httpMethod} request validation`,
+          status: isSuccessful ? 'Passed' : 'Failed',
+          ...(testCaseResponse.errorMessage && { 
+            error: testCaseResponse.errorMessage 
+          })
+        },
+        {
+          id: 2,
+          description: 'Response status validation',
+          status: (testCaseResponse.statusCode >= 200 && testCaseResponse.statusCode < 300) ? 'Passed' : 'Failed',
+          ...(testCaseResponse.statusCode >= 400 && { 
+            error: `HTTP ${testCaseResponse.statusCode} error response` 
+          })
+        }
+      ],
+      executionId: testCaseResponse.id,
+      executedBy: testCaseResponse.executedBy,
+      executionDate: formatExecutionDate(testCaseResponse.executionDate)
+    };
+
+    return {
+      results: [result],
+      passedCount: isSuccessful ? 1 : 0,
+      failedCount: isSuccessful ? 0 : 1,
+      totalTests: 1
+    };
+  };
+
+  // Helper function to format execution date
+  const formatExecutionDate = (timestamp) => {
+    if (!timestamp) return new Date().toLocaleString();
+    
+    try {
+      // Handle timestamp in milliseconds
+      const date = new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      return new Date().toLocaleString();
+    }
+  };
+
   useEffect(() => {
     fetchHierarchy();
   }, []);
@@ -248,57 +417,208 @@ const ModernTestExecution = () => {
       // Call appropriate execution API based on selected item type
       if (selectedItem.type === 'package') {
         executionResponse = await testExecution.executePackage(selectedItem.packageId, executedBy);
+        
+        console.log('Package execution response:', executionResponse);
+        console.log('Response type:', typeof executionResponse);
+        console.log('Response keys:', Object.keys(executionResponse || {}));
+        
+        // Handle different possible response formats for packages
+        let executionIds = [];
+        
+        if (Array.isArray(executionResponse.executionId)) {
+          // If executionId is already an array
+          executionIds = executionResponse.executionId;
+          console.log('Using executionId array:', executionIds);
+        } else if (executionResponse.executionId) {
+          // If executionId is a single value, convert to array
+          executionIds = [executionResponse.executionId];
+          console.log('Converting single executionId to array:', executionIds);
+        } else if (executionResponse.testCaseResult && Array.isArray(executionResponse.testCaseResult)) {
+          // If response has testCaseResult like suite execution, handle it differently
+          console.log('Package response has testCaseResult format, treating as suite-like response');
+          
+          // For package execution, we might need to extract additional test case results
+          // from the nested testExecution.testCaseResults if available
+          let allTestCaseResults = [...executionResponse.testCaseResult];
+          
+          // Check if there are additional test case results in the nested structure
+          if (executionResponse.testCaseResult.length > 0 && 
+              executionResponse.testCaseResult[0].testExecution &&
+              executionResponse.testCaseResult[0].testExecution.testCaseResults) {
+            
+            const nestedResults = executionResponse.testCaseResult[0].testExecution.testCaseResults;
+            console.log('Found nested testCaseResults:', nestedResults);
+            
+            // Add any additional test case results that are objects
+            nestedResults.forEach(result => {
+              if (result && typeof result === 'object' && result.testCaseId) {
+                // Check if this test case is not already in our results
+                const existsInMain = allTestCaseResults.some(mainResult => 
+                  mainResult && mainResult.testCaseId === result.testCaseId
+                );
+                
+                if (!existsInMain) {
+                  allTestCaseResults.push(result);
+                }
+              }
+            });
+          }
+          
+          // Create a modified response object with all test case results
+          const modifiedResponse = {
+            ...executionResponse,
+            testCaseResult: allTestCaseResults
+          };
+          
+          console.log('Modified response with all test cases:', modifiedResponse);
+          
+          const transformedResults = transformSuiteExecutionResults(modifiedResponse);
+          
+          const executionId = `exec-${Date.now()}`;
+          const newResult = {
+            id: executionId,
+            status: transformedResults.failedCount > 0 ? 'Failed' : 'Passed',
+            instanceId: executionId,
+            executedBy: executedBy,
+            environment: settings.environment,
+            executedAt: new Date().toLocaleString(),
+            passedCount: transformedResults.passedCount,
+            failedCount: transformedResults.failedCount,
+            totalTests: transformedResults.totalTests,
+            results: transformedResults.results,
+            rawPackageExecution: executionResponse,
+            selectedItem: selectedItem
+          };
+          
+          setExecutionResult(newResult);
+          
+          // Store execution data for navigation
+          window.mockExecutionData = window.mockExecutionData || {};
+          window.mockExecutionData[executionId] = newResult;
+
+          // Show success toast
+          toast.success(
+            `Package execution completed: ${transformedResults.passedCount} passed, ${transformedResults.failedCount} failed`
+          );
+          
+          return; // Exit early for this case
+        } else {
+          console.error('Unexpected package execution response format:', executionResponse);
+          throw new Error('Invalid package execution response format - no executionId or testCaseResult found');
+        }
+        
+        if (executionIds.length === 0) {
+          throw new Error('No execution IDs returned from the API');
+        }
+
+        console.log('Proceeding with executionIds:', executionIds);
+
+        // Fetch detailed execution information for each execution ID
+        const details = await fetchExecutionDetails(executionIds);
+        setExecutionDetails(details);
+
+        // Transform the execution details into the expected format
+        const { results, passedCount, failedCount } = transformExecutionDetails(executionIds, details);
+
+        // Create execution result object
+        const executionId = `exec-${Date.now()}`;
+        const newResult = {
+          id: executionId,
+          status: failedCount > 0 ? 'Failed' : 'Passed',
+          instanceId: executionId,
+          executedBy: executedBy,
+          environment: settings.environment,
+          executedAt: new Date().toLocaleString(),
+          passedCount: passedCount,
+          failedCount: failedCount,
+          totalTests: executionResponse.totalTests || results.length,
+          results: results,
+          rawExecutionIds: executionIds,
+          selectedItem: selectedItem
+        };
+        
+        setExecutionResult(newResult);
+        
+        // Store execution data for navigation
+        window.mockExecutionData = window.mockExecutionData || {};
+        window.mockExecutionData[executionId] = newResult;
+
+        // Show success toast
+        toast.success(
+          `Package execution completed: ${passedCount} passed, ${failedCount} failed`
+        );
+
       } else if (selectedItem.type === 'suite') {
         executionResponse = await testExecution.executeSuite(selectedItem.suiteId, executedBy);
+        
+        // Handle suite execution response (returns detailed test case results)
+        const transformedResults = transformSuiteExecutionResults(executionResponse);
+        
+        // Create execution result object
+        const executionId = `exec-${Date.now()}`;
+        const newResult = {
+          id: executionId,
+          status: transformedResults.failedCount > 0 ? 'Failed' : 'Passed',
+          instanceId: executionId,
+          executedBy: executedBy,
+          environment: settings.environment,
+          executedAt: new Date().toLocaleString(),
+          passedCount: transformedResults.passedCount,
+          failedCount: transformedResults.failedCount,
+          totalTests: transformedResults.totalTests,
+          results: transformedResults.results,
+          rawSuiteExecution: executionResponse,
+          selectedItem: selectedItem
+        };
+        
+        setExecutionResult(newResult);
+        
+        // Store execution data for navigation
+        window.mockExecutionData = window.mockExecutionData || {};
+        window.mockExecutionData[executionId] = newResult;
+
+        // Show success toast
+        toast.success(
+          `Suite execution completed: ${transformedResults.passedCount} passed, ${transformedResults.failedCount} failed`
+        );
+
       } else if (selectedItem.type === 'case') {
         executionResponse = await testExecution.executeTestCase(selectedItem.caseId, executedBy);
+        
+        // Handle single test case execution
+        const transformedResults = transformSingleTestCaseExecution(executionResponse);
+        
+        // Create execution result object
+        const executionId = `exec-${Date.now()}`;
+        const newResult = {
+          id: executionId,
+          status: transformedResults.failedCount > 0 ? 'Failed' : 'Passed',
+          instanceId: executionId,
+          executedBy: executedBy,
+          environment: settings.environment,
+          executedAt: new Date().toLocaleString(),
+          passedCount: transformedResults.passedCount,
+          failedCount: transformedResults.failedCount,
+          totalTests: 1,
+          results: transformedResults.results,
+          rawTestCaseExecution: executionResponse,
+          selectedItem: selectedItem
+        };
+        
+        setExecutionResult(newResult);
+        
+        // Store execution data for navigation
+        window.mockExecutionData = window.mockExecutionData || {};
+        window.mockExecutionData[executionId] = newResult;
+
+        // Show success toast
+        toast.success(
+          `Test case execution completed: ${transformedResults.passedCount} passed, ${transformedResults.failedCount} failed`
+        );
+
       } else {
         throw new Error('Invalid selection type for execution');
       }
-
-      console.log('Execution response:', executionResponse);
-
-      // Extract execution IDs from response
-      const executionIds = executionResponse.executionId || [];
-      
-      if (executionIds.length === 0) {
-        throw new Error('No execution IDs returned from the API');
-      }
-
-      // Fetch detailed execution information for each execution ID
-      const details = await fetchExecutionDetails(executionIds);
-      setExecutionDetails(details);
-
-      // Transform the execution details into the expected format
-      const { results, passedCount, failedCount } = transformExecutionDetails(executionIds, details);
-
-      // Create execution result object
-      const executionId = `exec-${Date.now()}`;
-      const newResult = {
-        id: executionId,
-        status: failedCount > 0 ? 'Failed' : 'Passed',
-        instanceId: executionId,
-        executedBy: executedBy,
-        environment: settings.environment,
-        executedAt: new Date().toLocaleString(),
-        passedCount: passedCount,
-        failedCount: failedCount,
-        totalTests: executionResponse.totalTests || results.length,
-        results: results,
-        rawExecutionIds: executionIds,
-        selectedItem: selectedItem
-      };
-      
-      setExecutionResult(newResult);
-      
-      // Store execution data for navigation
-      window.mockExecutionData = window.mockExecutionData || {};
-      window.mockExecutionData[executionId] = newResult;
-
-      // Show success toast
-      toast.success(
-        `Execution completed: ${passedCount} passed, ${failedCount} failed`
-      );
 
     } catch (error) {
       console.error('Execution error:', error);

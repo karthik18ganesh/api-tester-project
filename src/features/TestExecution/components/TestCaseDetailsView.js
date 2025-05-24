@@ -69,76 +69,92 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
             setError('Test case not found in execution results');
           }
         } else {
-          // Extract execution ID from the executionId string if it contains 'exec-'
-          const numericExecutionId = executionId.replace('exec-', '');
+          // Extract the actual execution ID from the client execution ID
+          const actualExecutionId = executionId.replace('exec-', '');
           
           try {
             // Fetch real execution data from API
-            const executionData = await testExecution.getExecutionDetails(numericExecutionId);
+            const executionData = await testExecution.getExecutionDetails(actualExecutionId);
             
             // Transform API data to component format
+            const testCaseResults = executionData.testCaseResults || [];
+            
+            // Find the specific test case by matching testCaseId
+            const targetTestCase = testCaseResults.find(tc => `tc-${tc.testCaseId}` === testCaseId);
+            
+            if (!targetTestCase) {
+              setError('Test case not found in execution results');
+              return;
+            }
+            
+            // Create the test case details
+            const testCaseDetails = {
+              id: testCaseId,
+              name: targetTestCase.testCaseName || 'API Test Case',
+              status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              duration: `${targetTestCase.executionTimeMs || 0}ms`,
+              request: {
+                method: targetTestCase.httpMethod,
+                url: targetTestCase.url,
+                headers: targetTestCase.requestHeaders || {},
+                body: targetTestCase.requestBody
+              },
+              response: {
+                status: targetTestCase.statusCode,
+                data: targetTestCase.responseBody,
+                headers: targetTestCase.responseHeaders || {}
+              },
+              assertions: [
+                {
+                  id: 1,
+                  description: 'HTTP Status Code Validation',
+                  status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                  ...(targetTestCase.executionStatus !== 'PASSED' && {
+                    error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
+                  })
+                },
+                {
+                  id: 2,
+                  description: 'Response Time Validation',
+                  status: targetTestCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
+                  ...(targetTestCase.executionTimeMs > 5000 && {
+                    error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
+                  })
+                }
+              ],
+              executedBy: executionData.executedBy,
+              executionDate: executionData.executionDate,
+              testSuiteId: targetTestCase.testSuiteId,
+              testSuiteName: targetTestCase.testSuiteName
+            };
+            
+            // Create execution summary
             const transformedExecution = {
               id: executionId,
               status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
               instanceId: executionId,
               executedBy: executionData.executedBy,
-              environment: 'API Environment',
+              environment: executionData.environmentName || 'API Environment',
               executedAt: formatExecutionDate(executionData.executionDate),
-              passedCount: executionData.executionStatus === 'PASSED' ? 1 : 0,
-              failedCount: executionData.executionStatus === 'FAILED' ? 1 : 0,
-              results: [
-                {
-                  id: testCaseId,
-                  name: executionData.testCase?.name || 'API Test Case',
-                  status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                  duration: `${executionData.executionTimeMs || 0}ms`,
-                  request: {
-                    method: executionData.httpMethod,
-                    url: executionData.url,
-                    headers: executionData.requestHeaders || {},
-                    body: executionData.requestBody
-                  },
-                  response: {
-                    status: executionData.statusCode,
-                    data: executionData.responseBody,
-                    headers: {}
-                  },
-                  assertions: [
-                    {
-                      id: 1,
-                      description: 'API Response Status Validation',
-                      status: executionData.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                      ...(executionData.executionStatus === 'FAILED' && {
-                        error: `Expected successful response but got status ${executionData.statusCode}`
-                      })
-                    },
-                    {
-                      id: 2,
-                      description: 'Response Time Validation',
-                      status: (executionData.executionTimeMs <= 5000) ? 'Passed' : 'Failed',
-                      ...(executionData.executionTimeMs > 5000 && {
-                        error: `Response time ${executionData.executionTimeMs}ms exceeded 5000ms limit`
-                      })
-                    }
-                  ]
-                }
-              ]
+              passedCount: executionData.executionSummary?.passedTests || 0,
+              failedCount: executionData.executionSummary?.failedTests || 0,
+              results: testCaseResults.map((tc, index) => ({
+                id: `tc-${tc.testCaseId}`,
+                name: tc.testCaseName || `Test Case ${index + 1}`,
+                status: tc.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                duration: `${tc.executionTimeMs || 0}ms`
+              }))
             };
             
             setExecution(transformedExecution);
+            setTestCase(testCaseDetails);
             
-            // Find the test case
-            const testCaseData = transformedExecution.results.find(tc => tc.id === testCaseId);
-            if (testCaseData) {
-              setTestCase(testCaseData);
-              setCurrentTestCaseIndex(0);
-            } else {
-              setError('Test case not found');
-            }
+            // Find the index of current test case
+            const testCaseIndex = transformedExecution.results.findIndex(tc => tc.id === testCaseId);
+            setCurrentTestCaseIndex(testCaseIndex !== -1 ? testCaseIndex : 0);
             
           } catch (apiError) {
             console.error('Error fetching from API:', apiError);
-            // Fall back to mock data if API fails
             setError('Failed to load test case details from API');
           }
         }
@@ -188,15 +204,15 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
     
     const newTestCase = execution.results[newIndex];
     
-    // Update state and URL
-    setTestCase(newTestCase);
-    setCurrentTestCaseIndex(newIndex);
-    
+    // Update URL and reload the component with new test case
     window.history.pushState(
       null, 
       '', 
       `/test-execution/results/${executionId}/${newTestCase.id}`
     );
+    
+    // Trigger a reload to fetch the new test case details
+    window.location.reload();
   };
 
   // Format JSON for display
@@ -273,7 +289,10 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
   const progressPercentage = calculateProgress();
   
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Breadcrumb */}
+      <Breadcrumb items={getBreadcrumbItems()} />
+      
       <div className="flex items-center justify-between mb-6">
         <button 
           onClick={onBack}
@@ -310,6 +329,9 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
         <div>
           <h1 className="text-2xl font-bold mb-1 text-gray-800">{testCase.name}</h1>
           <p className="text-gray-600">Execution ID: {executionId}</p>
+          {testCase.testSuiteName && (
+            <p className="text-gray-500 text-sm">Suite: {testCase.testSuiteName}</p>
+          )}
         </div>
         <div className={`px-3 py-1 rounded-md text-white ${testCase.status === 'Passed' ? 'bg-green-500' : 'bg-red-500'} shadow-sm`}>
           {testCase.status}
@@ -471,7 +493,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
             {testCase.executionDate && (
               <div>
                 <div className="text-sm text-gray-500 mb-1">Execution Date</div>
-                <div className="font-medium">{testCase.executionDate}</div>
+                <div className="font-medium">{formatExecutionDate(testCase.executionDate)}</div>
               </div>
             )}
             {execution.environment && (

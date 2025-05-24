@@ -83,11 +83,12 @@ const ModernTestResults = () => {
       const formattedHistory = data.map(execution => ({
         id: `exec-${execution.executionId}`,
         status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-        passedFailed: execution.executionStatus === 'PASSED' ? '1/0' : '0/1',
+        passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.failedTests || 0}`,
         executedAt: formatExecutionDate(execution.executionDate),
         executedBy: execution.executedBy || 'Unknown',
         date: execution.executionDate ? execution.executionDate.split(' ')[0] : new Date().toISOString().split('T')[0],
-        rawData: execution // Store raw data for detailed view
+        rawData: execution, // Store raw data for detailed view
+        executionId: execution.executionId // Store the actual execution ID
       }));
       
       setExecutionHistory(formattedHistory);
@@ -139,7 +140,8 @@ const ModernTestResults = () => {
         passedFailed: '5/0',
         executedAt: 'May 9, 2025 - 11:15 AM',
         executedBy: 'john.smith',
-        date: '2025-05-09'
+        date: '2025-05-09',
+        executionId: 91
       },
       {
         id: 'exec-202505092',
@@ -147,7 +149,8 @@ const ModernTestResults = () => {
         passedFailed: '5/0',
         executedAt: 'May 9, 2025 - 10:30 AM',
         executedBy: 'john.smith',
-        date: '2025-05-09'
+        date: '2025-05-09',
+        executionId: 92
       },
       {
         id: 'exec-202505093',
@@ -155,7 +158,8 @@ const ModernTestResults = () => {
         passedFailed: '3/2',
         executedAt: 'May 8, 2025 - 04:45 PM',
         executedBy: 'jane.doe',
-        date: '2025-05-08'
+        date: '2025-05-08',
+        executionId: 93
       }
     ];
   };
@@ -225,66 +229,104 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Mock execution data for detailed views
-  const createDetailedExecutionData = (execution) => {
+  // Create detailed execution data from API response
+  const createDetailedExecutionData = async (execution) => {
     const isFromAPI = execution.rawData;
     
-    if (isFromAPI) {
-      // Use real API data
-      const rawData = execution.rawData;
-      return {
-        id: execution.id,
-        status: execution.status,
-        instanceId: execution.id,
-        executedBy: rawData.executedBy,
-        environment: 'API Environment', // This might need to come from API
-        executedAt: execution.executedAt,
-        passedCount: execution.status === 'Passed' ? 1 : 0,
-        failedCount: execution.status === 'Failed' ? 1 : 0,
-        results: [
-          {
-            id: `tc-${rawData.executionId}`,
-            name: rawData.testCase?.name || 'API Test Case',
-            status: execution.status,
-            duration: `${rawData.executionTimeMs || 0}ms`,
-            request: {
-              method: rawData.httpMethod,
-              url: rawData.url,
-              headers: rawData.requestHeaders || {},
-              body: rawData.requestBody
+    if (isFromAPI && execution.executionId) {
+      try {
+        // Fetch full execution details using the actual execution ID
+        const detailedResponse = await testExecution.getExecutionDetails(execution.executionId);
+        
+        // Transform the detailed response
+        const testCaseResults = detailedResponse.testCaseResults || [];
+        
+        const results = testCaseResults.map((testCase, index) => ({
+          id: `tc-${testCase.testCaseId}`,
+          name: testCase.testCaseName || `Test Case ${index + 1}`,
+          status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+          duration: `${testCase.executionTimeMs}ms`,
+          request: {
+            method: testCase.httpMethod,
+            url: testCase.url,
+            headers: testCase.requestHeaders || {},
+            body: testCase.requestBody
+          },
+          response: {
+            status: testCase.statusCode,
+            data: testCase.responseBody,
+            headers: testCase.responseHeaders || {}
+          },
+          assertions: [
+            {
+              id: 1,
+              description: 'HTTP Status Code Validation',
+              status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              ...(testCase.executionStatus !== 'PASSED' && {
+                error: testCase.errorMessage || `Expected successful response but got status ${testCase.statusCode}`
+              })
             },
-            response: {
-              status: rawData.statusCode,
-              data: rawData.responseBody,
-              headers: {}
-            },
-            assertions: [
-              {
-                id: 1,
-                description: 'API Response Validation',
-                status: execution.status,
-                ...(execution.status === 'Failed' && {
-                  error: `Request failed with status ${rawData.statusCode}`
-                })
-              }
-            ]
-          }
-        ]
-      };
+            {
+              id: 2,
+              description: 'Response Time Validation',
+              status: testCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
+              ...(testCase.executionTimeMs > 5000 && {
+                error: `Response time ${testCase.executionTimeMs}ms exceeded 5000ms limit`
+              })
+            }
+          ],
+          testSuiteId: testCase.testSuiteId,
+          testSuiteName: testCase.testSuiteName
+        }));
+
+        const summary = detailedResponse.executionSummary || {
+          passedTests: 0,
+          failedTests: 0,
+          totalTests: 0
+        };
+
+        return {
+          id: execution.id,
+          status: execution.status,
+          instanceId: execution.id,
+          executedBy: detailedResponse.executedBy,
+          environment: detailedResponse.environmentName || 'API Environment',
+          executedAt: execution.executedAt,
+          passedCount: summary.passedTests,
+          failedCount: summary.failedTests,
+          totalTests: summary.totalTests,
+          results: results,
+          rawExecutionId: execution.executionId
+        };
+        
+      } catch (error) {
+        console.error('Error fetching detailed execution data:', error);
+        // Fallback to basic data if detailed fetch fails
+        return createFallbackExecutionData(execution);
+      }
     } else {
       // Use mock data structure for fallback
-      return window.mockExecutionData?.[execution.id] || {
-        id: execution.id,
-        status: execution.status,
-        instanceId: execution.id,
-        executedBy: execution.executedBy,
-        environment: 'Mock Environment',
-        executedAt: execution.executedAt,
-        passedCount: parseInt(execution.passedFailed.split('/')[0]) || 0,
-        failedCount: parseInt(execution.passedFailed.split('/')[1]) || 0,
-        results: []
-      };
+      return window.mockExecutionData?.[execution.id] || createFallbackExecutionData(execution);
     }
+  };
+
+  // Create fallback execution data when detailed API call fails
+  const createFallbackExecutionData = (execution) => {
+    const passedCount = parseInt(execution.passedFailed.split('/')[0]) || 0;
+    const failedCount = parseInt(execution.passedFailed.split('/')[1]) || 0;
+    
+    return {
+      id: execution.id,
+      status: execution.status,
+      instanceId: execution.id,
+      executedBy: execution.executedBy,
+      environment: 'Unknown Environment',
+      executedAt: execution.executedAt,
+      passedCount: passedCount,
+      failedCount: failedCount,
+      totalTests: passedCount + failedCount,
+      results: []
+    };
   };
 
   const handleViewExecution = async (executionId) => {
@@ -299,17 +341,7 @@ const ModernTestResults = () => {
         return;
       }
 
-      // If we have raw API data, fetch additional details if needed
-      if (execution.rawData) {
-        try {
-          const detailedResponse = await testExecution.getExecutionDetails(execution.rawData.executionId);
-          execution.rawData = { ...execution.rawData, ...detailedResponse };
-        } catch (error) {
-          console.warn('Could not fetch additional execution details:', error);
-        }
-      }
-
-      const detailedExecution = createDetailedExecutionData(execution);
+      const detailedExecution = await createDetailedExecutionData(execution);
       setSelectedExecution(detailedExecution);
       setViewMode('execution');
       
