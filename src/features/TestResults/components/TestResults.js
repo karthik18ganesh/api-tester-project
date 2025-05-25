@@ -7,6 +7,8 @@ import TestCaseDetailsView from '../../TestExecution/components/TestCaseDetailsV
 import Breadcrumb from '../../../components/common/Breadcrumb';
 import { testExecution } from '../../../utils/api';
 
+const pageSize = 10; // Match the API default
+
 const ModernTestResults = () => {
   const [selectedExecution, setSelectedExecution] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -24,91 +26,84 @@ const ModernTestResults = () => {
     executedBy: '',
   });
   const [executionHistory, setExecutionHistory] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
-    pageNo: 0,
-    pageSize: 10,
+    pageNumber: 0,
+    pageSize: pageSize,
     totalElements: 0,
-    totalPages: 0
+    totalPages: 0,
+    first: true,
+    last: false
   });
 
   // Fetch execution history from API
-  const fetchExecutionHistory = async (pageNo = 0, additionalFilters = {}) => {
+  const fetchExecutionHistory = async (pageNo = 0) => {
     setLoading(true);
     try {
       const response = await testExecution.getExecutionHistory(
         pageNo, 
-        pagination.pageSize, 
+        pageSize, 
         'executionDate', 
         'DESC'
       );
       
       console.log('Execution history response:', response);
       
-      // Handle different response formats
-      let data = [];
-      let totalElements = 0;
-      let totalPages = 0;
-      
-      if (response && Array.isArray(response)) {
-        // Direct array response
-        data = response;
-        totalElements = response.length;
-        totalPages = Math.ceil(totalElements / pagination.pageSize);
-      } else if (response && response.result && response.result.data) {
-        // Nested response format
-        if (Array.isArray(response.result.data)) {
-          data = response.result.data;
-          totalElements = data.length;
-          totalPages = Math.ceil(totalElements / pagination.pageSize);
-        } else if (response.result.data.content) {
-          // Paginated response
-          data = response.result.data.content;
-          totalElements = response.result.data.totalElements || 0;
-          totalPages = response.result.data.totalPages || 0;
-        }
-      } else if (response && response.data) {
-        // Response with data property
-        if (Array.isArray(response.data)) {
-          data = response.data;
-          totalElements = data.length;
-          totalPages = Math.ceil(totalElements / pagination.pageSize);
-        } else if (response.data.content) {
-          data = response.data.content;
-          totalElements = response.data.totalElements || 0;
-          totalPages = response.data.totalPages || 0;
-        }
+      // Handle the response format based on the sample provided
+      if (response && response.result && response.result.code === "200") {
+        const { data } = response.result;
+        const executions = data.content || [];
+        
+        // Transform API data to the expected format
+        const formattedHistory = executions.map(execution => ({
+          id: `exec-${execution.executionId}`,
+          executionId: execution.executionId,
+          status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+          passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.failedTests || 0}`,
+          executedAt: formatExecutionDate(execution.executionDate),
+          executedBy: execution.executedBy || 'Unknown',
+          date: execution.executionDate ? new Date(execution.executionDate.replace(' ', 'T')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          rawData: execution, // Store raw data for detailed view
+          totalTests: execution.executionSummary?.totalTests || 0,
+          passedTests: execution.executionSummary?.passedTests || 0,
+          failedTests: execution.executionSummary?.failedTests || 0,
+          errorTests: execution.executionSummary?.errorTests || 0,
+          successRate: execution.executionSummary?.successRate || 0,
+          executionTime: execution.executionTimeMs || 0,
+          environmentName: execution.environmentName || 'Unknown',
+          testCaseResults: execution.testCaseResults || []
+        }));
+        
+        setExecutionHistory(formattedHistory);
+        setPagination({
+          pageNumber: data.pageable?.pageNumber || 0,
+          pageSize: data.pageable?.pageSize || pageSize,
+          totalElements: data.totalElements || 0,
+          totalPages: data.totalPages || 0,
+          first: data.first || false,
+          last: data.last || false
+        });
+        
+        setCurrentPage(pageNo + 1); // Convert 0-based to 1-based for UI
+        
+      } else {
+        throw new Error(response?.result?.message || 'Failed to fetch execution history');
       }
-      
-      // Transform API data to the expected format
-      const formattedHistory = data.map(execution => ({
-        id: `exec-${execution.executionId}`,
-        status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-        passedFailed: `${execution.passed || 0}/${execution.failed || 0}`,
-        executedAt: formatExecutionDate(execution.executionDate),
-        executedBy: execution.executedBy || 'Unknown',
-        date: execution.executionDate ? new Date(execution.executionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        rawData: execution, // Store raw data for detailed view
-        executionId: execution.executionId, // Store the actual execution ID
-        totalTests: execution.totalTests || 0,
-        successRate: execution.successRate || 0,
-        environmentName: execution.environmentName
-      }));
-      
-      setExecutionHistory(formattedHistory);
-      setPagination(prev => ({
-        ...prev,
-        pageNo: pageNo,
-        totalElements: totalElements,
-        totalPages: totalPages
-      }));
       
     } catch (error) {
       console.error('Error fetching execution history:', error);
       toast.error('Failed to load execution history');
       
-      // Fallback to mock data if API fails
-      const fallbackData = generateMockExecutionHistory();
-      setExecutionHistory(fallbackData);
+      // Fallback to empty state if API fails
+      setExecutionHistory([]);
+      setPagination({
+        pageNumber: 0,
+        pageSize: pageSize,
+        totalElements: 0,
+        totalPages: 0,
+        first: true,
+        last: true
+      });
     } finally {
       setLoading(false);
     }
@@ -119,8 +114,8 @@ const ModernTestResults = () => {
     if (!dateString) return 'Unknown';
     
     try {
-      // Handle different date formats - timestamp (number) or date string
-      const date = typeof dateString === 'number' ? new Date(dateString) : new Date(dateString.replace(' ', 'T'));
+      // Handle the format "2025-05-25 14:17:56"
+      const date = new Date(dateString.replace(' ', 'T'));
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -134,42 +129,9 @@ const ModernTestResults = () => {
     }
   };
 
-  // Generate mock data as fallback
-  const generateMockExecutionHistory = () => {
-    return [
-      {
-        id: 'exec-202505091',
-        status: 'Passed',
-        passedFailed: '5/0',
-        executedAt: 'May 9, 2025 - 11:15 AM',
-        executedBy: 'john.smith',
-        date: '2025-05-09',
-        executionId: 91
-      },
-      {
-        id: 'exec-202505092',
-        status: 'Passed',
-        passedFailed: '5/0',
-        executedAt: 'May 9, 2025 - 10:30 AM',
-        executedBy: 'john.smith',
-        date: '2025-05-09',
-        executionId: 92
-      },
-      {
-        id: 'exec-202505093',
-        status: 'Failed',
-        passedFailed: '3/2',
-        executedAt: 'May 8, 2025 - 04:45 PM',
-        executedBy: 'jane.doe',
-        date: '2025-05-08',
-        executionId: 93
-      }
-    ];
-  };
-
   // Load data on component mount
   useEffect(() => {
-    fetchExecutionHistory();
+    fetchExecutionHistory(0);
   }, []);
 
   // Helper function to check if a date falls within the selected range
@@ -232,21 +194,13 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Create detailed execution data from API response with updated format
+  // Create detailed execution data from API response
   const createDetailedExecutionData = async (execution) => {
-    const isFromAPI = execution.rawData;
-    
-    if (isFromAPI && execution.executionId) {
-      try {
-        // Fetch full execution details using the actual execution ID
-        const detailedResponse = await testExecution.getExecutionDetails(execution.executionId);
-        
-        console.log('Detailed execution response:', detailedResponse);
-        
-        // Handle the new unified response format with testCaseResult array
-        const testCaseResults = detailedResponse.testCaseResult || [];
-        
-        const results = testCaseResults.map((testCase) => ({
+    try {
+      // Check if we have detailed test case results in the current data
+      if (execution.testCaseResults && execution.testCaseResults.length > 0) {
+        // Transform the existing testCaseResults
+        const results = execution.testCaseResults.map((testCase) => ({
           id: `tc-${testCase.testCaseId}`,
           name: testCase.testCaseName || 'API Test Case',
           status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
@@ -288,48 +242,100 @@ const ModernTestResults = () => {
 
         return {
           id: execution.id,
-          status: detailedResponse.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+          status: execution.status,
           instanceId: execution.id,
-          executedBy: detailedResponse.executedBy,
-          environment: detailedResponse.environmentName || 'API Environment',
+          executedBy: execution.executedBy,
+          environment: execution.environmentName,
           executedAt: execution.executedAt,
-          passedCount: detailedResponse.passed || 0,
-          failedCount: detailedResponse.failed || 0,
-          errorCount: detailedResponse.error || 0,
-          totalTests: detailedResponse.totalTests || results.length,
-          executionTime: detailedResponse.executionTimeMs,
-          successRate: detailedResponse.successRate,
+          passedCount: execution.passedTests,
+          failedCount: execution.failedTests,
+          errorCount: execution.errorTests,
+          totalTests: execution.totalTests,
+          executionTime: execution.executionTime,
+          successRate: execution.successRate,
           results: results,
-          rawExecutionId: execution.executionId,
-          actualExecutionId: detailedResponse.executionId
+          rawExecutionId: execution.executionId
         };
+      } else {
+        // If no detailed results, try to fetch from the details endpoint
+        const detailedResponse = await testExecution.getExecutionDetails(execution.executionId);
         
-      } catch (error) {
-        console.error('Error fetching detailed execution data:', error);
-        // Fallback to basic data if detailed fetch fails
-        return createFallbackExecutionData(execution);
+        if (detailedResponse && detailedResponse.testCaseResult) {
+          const results = detailedResponse.testCaseResult.map((testCase) => ({
+            id: `tc-${testCase.testCaseId}`,
+            name: testCase.testCaseName || 'API Test Case',
+            status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+            duration: `${testCase.executionTimeMs}ms`,
+            request: {
+              method: testCase.httpMethod,
+              url: testCase.url,
+              headers: testCase.requestHeaders || {},
+              body: testCase.requestBody
+            },
+            response: {
+              status: testCase.statusCode,
+              data: testCase.responseBody,
+              headers: testCase.responseHeaders || {}
+            },
+            assertions: [
+              {
+                id: 1,
+                description: 'HTTP Status Code Validation',
+                status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                ...(testCase.executionStatus !== 'PASSED' && {
+                  error: testCase.errorMessage || `Expected successful response but got status ${testCase.statusCode}`
+                })
+              }
+            ],
+            testSuiteId: testCase.testSuiteId,
+            testSuiteName: testCase.testSuiteName,
+            testCaseId: testCase.testCaseId,
+            resultId: testCase.resultId
+          }));
+
+          return {
+            id: execution.id,
+            status: execution.status,
+            instanceId: execution.id,
+            executedBy: execution.executedBy,
+            environment: execution.environmentName,
+            executedAt: execution.executedAt,
+            passedCount: execution.passedTests,
+            failedCount: execution.failedTests,
+            errorCount: execution.errorTests,
+            totalTests: execution.totalTests,
+            executionTime: execution.executionTime,
+            successRate: execution.successRate,
+            results: results,
+            rawExecutionId: execution.executionId
+          };
+        } else {
+          // Fallback to basic data
+          return createFallbackExecutionData(execution);
+        }
       }
-    } else {
-      // Use mock data structure for fallback
-      return window.mockExecutionData?.[execution.id] || createFallbackExecutionData(execution);
+      
+    } catch (error) {
+      console.error('Error creating detailed execution data:', error);
+      return createFallbackExecutionData(execution);
     }
   };
 
   // Create fallback execution data when detailed API call fails
   const createFallbackExecutionData = (execution) => {
-    const passedCount = parseInt(execution.passedFailed.split('/')[0]) || 0;
-    const failedCount = parseInt(execution.passedFailed.split('/')[1]) || 0;
-    
     return {
       id: execution.id,
       status: execution.status,
       instanceId: execution.id,
       executedBy: execution.executedBy,
-      environment: execution.environmentName || 'Unknown Environment',
+      environment: execution.environmentName,
       executedAt: execution.executedAt,
-      passedCount: passedCount,
-      failedCount: failedCount,
-      totalTests: passedCount + failedCount,
+      passedCount: execution.passedTests,
+      failedCount: execution.failedTests,
+      errorCount: execution.errorTests,
+      totalTests: execution.totalTests,
+      executionTime: execution.executionTime,
+      successRate: execution.successRate,
       results: []
     };
   };
@@ -396,7 +402,7 @@ const ModernTestResults = () => {
   };
 
   const handleRefresh = () => {
-    fetchExecutionHistory(pagination.pageNo);
+    fetchExecutionHistory(pagination.pageNumber);
   };
 
   const handleFilterChange = (name, value) => {
@@ -440,6 +446,35 @@ const ModernTestResults = () => {
   };
 
   const hasActiveFilters = filters.status !== 'all' || filters.executedBy !== '' || dateRange !== 'all';
+
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    const pageNo = page - 1; // Convert 1-based to 0-based
+    setCurrentPage(page);
+    fetchExecutionHistory(pageNo);
+  };
+
+  const getPaginationRange = () => {
+    const range = [];
+    const dots = "...";
+    const visiblePages = 2;
+
+    range.push(1);
+    if (currentPage > visiblePages + 2) range.push(dots);
+
+    for (
+      let i = Math.max(2, currentPage - visiblePages);
+      i <= Math.min(pagination.totalPages - 1, currentPage + visiblePages);
+      i++
+    ) {
+      range.push(i);
+    }
+
+    if (currentPage + visiblePages < pagination.totalPages - 1) range.push(dots);
+    if (pagination.totalPages > 1) range.push(pagination.totalPages);
+
+    return range;
+  };
 
   // Get breadcrumb items based on view mode
   const getBreadcrumbItems = () => {
@@ -761,21 +796,84 @@ const ModernTestResults = () => {
       </div>
       
       {/* Results Table */}
-      {loading ? (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 flex flex-col items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-          <p className="text-gray-600">Loading test results...</p>
-        </div>
-      ) : (
-        <TestResultsTable 
-          results={filteredResults}
-          totalResults={filteredResults.length}
-          onViewExecution={handleViewExecution}
-          onFilter={(status) => handleFilterChange('status', status)}
-          currentPage={pagination.pageNo + 1}
-          pageSize={pagination.pageSize}
-        />
-      )}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="p-8 flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
+            <p className="text-gray-600">Loading test results...</p>
+          </div>
+        ) : filteredResults.length === 0 ? (
+          <div className="p-8 flex flex-col items-center justify-center">
+            <div className="bg-gray-100 rounded-full p-4 mb-4">
+              <FaSearch className="h-8 w-8 text-gray-500" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No test results found</h3>
+            <p className="text-gray-500 mb-6 text-center max-w-md">
+              {hasActiveFilters 
+                ? "No executions match your current filters"
+                : "No test executions have been run yet"}
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Clear All Filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <TestResultsTable 
+              results={filteredResults}
+              totalResults={pagination.totalElements}
+              onViewExecution={handleViewExecution}
+              onFilter={(status) => handleFilterChange('status', status)}
+              currentPage={currentPage}
+              pageSize={pageSize}
+            />
+            
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                Showing {Math.min((currentPage - 1) * pageSize + 1, pagination.totalElements)} to{" "}
+                {Math.min(currentPage * pageSize, pagination.totalElements)} of {pagination.totalElements} items
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={pagination.first}
+                  className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                >
+                  Previous
+                </button>
+                {getPaginationRange().map((item, idx) => (
+                  <button
+                    key={idx}
+                    disabled={item === "..."}
+                    onClick={() => item !== "..." && handlePageChange(item)}
+                    className={`px-3 py-1 border rounded-md ${
+                      item === currentPage
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "hover:bg-gray-100 text-gray-600"
+                    } transition-colors`}
+                  >
+                    {item}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={pagination.last}
+                  className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

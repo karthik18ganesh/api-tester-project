@@ -149,13 +149,13 @@ export const testExecution = {
     return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
   },
 
-  // Execute individual test case
+  // Execute individual test case - FIXED ENDPOINT
   executeTestCase: async (testCaseId, executedBy) => {
     const requestBody = {
       executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
     };
     
-    return api(`/api/v1/test-execution/testcase/${testCaseId}`, "POST", requestBody);
+    return api(`/api/v1/test-execution/case/${testCaseId}`, "POST", requestBody);
   },
 
   // Get execution details by execution ID
