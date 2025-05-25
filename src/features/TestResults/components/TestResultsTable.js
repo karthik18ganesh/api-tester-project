@@ -10,8 +10,6 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
   // Ensure we have valid props with defaults
   const safeResults = results || [];
   const safeTotalResults = totalResults || 0;
-  const safeCurrentPage = currentPage || 1;
-  const safePageSize = pageSize || 10;
   
   // Filter results based on search term and status filter
   const filteredResults = React.useMemo(() => {
@@ -257,19 +255,6 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
           </table>
         </div>
       )}
-      
-      {/* Results info footer */}
-      <div className="bg-gray-50 py-3 px-4 border-t border-gray-200 flex justify-between items-center">
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-medium">{Math.min((safeCurrentPage - 1) * safePageSize + 1, safeTotalResults)}</span> to{' '}
-          <span className="font-medium">{Math.min(safeCurrentPage * safePageSize, safeTotalResults)}</span> of{' '}
-          <span className="font-medium">{safeTotalResults}</span> results
-        </div>
-        
-        <div className="text-sm text-gray-500">
-          Page {safeCurrentPage} of {Math.max(1, Math.ceil(safeTotalResults / safePageSize))}
-        </div>
-      </div>
     </div>
   );
 };

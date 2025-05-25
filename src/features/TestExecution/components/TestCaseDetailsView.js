@@ -291,8 +291,6 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Breadcrumb */}
-      <Breadcrumb items={getBreadcrumbItems()} />
-      
       <div className="flex items-center justify-between mb-6">
         <button 
           onClick={onBack}

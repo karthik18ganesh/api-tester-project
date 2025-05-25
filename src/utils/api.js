@@ -165,7 +165,7 @@ export const testExecution = {
 
   // Get execution history/results
   getExecutionHistory: async (pageNo = 0, limit = 10, sortBy = "executionDate", sortDir = "DESC") => {
-    return api(`/api/v1/test-execution/history?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+    return api(`/api/v1/test-execution?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
   }
 };
 

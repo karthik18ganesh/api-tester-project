@@ -59,7 +59,7 @@ const ModernTestResults = () => {
           id: `exec-${execution.executionId}`,
           executionId: execution.executionId,
           status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-          passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.failedTests || 0}`,
+          passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.totalTests || 0}`,
           executedAt: formatExecutionDate(execution.executionDate),
           executedBy: execution.executedBy || 'Unknown',
           date: execution.executionDate ? new Date(execution.executionDate.replace(' ', 'T')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -260,8 +260,11 @@ const ModernTestResults = () => {
         // If no detailed results, try to fetch from the details endpoint
         const detailedResponse = await testExecution.getExecutionDetails(execution.executionId);
         
-        if (detailedResponse && detailedResponse.testCaseResult) {
-          const results = detailedResponse.testCaseResult.map((testCase) => ({
+        if (detailedResponse && detailedResponse.result && detailedResponse.result.code === "200") {
+          const detailsData = detailedResponse.result.data;
+          const testCaseResults = detailsData.testCaseResult || [];
+          
+          const results = testCaseResults.map((testCase) => ({
             id: `tc-${testCase.testCaseId}`,
             name: testCase.testCaseName || 'API Test Case',
             status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
