@@ -83,12 +83,15 @@ const ModernTestResults = () => {
       const formattedHistory = data.map(execution => ({
         id: `exec-${execution.executionId}`,
         status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-        passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.failedTests || 0}`,
+        passedFailed: `${execution.passed || 0}/${execution.failed || 0}`,
         executedAt: formatExecutionDate(execution.executionDate),
         executedBy: execution.executedBy || 'Unknown',
-        date: execution.executionDate ? execution.executionDate.split(' ')[0] : new Date().toISOString().split('T')[0],
+        date: execution.executionDate ? new Date(execution.executionDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         rawData: execution, // Store raw data for detailed view
-        executionId: execution.executionId // Store the actual execution ID
+        executionId: execution.executionId, // Store the actual execution ID
+        totalTests: execution.totalTests || 0,
+        successRate: execution.successRate || 0,
+        environmentName: execution.environmentName
       }));
       
       setExecutionHistory(formattedHistory);
@@ -116,8 +119,8 @@ const ModernTestResults = () => {
     if (!dateString) return 'Unknown';
     
     try {
-      // Handle different date formats
-      const date = new Date(dateString.replace(' ', 'T'));
+      // Handle different date formats - timestamp (number) or date string
+      const date = typeof dateString === 'number' ? new Date(dateString) : new Date(dateString.replace(' ', 'T'));
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -229,7 +232,7 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Create detailed execution data from API response
+  // Create detailed execution data from API response with updated format
   const createDetailedExecutionData = async (execution) => {
     const isFromAPI = execution.rawData;
     
@@ -238,12 +241,14 @@ const ModernTestResults = () => {
         // Fetch full execution details using the actual execution ID
         const detailedResponse = await testExecution.getExecutionDetails(execution.executionId);
         
-        // Transform the detailed response
-        const testCaseResults = detailedResponse.testCaseResults || [];
+        console.log('Detailed execution response:', detailedResponse);
         
-        const results = testCaseResults.map((testCase, index) => ({
+        // Handle the new unified response format with testCaseResult array
+        const testCaseResults = detailedResponse.testCaseResult || [];
+        
+        const results = testCaseResults.map((testCase) => ({
           id: `tc-${testCase.testCaseId}`,
-          name: testCase.testCaseName || `Test Case ${index + 1}`,
+          name: testCase.testCaseName || 'API Test Case',
           status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
           duration: `${testCase.executionTimeMs}ms`,
           request: {
@@ -276,27 +281,27 @@ const ModernTestResults = () => {
             }
           ],
           testSuiteId: testCase.testSuiteId,
-          testSuiteName: testCase.testSuiteName
+          testSuiteName: testCase.testSuiteName,
+          testCaseId: testCase.testCaseId,
+          resultId: testCase.resultId
         }));
-
-        const summary = detailedResponse.executionSummary || {
-          passedTests: 0,
-          failedTests: 0,
-          totalTests: 0
-        };
 
         return {
           id: execution.id,
-          status: execution.status,
+          status: detailedResponse.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
           instanceId: execution.id,
           executedBy: detailedResponse.executedBy,
           environment: detailedResponse.environmentName || 'API Environment',
           executedAt: execution.executedAt,
-          passedCount: summary.passedTests,
-          failedCount: summary.failedTests,
-          totalTests: summary.totalTests,
+          passedCount: detailedResponse.passed || 0,
+          failedCount: detailedResponse.failed || 0,
+          errorCount: detailedResponse.error || 0,
+          totalTests: detailedResponse.totalTests || results.length,
+          executionTime: detailedResponse.executionTimeMs,
+          successRate: detailedResponse.successRate,
           results: results,
-          rawExecutionId: execution.executionId
+          rawExecutionId: execution.executionId,
+          actualExecutionId: detailedResponse.executionId
         };
         
       } catch (error) {
@@ -320,7 +325,7 @@ const ModernTestResults = () => {
       status: execution.status,
       instanceId: execution.id,
       executedBy: execution.executedBy,
-      environment: 'Unknown Environment',
+      environment: execution.environmentName || 'Unknown Environment',
       executedAt: execution.executedAt,
       passedCount: passedCount,
       failedCount: failedCount,
