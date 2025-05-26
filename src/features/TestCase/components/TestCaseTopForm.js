@@ -15,6 +15,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
   // APIRepository state
   const [apiOptions, setApiOptions] = useState([]);
   const [selectedApiDetails, setSelectedApiDetails] = useState(null);
+  const [selectedApiId, setSelectedApiId] = useState(null); // Track selected API ID
   
   // Parameters state
   const [parameters, setParameters] = useState([]);
@@ -94,7 +95,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     return [...new Set(params)]; // Remove duplicates
   };
 
-  // Fetch test case details if in edit mode - UPDATED to handle sample response format
+  // Fetch test case details if in edit mode - UPDATED to handle apiId
   useEffect(() => {
     const fetchTestCaseDetails = async () => {
       if (editMode && location.state.testCase.testCaseId) {
@@ -120,6 +121,12 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
               url: testCase.url || "",
               description: testCase.description || "",
             });
+
+            // Set the selected API ID if available
+            if (testCase.apiId) {
+              setSelectedApiId(testCase.apiId);
+              console.log("Setting selected API ID:", testCase.apiId);
+            }
 
             // Set template data if available - handle both string and object formats
             let formattedRequest = "";
@@ -166,8 +173,8 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
             }
 
             // Load API details if API is selected
-            if (testCase.apiName) {
-              const api = apiOptions.find(a => a.name === testCase.apiName);
+            if (testCase.apiName && testCase.apiId) {
+              const api = apiOptions.find(a => a.name === testCase.apiName || a.id === testCase.apiId);
               if (api) {
                 await loadApiDetails(api.id);
               }
@@ -193,6 +200,12 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           url: testCase.url || "",
           description: testCase.description || "",
         });
+
+        // Set the selected API ID if available
+        if (testCase.apiId) {
+          setSelectedApiId(testCase.apiId);
+          console.log("Setting selected API ID from location state:", testCase.apiId);
+        }
 
         // Set template data if available
         let formattedRequest = "";
@@ -253,6 +266,9 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
       if (response?.result?.data) {
         const apiData = response.result.data;
         setSelectedApiDetails(apiData);
+        setSelectedApiId(apiId); // Store the API ID
+        
+        console.log("Loaded API details for ID:", apiId, apiData);
         
         // Extract parameters from URL
         const urlParams = extractParameters(apiData.url);
@@ -340,7 +356,12 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     if (name === 'api' && value) {
       const selectedApi = apiOptions.find(api => api.name === value);
       if (selectedApi) {
+        console.log("API selection changed to:", selectedApi);
         loadApiDetails(selectedApi.id);
+      } else {
+        // Clear API selection
+        setSelectedApiDetails(null);
+        setSelectedApiId(null);
       }
     }
 
@@ -395,20 +416,12 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
       return false;
     }
     
-    if (!requestTemplate) {
-      toast.error("Please upload a request template");
-      return false;
-    }
-    
-    if (!responseTemplate) {
-      toast.error("Please upload a response template");
-      return false;
-    }
+    // Templates are now optional - no validation required
     
     return true;
   };
 
-  // Form submission
+  // Form submission - UPDATED to include apiId
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
@@ -418,13 +431,25 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
       let requestTemplateObj = {};
       let responseTemplateObj = {};
       
-      try {
-        requestTemplateObj = JSON.parse(requestTemplate);
-        responseTemplateObj = JSON.parse(responseTemplate);
-      } catch (err) {
-        toast.error("Invalid JSON in templates");
-        setLoading(false);
-        return;
+      // Parse templates only if they exist
+      if (requestTemplate) {
+        try {
+          requestTemplateObj = JSON.parse(requestTemplate);
+        } catch (err) {
+          toast.error("Invalid JSON in request template");
+          setLoading(false);
+          return;
+        }
+      }
+      
+      if (responseTemplate) {
+        try {
+          responseTemplateObj = JSON.parse(responseTemplate);
+        } catch (err) {
+          toast.error("Invalid JSON in response template");
+          setLoading(false);
+          return;
+        }
       }
       
       // Base payload for both create and update
@@ -438,11 +463,26 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           apiType: formData.apiType,
           url: formData.url,
           description: formData.description,
-          requestTemplate: requestTemplateObj,
-          responseTemplate: responseTemplateObj,
           executionOrder: 1, // Default execution order
         }
       };
+
+      // Add templates only if they exist
+      if (requestTemplate) {
+        payload.data.requestTemplate = requestTemplateObj;
+      }
+      
+      if (responseTemplate) {
+        payload.data.responseTemplate = responseTemplateObj;
+      }
+
+      // Add apiId if an API is selected
+      if (selectedApiId) {
+        payload.data.apiId = selectedApiId.toString(); // Ensure it's a string as expected by API
+        console.log("Including apiId in payload:", selectedApiId);
+      } else {
+        console.log("No API selected, apiId will be null/undefined");
+      }
       
       let response;
       let testCaseId;
@@ -452,10 +492,14 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         payload.data.testCaseId = location.state.testCase.testCaseId;
         testCaseId = location.state.testCase.testCaseId;
         
+        console.log("Updating test case with payload:", payload);
+        
         // Update existing test case
         response = await api("/api/v1/test-cases", "PUT", payload);
         toast.success("Test Case updated successfully!");
       } else {
+        console.log("Creating test case with payload:", payload);
+        
         // Create new test case
         response = await api("/api/v1/test-cases", "POST", payload);
         toast.success("Test Case created successfully!");
@@ -501,6 +545,13 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           <FiSave className="mr-2 text-indigo-600" />
           {editMode ? "Edit test case" : "Create new test case"}
         </h2>
+        {selectedApiId && (
+          <div className="text-sm text-gray-600">
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+              API ID: {selectedApiId}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-4 mt-4">
@@ -571,6 +622,9 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
             ))}
           </select>
           {loadingApis && <div className="text-xs text-gray-500 mt-1">Loading API details...</div>}
+          {selectedApiId && (
+            <div className="text-xs text-green-600 mt-1">✓ API associated (ID: {selectedApiId})</div>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -630,7 +684,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         {/* Request Template */}
         <div>
           <label className="block font-medium mb-2 text-sm">
-            Request template <span className="text-red-500">*</span>
+            Request template <span className="text-gray-500">(Optional)</span>
           </label>
           <div className="flex flex-wrap gap-2 items-center">
             <input
@@ -688,7 +742,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         {/* Response Template */}
         <div>
           <label className="block font-medium mb-2 text-sm">
-            Response template <span className="text-red-500">*</span>
+            Response template <span className="text-gray-500">(Optional)</span>
           </label>
           <div className="flex flex-wrap gap-2 items-center">
             <input

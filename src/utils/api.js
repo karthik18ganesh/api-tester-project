@@ -38,10 +38,13 @@ export const apiRepository = {
     return apiRepository.update(apiData);
   },
 
-  // Update existing API repository
+  // UPDATED: Update existing API repository with static envId = 1 for development
   update: async (apiData) => {
     // Use the directly passed formatted payload from component
     if (apiData.requestMetaData && apiData.data) {
+      // FIXED: Set envId to 1 (development) statically
+      apiData.data.envId = 1;
+      
       // If it's a create operation (no apiId), use POST
       if (!apiData.data.apiId) {
         return api(API_PREFIX, "POST", apiData);
@@ -60,7 +63,7 @@ export const apiRepository = {
       data: {
         apiId: apiData.id,
         apiRepoName: apiData.name,
-        envId: apiData.environment,
+        envId: 1, // FIXED: Static envId = 1 for development
         method: apiData.method,
         url: apiData.url,
         description: apiData.description,
@@ -90,7 +93,7 @@ export const apiRepository = {
     return api(API_PREFIX, method, requestBody);
   },
 
-  // Execute API
+  // UPDATED: Execute API with static envId = 1
   execute: async (apiData) => {
     // Prepare the request body according to API documentation
     const requestBody = {
@@ -102,7 +105,7 @@ export const apiRepository = {
       data: {
         apiId: apiData.id,
         apiRepoName: apiData.name,
-        envId: apiData.environment,
+        envId: 1, // FIXED: Static envId = 1 for development
         method: apiData.method,
         url: apiData.url,
         request: {

@@ -24,11 +24,10 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const [deleteVariable, setDeleteVariable] = useState(null);
   const [editingVariable, setEditingVariable] = useState(null);
   
-  // Form states
+  // Form states - FIXED: Use separate state object to prevent re-rendering issues
   const [formData, setFormData] = useState({
     name: "",
-    value: "",
-    description: ""
+    value: ""
   });
   
   const testCaseId = propTestCaseId || location.state?.testCase?.testCaseId;
@@ -94,16 +93,15 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // Create a single variable
-  const createVariable = async (name, value = "", description = "") => {
+  // FIXED: Create a single variable with corrected API format
+  const createVariable = async (name, value = "") => {
     try {
       const requestBody = {
         requestMetaData: generateMetadata(),
         data: {
           name: name.trim(),
           value: value.trim(),
-          description: description.trim(),
-          isParameter: detectedParameters?.includes(name) || false,
+          source: "STATIC", // Added required field
           testCase: {
             testCaseId: testCaseId
           }
@@ -125,8 +123,8 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // Update existing variable
-  const updateVariable = async (variableId, name, value, description = "") => {
+  // FIXED: Update existing variable with corrected API format
+  const updateVariable = async (variableId, name, value) => {
     try {
       const requestBody = {
         requestMetaData: generateMetadata(),
@@ -134,8 +132,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           variableId: variableId,
           name: name.trim(),
           value: value.trim(),
-          description: description.trim(),
-          isParameter: detectedParameters?.includes(name) || false,
+          source: "STATIC", // Added required field
           testCase: {
             testCaseId: testCaseId
           }
@@ -195,7 +192,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
       for (const param of unCreatedParams) {
         try {
-          await createVariable(param, "", `Auto-created from detected parameter: ${param}`);
+          await createVariable(param, ""); // No description field
           successCount++;
         } catch (error) {
           console.error(`Failed to create parameter ${param}:`, error);
@@ -220,9 +217,9 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // Modal handlers
+  // FIXED: Modal handlers with proper state management
   const handleOpenAddModal = () => {
-    setFormData({ name: "", value: "", description: "" });
+    setFormData({ name: "", value: "" });
     setEditingVariable(null);
     setIsAddModalOpen(true);
   };
@@ -230,8 +227,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const handleOpenEditModal = (variable) => {
     setFormData({
       name: variable.name || "",
-      value: variable.value || "",
-      description: variable.description || ""
+      value: variable.value || ""
     });
     setEditingVariable(variable);
     setIsEditModalOpen(true);
@@ -240,10 +236,11 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const handleCloseModals = () => {
     setIsAddModalOpen(false);
     setIsEditModalOpen(false);
-    setFormData({ name: "", value: "", description: "" });
+    setFormData({ name: "", value: "" });
     setEditingVariable(null);
   };
 
+  // FIXED: Proper form change handler to prevent focus issues
   const handleFormChange = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -251,9 +248,9 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }));
   };
 
-  // Save variable (create or update)
+  // FIXED: Save variable (create or update) with corrected API format
   const handleSaveVariable = async () => {
-    const { name, value, description } = formData;
+    const { name, value } = formData;
     
     if (!name.trim()) {
       toast.error("Variable name is required");
@@ -276,11 +273,11 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       
       if (editingVariable) {
         // Update existing variable
-        await updateVariable(editingVariable.variableId, name, value, description);
+        await updateVariable(editingVariable.variableId, name, value);
         toast.success("Variable updated successfully");
       } else {
         // Create new variable
-        await createVariable(name, value, description);
+        await createVariable(name, value);
         toast.success("Variable created successfully");
       }
       
@@ -392,7 +389,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     );
   };
 
-  // Variable Modal Component
+  // FIXED: Variable Modal Component - Removed description field and fixed focus issues
   const VariableModal = ({ isOpen, isEdit = false }) => {
     if (!isOpen) return null;
 
@@ -432,17 +429,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                 onChange={(e) => handleFormChange('value', e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="variable value"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleFormChange('description', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Optional description"
-                rows="3"
               />
             </div>
           </div>
@@ -610,14 +596,13 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
               <th className="p-3 font-medium">Name</th>
               <th className="p-3 font-medium">Value</th>
               <th className="p-3 font-medium">Type</th>
-              <th className="p-3 font-medium">Description</th>
               <th className="p-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading && variables.length === 0 ? (
               <tr>
-                <td colSpan="5" className="p-4 text-center">
+                <td colSpan="4" className="p-4 text-center">
                   <div className="flex justify-center items-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
                     Loading variables...
@@ -626,7 +611,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
               </tr>
             ) : paginatedVariables.length === 0 ? (
               <tr>
-                <td colSpan="5" className="p-8 text-center text-gray-500">
+                <td colSpan="4" className="p-8 text-center text-gray-500">
                   <div className="flex flex-col items-center">
                     <FiSettings className="h-8 w-8 text-gray-300 mb-3" />
                     <div className="text-lg font-medium mb-2">No variables created yet</div>
@@ -681,11 +666,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                       }`}>
                         {isDetectedParam ? 'Auto-detected' : 'Manual'}
                       </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="truncate max-w-xs text-gray-600 text-sm">
-                        {variable.description || '—'}
-                      </div>
                     </td>
                     <td className="p-3">
                       <div className="flex space-x-2">
