@@ -94,18 +94,23 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     return [...new Set(params)]; // Remove duplicates
   };
 
-  // Fetch test case details if in edit mode
+  // Fetch test case details if in edit mode - UPDATED to handle sample response format
   useEffect(() => {
     const fetchTestCaseDetails = async () => {
       if (editMode && location.state.testCase.testCaseId) {
         try {
           setLoading(true);
+          console.log("Fetching test case details for ID:", location.state.testCase.testCaseId);
+          
           // Get the latest test case data from the API
           const response = await api(`/api/v1/test-cases/${location.state.testCase.testCaseId}`);
+          console.log("Test case API response:", response);
           
           if (response.result?.data) {
             const testCase = response.result.data;
+            console.log("Test case data:", testCase);
             
+            // Handle the response format from your sample
             setFormData({
               testCaseName: testCase.name || "",
               type: testCase.type || "",
@@ -116,38 +121,48 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
               description: testCase.description || "",
             });
 
-            // Set template data if available
+            // Set template data if available - handle both string and object formats
             let formattedRequest = "";
             let formattedResponse = "";
             
             if (testCase.requestTemplate) {
-              formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+              if (typeof testCase.requestTemplate === 'string') {
+                formattedRequest = testCase.requestTemplate;
+              } else {
+                formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+              }
               setRequestTemplate(formattedRequest);
               setUploadedRequestFileName("existing-request.json");
             }
 
             if (testCase.responseTemplate) {
-              formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+              if (typeof testCase.responseTemplate === 'string') {
+                formattedResponse = testCase.responseTemplate;
+              } else {
+                formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+              }
               setResponseTemplate(formattedResponse);
               setUploadedResponseFileName("existing-response.json");
             }
             
-            // Extract parameters from the loaded test case
+            // Extract parameters from all sources
             const detectedParams = [...new Set([
               ...extractParameters(testCase.url || ""),
               ...extractParameters(formattedRequest || ""),
               ...extractParameters(formattedResponse || "")
             ])];
             
-            if (detectedParams.length > 0) {
-              setParameters(detectedParams);
-              // Notify parent component about parameters
-              if (onParametersDetected) {
-                onParametersDetected(detectedParams);
-              }
-              if (onTestCaseSaved) {
-                onTestCaseSaved(testCase.testCaseId, detectedParams);
-              }
+            console.log("Detected parameters:", detectedParams);
+            setParameters(detectedParams);
+            
+            // Always notify parent component about parameters (even if empty array)
+            if (onParametersDetected) {
+              onParametersDetected(detectedParams);
+            }
+            
+            // Always notify that test case was loaded (this will show the configuration form)
+            if (onTestCaseSaved) {
+              onTestCaseSaved(testCase.testCaseId, detectedParams);
             }
 
             // Load API details if API is selected
@@ -167,6 +182,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
       } else if (editMode) {
         // If we already have test case data from location state, use it without fetching
         const testCase = location.state.testCase;
+        console.log("Using test case from location state:", testCase);
         
         setFormData({
           testCaseName: testCase.name || "",
@@ -183,13 +199,21 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         let formattedResponse = "";
         
         if (testCase.requestTemplate) {
-          formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+          if (typeof testCase.requestTemplate === 'string') {
+            formattedRequest = testCase.requestTemplate;
+          } else {
+            formattedRequest = JSON.stringify(testCase.requestTemplate, null, 2);
+          }
           setRequestTemplate(formattedRequest);
           setUploadedRequestFileName("existing-request.json");
         }
 
         if (testCase.responseTemplate) {
-          formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+          if (typeof testCase.responseTemplate === 'string') {
+            formattedResponse = testCase.responseTemplate;
+          } else {
+            formattedResponse = JSON.stringify(testCase.responseTemplate, null, 2);
+          }
           setResponseTemplate(formattedResponse);
           setUploadedResponseFileName("existing-response.json");
         }
@@ -201,14 +225,16 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           ...extractParameters(formattedResponse || "")
         ])];
         
-        if (detectedParams.length > 0) {
-          setParameters(detectedParams);
-          if (onParametersDetected) {
-            onParametersDetected(detectedParams);
-          }
-          if (onTestCaseSaved) {
-            onTestCaseSaved(testCase.testCaseId, detectedParams);
-          }
+        setParameters(detectedParams);
+        
+        // Always notify parent component
+        if (onParametersDetected) {
+          onParametersDetected(detectedParams);
+        }
+        
+        // Always notify that test case was loaded (this will show the configuration form)
+        if (onTestCaseSaved) {
+          onTestCaseSaved(testCase.testCaseId, detectedParams);
         }
       }
     };
@@ -436,30 +462,25 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         testCaseId = response?.result?.data?.testCaseId;
       }
       
-      // Check if parameters were detected
+      // Extract parameters from all sources
       const detectedParams = [...new Set([
         ...extractParameters(formData.url),
         ...extractParameters(requestTemplate),
         ...extractParameters(responseTemplate)
       ])];
 
-      // If parameters detected, notify parent and show configuration
-      if (detectedParams.length > 0) {
-        if (onParametersDetected) {
-          onParametersDetected(detectedParams);
-        }
-        if (onTestCaseSaved) {
-          onTestCaseSaved(testCaseId, detectedParams);
-        }
-      } else {
-        // No parameters detected, redirect to list
-        if (onTestCaseSaved) {
-          onTestCaseSaved(testCaseId, []);
-        }
-        setTimeout(() => {
-          navigate("/test-design/test-case");
-        }, 1500);
+      console.log("Final detected parameters:", detectedParams);
+
+      // Always notify parent and show configuration (regardless of parameters)
+      if (onParametersDetected) {
+        onParametersDetected(detectedParams);
       }
+      
+      if (onTestCaseSaved) {
+        onTestCaseSaved(testCaseId, detectedParams);
+      }
+      
+      // Don't redirect automatically - let user configure variables first
       
     } catch (err) {
       console.error("Error saving test case:", err);

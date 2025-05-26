@@ -19,7 +19,7 @@ const TestCaseDetails = () => {
   // Handle when parameters are detected in the top form
   const handleParametersDetected = (parameters) => {
     console.log("Parameters detected:", parameters);
-    setDetectedParameters(parameters);
+    setDetectedParameters(parameters || []); // Handle null/undefined
     setShowConfiguration(true);
   };
 
@@ -29,10 +29,58 @@ const TestCaseDetails = () => {
     setSavedTestCaseId(testCaseId);
     setTestCaseSaved(true);
     
-    if (parameters.length > 0) {
-      setDetectedParameters(parameters);
+    // Always show configuration form after save, regardless of parameters
+    setDetectedParameters(parameters || []);
+    setShowConfiguration(true);
+  };
+
+  // For edit mode, show configuration immediately if we have a test case ID
+  React.useEffect(() => {
+    if (isEditMode && location.state?.testCase?.testCaseId) {
+      console.log("Edit mode detected, showing configuration form");
+      setSavedTestCaseId(location.state.testCase.testCaseId);
+      setTestCaseSaved(true);
       setShowConfiguration(true);
+      
+      // Extract any parameters from the existing test case
+      const testCase = location.state.testCase;
+      const existingParams = [];
+      
+      // Check URL for parameters
+      if (testCase.url) {
+        const urlParams = extractParameters(testCase.url);
+        existingParams.push(...urlParams);
+      }
+      
+      // Check templates for parameters
+      if (testCase.requestTemplate) {
+        const reqParams = extractParameters(JSON.stringify(testCase.requestTemplate));
+        existingParams.push(...reqParams);
+      }
+      
+      if (testCase.responseTemplate) {
+        const resParams = extractParameters(JSON.stringify(testCase.responseTemplate));
+        existingParams.push(...resParams);
+      }
+      
+      // Remove duplicates
+      const uniqueParams = [...new Set(existingParams)];
+      setDetectedParameters(uniqueParams);
     }
+  }, [isEditMode, location.state]);
+
+  // Helper function to extract parameters
+  const extractParameters = (text) => {
+    if (!text) return [];
+    const paramRegex = /\$\{([^}]+)\}/g;
+    const params = [];
+    let match;
+    
+    while ((match = paramRegex.exec(text)) !== null) {
+      params.push(match[1]);
+    }
+    
+    return params;
   };
 
   return (
@@ -51,11 +99,12 @@ const TestCaseDetails = () => {
         onTestCaseSaved={handleTestCaseSaved}
       />
       
-      {/* Configuration Form - Show when parameters are detected or test case is saved */}
-      {(showConfiguration || testCaseSaved) && detectedParameters.length > 0 && (
+      {/* Configuration Form - Show when test case is saved OR in edit mode */}
+      {(showConfiguration || testCaseSaved || isEditMode) && (
         <TestCaseConfigurationForm 
           detectedParameters={detectedParameters}
           testCaseId={savedTestCaseId || location.state?.testCase?.testCaseId}
+          key={`config-${savedTestCaseId || location.state?.testCase?.testCaseId}`} // Force re-render when ID changes
         />
       )}
     </div>
