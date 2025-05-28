@@ -95,7 +95,92 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     return [...new Set(params)]; // Remove duplicates
   };
 
-  // Fetch test case details if in edit mode - UPDATED to handle apiId
+  // FIXED: New function to extract parameters from query params object
+  const extractQueryParameters = (queryParams) => {
+    if (!queryParams || typeof queryParams !== 'object') return [];
+    
+    const params = [];
+    
+    // Extract parameters from both keys and values of query params
+    Object.entries(queryParams).forEach(([key, value]) => {
+      // Extract from key
+      params.push(...extractParameters(key));
+      // Extract from value (this is where ${postId} would be detected)
+      params.push(...extractParameters(String(value)));
+    });
+    
+    return [...new Set(params)]; // Remove duplicates
+  };
+
+  // FIXED: New function to extract parameters from headers object
+  const extractHeaderParameters = (headers) => {
+    if (!headers || typeof headers !== 'object') return [];
+    
+    const params = [];
+    
+    // Extract parameters from both keys and values of headers
+    Object.entries(headers).forEach(([key, value]) => {
+      params.push(...extractParameters(key));
+      params.push(...extractParameters(String(value)));
+    });
+    
+    return [...new Set(params)]; // Remove duplicates
+  };
+
+  // FIXED: New function to extract parameters from path params object
+  const extractPathParameters = (pathParams) => {
+    if (!pathParams || typeof pathParams !== 'object') return [];
+    
+    const params = [];
+    
+    // Extract parameters from both keys and values of path params
+    Object.entries(pathParams).forEach(([key, value]) => {
+      params.push(...extractParameters(key));
+      params.push(...extractParameters(String(value)));
+    });
+    
+    return [...new Set(params)]; // Remove duplicates
+  };
+
+  // FIXED: Updated parameter detection function
+  const detectAllParameters = (testCase) => {
+    const allParams = [];
+    
+    // 1. Extract from URL
+    if (testCase.url) {
+      allParams.push(...extractParameters(testCase.url));
+    }
+    
+    // 2. Extract from API's request parameters (if API is associated)
+    if (testCase.api && testCase.api.request) {
+      const request = testCase.api.request;
+      
+      // Extract from query parameters
+      if (request.queryParams) {
+        console.log("Extracting from queryParams:", request.queryParams);
+        allParams.push(...extractQueryParameters(request.queryParams));
+      }
+      
+      // Extract from headers
+      if (request.headers) {
+        console.log("Extracting from headers:", request.headers);
+        allParams.push(...extractHeaderParameters(request.headers));
+      }
+      
+      // Extract from path parameters
+      if (request.pathParams) {
+        console.log("Extracting from pathParams:", request.pathParams);
+        allParams.push(...extractPathParameters(request.pathParams));
+      }
+    }
+    
+    // Remove duplicates and return
+    const uniqueParams = [...new Set(allParams)];
+    console.log("All detected parameters:", uniqueParams);
+    return uniqueParams;
+  };
+
+  // Fetch test case details if in edit mode - UPDATED with fixed parameter detection
   useEffect(() => {
     const fetchTestCaseDetails = async () => {
       if (editMode && location.state.testCase.testCaseId) {
@@ -123,9 +208,9 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
             });
 
             // Set the selected API ID if available
-            if (testCase.apiId) {
-              setSelectedApiId(testCase.apiId);
-              console.log("Setting selected API ID:", testCase.apiId);
+            if (testCase.api && testCase.api.apiId) {
+              setSelectedApiId(testCase.api.apiId);
+              console.log("Setting selected API ID:", testCase.api.apiId);
             }
 
             // Set template data if available - handle both string and object formats
@@ -152,12 +237,8 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
               setUploadedResponseFileName("existing-response.json");
             }
             
-            // Extract parameters from all sources
-            const detectedParams = [...new Set([
-              ...extractParameters(testCase.url || ""),
-              ...extractParameters(formattedRequest || ""),
-              ...extractParameters(formattedResponse || "")
-            ])];
+            // FIXED: Use new parameter detection function
+            const detectedParams = detectAllParameters(testCase);
             
             console.log("Detected parameters:", detectedParams);
             setParameters(detectedParams);
@@ -173,11 +254,8 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
             }
 
             // Load API details if API is selected
-            if (testCase.apiName && testCase.apiId) {
-              const api = apiOptions.find(a => a.name === testCase.apiName || a.id === testCase.apiId);
-              if (api) {
-                await loadApiDetails(api.id);
-              }
+            if (testCase.apiName && testCase.api && testCase.api.apiId) {
+              await loadApiDetails(testCase.api.apiId);
             }
           }
         } catch (err) {
@@ -231,12 +309,8 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           setUploadedResponseFileName("existing-response.json");
         }
         
-        // Extract parameters
-        const detectedParams = [...new Set([
-          ...extractParameters(testCase.url || ""),
-          ...extractParameters(formattedRequest || ""),
-          ...extractParameters(formattedResponse || "")
-        ])];
+        // FIXED: Use new parameter detection function
+        const detectedParams = detectAllParameters(testCase);
         
         setParameters(detectedParams);
         
@@ -255,7 +329,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     fetchTestCaseDetails();
   }, [editMode, location.state, apiOptions]);
 
-  // Load API details and extract parameters
+  // UPDATED: Load API details and extract parameters from API request
   const loadApiDetails = async (apiId) => {
     if (!apiId) return;
     
@@ -270,25 +344,30 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         
         console.log("Loaded API details for ID:", apiId, apiData);
         
+        // FIXED: Extract parameters from API request object instead of individual fields
+        let apiParams = [];
+        if (apiData.request) {
+          // Extract from query parameters
+          if (apiData.request.queryParams) {
+            apiParams.push(...extractQueryParameters(apiData.request.queryParams));
+          }
+          
+          // Extract from headers
+          if (apiData.request.headers) {
+            apiParams.push(...extractHeaderParameters(apiData.request.headers));
+          }
+          
+          // Extract from path parameters
+          if (apiData.request.pathParams) {
+            apiParams.push(...extractPathParameters(apiData.request.pathParams));
+          }
+        }
+        
         // Extract parameters from URL
         const urlParams = extractParameters(apiData.url);
         
-        // Extract parameters from headers
-        const headerParams = Object.entries(apiData.request?.headers || {})
-          .flatMap(([k, v]) => [...extractParameters(k), ...extractParameters(v)]);
-        
-        // Extract parameters from query params
-        const queryParams = Object.entries(apiData.request?.queryParams || {})
-          .flatMap(([k, v]) => [...extractParameters(k), ...extractParameters(v)]);
-        
-        // Extract parameters from body (if it exists)
-        let bodyParams = [];
-        if (apiData.request?.body) {
-          bodyParams = extractParameters(JSON.stringify(apiData.request.body));
-        }
-        
         // Combine all parameters
-        const allParams = [...new Set([...urlParams, ...headerParams, ...queryParams, ...bodyParams])];
+        const allParams = [...new Set([...urlParams, ...apiParams])];
         setParameters(allParams);
         
         // Set URL and method from API
@@ -298,8 +377,8 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           apiType: apiData.method
         }));
         
-        // Update parameters from all sources including templates
-        setTimeout(updateParametersFromTemplates, 100);
+        // Update parameters from all sources
+        setTimeout(updateParametersFromSources, 100);
         
       } else {
         toast.error("Invalid API data format");
@@ -312,13 +391,30 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     }
   };
 
-  // Update parameters when templates change
-  const updateParametersFromTemplates = () => {
+  // FIXED: Updated to only extract from URL and selected API, not templates
+  const updateParametersFromSources = () => {
     const urlParams = extractParameters(formData.url);
-    const requestParams = extractParameters(requestTemplate);
-    const responseParams = extractParameters(responseTemplate);
     
-    const allParams = [...new Set([...urlParams, ...requestParams, ...responseParams])];
+    // Get parameters from selected API details if available
+    let apiParams = [];
+    if (selectedApiDetails && selectedApiDetails.request) {
+      const request = selectedApiDetails.request;
+      
+      if (request.queryParams) {
+        apiParams.push(...extractQueryParameters(request.queryParams));
+      }
+      
+      if (request.headers) {
+        apiParams.push(...extractHeaderParameters(request.headers));
+      }
+      
+      if (request.pathParams) {
+        apiParams.push(...extractPathParameters(request.pathParams));
+      }
+    }
+    
+    // REMOVED: No longer extracting from requestTemplate and responseTemplate
+    const allParams = [...new Set([...urlParams, ...apiParams])];
     setParameters(allParams);
 
     // Notify parent component about parameters
@@ -367,11 +463,11 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
 
     // If URL changes, update parameters
     if (name === 'url') {
-      setTimeout(updateParametersFromTemplates, 100);
+      setTimeout(updateParametersFromSources, 100);
     }
   };
 
-  // Handle file uploads for request/response templates
+  // UPDATED: Handle file uploads - no longer trigger parameter detection
   const handleFileUpload = (e, type) => {
     const file = e.target.files[0];
     if (file && file.type === "application/json") {
@@ -387,8 +483,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
             setUploadedResponseFileName(file.name);
             setResponseTemplate(formatted);
           }
-          // Update parameters after template change
-          setTimeout(updateParametersFromTemplates, 100);
+          // REMOVED: No longer update parameters from templates
         } catch (error) {
           toast.error("Invalid JSON file. Please check the file format.");
         }
@@ -421,7 +516,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
     return true;
   };
 
-  // Form submission - UPDATED to include apiId
+  // UPDATED: Form submission with corrected parameter detection
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
@@ -506,12 +601,27 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         testCaseId = response?.result?.data?.testCaseId;
       }
       
-      // Extract parameters from all sources
-      const detectedParams = [...new Set([
-        ...extractParameters(formData.url),
-        ...extractParameters(requestTemplate),
-        ...extractParameters(responseTemplate)
-      ])];
+      // FIXED: Extract parameters only from URL and selected API, not templates
+      const urlParams = extractParameters(formData.url);
+      let apiParams = [];
+      
+      if (selectedApiDetails && selectedApiDetails.request) {
+        const request = selectedApiDetails.request;
+        
+        if (request.queryParams) {
+          apiParams.push(...extractQueryParameters(request.queryParams));
+        }
+        
+        if (request.headers) {
+          apiParams.push(...extractHeaderParameters(request.headers));
+        }
+        
+        if (request.pathParams) {
+          apiParams.push(...extractPathParameters(request.pathParams));
+        }
+      }
+      
+      const detectedParams = [...new Set([...urlParams, ...apiParams])];
 
       console.log("Final detected parameters:", detectedParams);
 
@@ -545,13 +655,18 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
           <FiSave className="mr-2 text-indigo-600" />
           {editMode ? "Edit test case" : "Create new test case"}
         </h2>
-        {selectedApiId && (
-          <div className="text-sm text-gray-600">
-            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+        <div className="flex items-center gap-2">
+          {selectedApiId && (
+            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
               API ID: {selectedApiId}
             </span>
-          </div>
-        )}
+          )}
+          {parameters.length > 0 && (
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">
+              {parameters.length} parameter{parameters.length !== 1 ? 's' : ''} detected
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mt-4">
@@ -679,6 +794,26 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         </div>
       </div>
 
+      {/* Parameters Preview Section */}
+      {parameters.length > 0 && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-sm font-medium text-blue-900 mb-2">Detected Parameters</h3>
+          <div className="flex flex-wrap gap-2">
+            {parameters.map((param, index) => (
+              <span
+                key={index}
+                className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full border border-blue-300"
+              >
+                ${"{" + param + "}"}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-blue-700 mt-2">
+            💡 These parameters will be available for variable configuration after saving
+          </p>
+        </div>
+      )}
+
       {/* File Uploads */}
       <div className="grid grid-cols-2 gap-4 mt-6">
         {/* Request Template */}
@@ -737,6 +872,9 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
               </>
             )}
           </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Note: Parameters in templates are not used for variable detection
+          </p>
         </div>
 
         {/* Response Template */}
@@ -795,6 +933,9 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
               </>
             )}
           </div>
+          <p className="text-xs text-gray-500 mt-1">
+            Note: Parameters in templates are not used for variable detection
+          </p>
         </div>
       </div>
 
