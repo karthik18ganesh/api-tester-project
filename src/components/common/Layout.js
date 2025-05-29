@@ -1,21 +1,16 @@
 // src/components/common/Layout.js
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import { Outlet } from "react-router-dom";
 
 const Layout = () => {
-  const [activeProject, setActiveProject] = useState(null);
-
-  // Listen for active project changes
+  // Listen for active project changes (for any future use)
   useEffect(() => {
     const handleStorageChange = () => {
-      const storedProject = localStorage.getItem("activeProject");
-      if (storedProject) {
-        setActiveProject(JSON.parse(storedProject));
-      } else {
-        setActiveProject(null);
-      }
+      // Currently not using the project data in Layout, but keeping the listener
+      // for potential future features like project-specific layouts
+      localStorage.getItem("activeProject");
     };
     
     // Initial check

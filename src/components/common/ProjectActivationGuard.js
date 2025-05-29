@@ -220,7 +220,7 @@ const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading
 
 // Main Project Activation Guard Component
 const ProjectActivationGuard = ({ children }) => {
-  const { activeProject, setProjectAsActive, isLoading, hasActiveProject } = useProjectActivation();
+  const { setProjectAsActive, isLoading, hasActiveProject } = useProjectActivation();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [showModal, setShowModal] = useState(false);

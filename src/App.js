@@ -1,6 +1,6 @@
 // Updated App.js with Project Activation Guard
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -29,7 +29,15 @@ import TestCaseDetailsView from "./features/TestExecution/components/TestCaseDet
 import TestResults from "./features/TestResults/components/TestResults";
 import ExecutionDetailsView from "./features/TestResults/components/ExecutionDetailsView";
 
+// Import Zustand stores
+import { initializeStores } from "./stores";
+
 const EnhancedApp = () => {
+  // Initialize stores on app mount
+  useEffect(() => {
+    initializeStores();
+  }, []);
+
   return (
     <Router>
       <Toast />

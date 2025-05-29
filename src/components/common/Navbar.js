@@ -5,6 +5,9 @@ import { FiLogOut, FiUser, FiSettings, FiHelpCircle, FiGrid, FiLayers, FiArchive
 import Logo from "../../assets/Logo.svg";
 import { toast } from "react-toastify";
 import { api } from "../../utils/api";
+import { useAuthStore } from "../../stores/authStore";
+import { useProjectStore } from "../../stores/projectStore";
+import { useUIStore } from "../../stores/uiStore";
 
 const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,8 +57,6 @@ const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
     try {
       const response = await api(`/api/global-search?keyword=${encodeURIComponent(keyword)}`);
       
-      console.log("Search API Response:", response); // Debug log
-      
       // Handle different possible response structures
       let results = [];
       
@@ -88,9 +89,6 @@ const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
         };
         results = extractArray(response);
       }
-      
-      console.log("Processed search results:", results); // Debug log
-      console.log("Results count:", results.length); // Debug log
       
       // Ensure results is always an array
       if (!Array.isArray(results)) {
@@ -201,158 +199,69 @@ const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="flex-1 border-0 bg-transparent text-gray-900 placeholder-gray-500 focus:ring-0 text-lg font-medium"
+              className="flex-1 bg-transparent text-gray-900 placeholder-gray-500 text-lg outline-none font-medium"
             />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="p-1 text-gray-400 hover:text-gray-600 transition-all duration-200 hover:bg-white rounded-full mr-3"
-              >
-                <FiX className="w-4 h-4" />
-              </button>
-            )}
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-all duration-200 hover:bg-white rounded-full"
+              className="ml-3 text-gray-400 hover:text-gray-600 transition-colors"
             >
               <FiX className="w-5 h-5" />
             </button>
           </div>
 
           {/* Search Results */}
-          <div className="max-h-96 overflow-y-auto" ref={resultsRef}>
+          <div className="max-h-96 overflow-y-auto search-results" ref={resultsRef}>
             {isSearching ? (
-              <div className="flex items-center justify-center py-12 animate-slide-up">
-                <div className="relative mr-3">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                  <div className="absolute inset-0 animate-ping rounded-full h-8 w-8 border-b-2 border-indigo-300"></div>
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center space-x-2 text-gray-500">
+                  <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <span className="text-sm font-medium">Searching...</span>
                 </div>
-                <span className="text-gray-500 font-medium">Searching...</span>
               </div>
-            ) : searchTerm.trim() && searchResults.length === 0 && !isSearching ? (
-              <div className="py-12 text-center animate-slide-up">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                  <FaSearch className="w-6 h-6 text-gray-400" />
-                </div>
-                <p className="text-gray-600 font-medium">No results found for "{searchTerm}"</p>
-                <p className="text-gray-400 text-sm mt-1">Try a different search term</p>
+            ) : searchTerm && searchResults.length === 0 ? (
+              <div className="text-center py-12">
+                <FiGrid className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-sm font-medium text-gray-900 mb-2">No results found</h3>
+                <p className="text-sm text-gray-500">
+                  Try adjusting your search terms or check spelling
+                </p>
               </div>
             ) : searchResults.length > 0 ? (
               <div className="py-2">
-                {searchResults.map((result, index) => {
-                  // Ensure result has required properties
-                  const entityType = result.entityType || 'Unknown';
-                  const id = result.id || result.testCaseId || result.testSuiteId || result.testPackageId || index;
-                  const name = result.name || result.testCaseName || result.suiteName || result.packageName || 'Unnamed';
-                  const description = result.description || '';
-                  const type = result.type || '';
-                  
-                  return (
-                    <div
-                      key={`${entityType}-${id}-${index}`}
-                      className={`search-result-item flex items-center px-4 py-3 cursor-pointer transition-all duration-200 ${
-                        index === selectedIndex 
-                          ? "bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-600 shadow-sm" 
-                          : "hover:bg-gray-50 hover:shadow-sm"
-                      }`}
-                      onClick={() => handleResultClick({...result, entityType, id, name, description, type})}
-                      onMouseEnter={() => setSelectedIndex(index)}
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex-shrink-0 mr-3 p-2 rounded-lg bg-white shadow-sm">
-                        {getEntityIcon(entityType)}
+                {searchResults.map((result, index) => (
+                  <button
+                    key={result.id}
+                    onClick={() => handleResultClick(result)}
+                    className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors search-result-item ${
+                      selectedIndex === index ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
+                    }`}
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="mt-0.5">
+                        {getEntityIcon(result.entityType)}
                       </div>
-                      
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {highlightText(name, searchTerm)}
+                        <div className="flex items-center space-x-2 mb-1">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {highlightText(result.name, searchTerm)}
                           </p>
-                          <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
-                            entityType === 'TestCase' ? 'bg-green-100 text-green-700' :
-                            entityType === 'TestSuite' ? 'bg-blue-100 text-blue-700' :
-                            entityType === 'TestPackage' ? 'bg-purple-100 text-purple-700' :
-                            'bg-gray-100 text-gray-600'
-                          }`}>
-                            {getEntityTypeDisplay(entityType)}
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                            {getEntityTypeDisplay(result.entityType)}
                           </span>
                         </div>
-                        
-                        {description && (
-                          <p className="text-sm text-gray-500 truncate mt-0.5">
-                            {highlightText(description, searchTerm)}
+                        {result.description && (
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {highlightText(result.description, searchTerm)}
                           </p>
                         )}
-                        
-                        {type && (
-                          <div className="mt-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
-                              {type}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-shrink-0 ml-3 text-gray-400 transition-transform duration-200 group-hover:translate-x-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : searchTerm.trim() === "" ? (
-              <div className="py-12 text-center animate-slide-up">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center">
-                  <FaSearch className="w-6 h-6 text-indigo-500" />
-                </div>
-                <p className="text-gray-600 font-medium">Start typing to search</p>
-                <p className="text-gray-400 text-sm mt-1">Find test cases, suites, and packages</p>
-                <div className="mt-4 flex items-center justify-center space-x-4 text-xs text-gray-400">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-green-200 mr-1"></div>
-                    Test Cases
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-blue-200 mr-1"></div>
-                    Test Suites
-                  </div>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-200 mr-1"></div>
-                    Test Packages
-                  </div>
-                </div>
+                  </button>
+                ))}
               </div>
             ) : null}
           </div>
-
-          {/* Footer */}
-          {searchResults.length > 0 && (
-            <div className="border-t border-gray-200 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100">
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <div className="flex items-center space-x-4">
-                  <span className="flex items-center">
-                    <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded shadow-sm mr-1">↑↓</kbd>
-                    navigate
-                  </span>
-                  <span className="flex items-center">
-                    <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded shadow-sm mr-1">↵</kbd>
-                    select
-                  </span>
-                  <span className="flex items-center">
-                    <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded shadow-sm mr-1">ESC</kbd>
-                    close
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse"></div>
-                  <span className="font-medium">{searchResults.length}</span>
-                  <span className="ml-1">result{searchResults.length !== 1 ? 's' : ''}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -362,26 +271,29 @@ const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
 const Navbar = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [notifications, setNotifications] = useState(3);
-  const [activeProject, setActiveProject] = useState(() => {
-    const storedProject = localStorage.getItem("activeProject");
-    return storedProject ? JSON.parse(storedProject) : null;
-  });
   
   const dropdownRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  // Zustand stores
+  const { logout, user } = useAuthStore();
+  const { activeProject } = useProjectStore();
+  const { 
+    modals,
+    notifications,
+    openSearchModal,
+    closeSearchModal
+  } = useUIStore();
+
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
+    logout();
     toast.success("Logged out successfully");
     navigate("/login");
   };
 
-  // Mock user data
-  const user = {
+  // Mock user data - this would come from auth store in real implementation
+  const userData = user || {
     name: "User",
     email: "user@example.com",
     role: "Administrator",
@@ -402,31 +314,18 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Listen for active project changes
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const storedProject = localStorage.getItem("activeProject");
-      if (storedProject) {
-        setActiveProject(JSON.parse(storedProject));
-      }
-    };
-    
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
   // Handle keyboard shortcut for search
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setShowSearchModal(true);
+        openSearchModal();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [openSearchModal]);
 
   // Handle navigation from search results
   const handleSearchNavigation = (result) => {
@@ -472,7 +371,7 @@ const Navbar = () => {
         {/* Center - Search */}
         <div className="relative w-[640px]">
           <button
-            onClick={() => setShowSearchModal(true)}
+            onClick={() => openSearchModal()}
             className="w-full flex items-center px-4 py-2.5 text-gray-500 bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg hover:from-white hover:to-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-200 group focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
             <FaSearch className="text-gray-400 mr-3 group-hover:text-indigo-500 transition-colors duration-200" />
@@ -536,9 +435,9 @@ const Navbar = () => {
               aria-label="Notifications"
             >
               <FaBell className="h-5 w-5" />
-              {notifications > 0 && (
+              {notifications.count > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-4 w-4 flex items-center justify-center rounded-full animate-pulse">
-                  {notifications}
+                  {notifications.count}
                 </span>
               )}
             </button>
@@ -552,10 +451,10 @@ const Navbar = () => {
               aria-label="User profile"
             >
               <div className="flex items-center gap-2">
-                {user.avatar ? (
+                {userData.avatar ? (
                   <img 
-                    src={user.avatar} 
-                    alt={user.name} 
+                    src={userData.avatar} 
+                    alt={userData.name} 
                     className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                   />
                 ) : (
@@ -564,8 +463,8 @@ const Navbar = () => {
                   </div>
                 )}
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.role}</p>
+                  <p className="text-sm font-medium">{userData.name}</p>
+                  <p className="text-xs text-gray-500">{userData.role}</p>
                 </div>
                 <FaChevronDown className="h-3 w-3 text-gray-400" />
               </div>
@@ -574,8 +473,8 @@ const Navbar = () => {
             {showProfileDropdown && (
               <div className="absolute right-0 mt-2 w-64 bg-white border rounded-md shadow-lg z-50 py-1 animate-fade-in">
                 <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                  <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                  <p className="text-sm font-medium text-gray-900">{userData.name}</p>
+                  <p className="text-sm text-gray-500 truncate">{userData.email}</p>
                 </div>
                 
                 <button
@@ -631,8 +530,8 @@ const Navbar = () => {
 
       {/* Global Search Modal */}
       <GlobalSearchModal
-        isOpen={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
+        isOpen={modals.globalSearch.isOpen}
+        onClose={closeSearchModal}
         onNavigate={handleSearchNavigation}
       />
     </>

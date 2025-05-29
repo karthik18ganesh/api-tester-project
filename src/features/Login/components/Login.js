@@ -1,4 +1,4 @@
-// src/features/Login/components/Login.js - Updated with Project Check
+// src/features/Login/components/Login.js - Updated with Zustand
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -6,27 +6,38 @@ import Logo from "../../../assets/Logo.svg";
 import { nanoid } from "nanoid";
 import BgImage from "../../../assets/lp-bg.jpg";
 import { api } from "../../../utils/api";
+import { useAuthStore } from "../../../stores/authStore";
+import { useProjectStore } from "../../../stores/projectStore";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Zustand stores
+  const { 
+    login, 
+    setLoading, 
+    isLoading, 
+    rememberMe, 
+    rememberedUsername, 
+    setRememberMe 
+  } = useAuthStore();
+  
+  const { activeProject } = useProjectStore();
+
   useEffect(() => {
-    const rememberedUsername = localStorage.getItem("rememberedUsername");
+    // Initialize username from store if remembered
     if (rememberedUsername) {
       setUsername(rememberedUsername);
-      setRememberMe(true);
     }
-  }, []);
+  }, [rememberedUsername]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setLoading(true);
 
     const payload = {
       requestMetaData: {
@@ -45,25 +56,28 @@ const Login = () => {
 
       const { code, message, data } = json.result;
       if (code === "200") {
-        if (rememberMe) {
-          localStorage.setItem("rememberedUsername", username);
-        } else {
-          localStorage.removeItem("rememberedUsername");
-        }
+        // Update remember me preference
+        setRememberMe(rememberMe, rememberMe ? username : '');
 
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.userId);
+        // Login through Zustand store
+        login({
+          user: { 
+            id: data.userId, 
+            username: username 
+          },
+          token: data.token,
+          userId: data.userId,
+        });
+
         toast.success(message);
         
-        // Check if user has an active project
-        const activeProject = localStorage.getItem("activeProject");
-        
+        // Navigate based on active project status
         if (activeProject) {
           // User has an active project, navigate to dashboard
           navigate("/dashboard");
         } else {
-          // No active project, navigate to project setup or dashboard (which will show project selection)
-          navigate("/dashboard"); // The ProjectActivationGuard will handle the project selection modal
+          // No active project, navigate to dashboard (ProjectActivationGuard will handle project selection)
+          navigate("/dashboard");
         }
       } else {
         setError(message);
@@ -73,8 +87,12 @@ const Login = () => {
       setError("Login failed. Please try again.");
       toast.error("Login failed");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
+  };
+
+  const handleRememberMeChange = () => {
+    setRememberMe(!rememberMe, !rememberMe ? username : '');
   };
 
   return (
@@ -138,7 +156,7 @@ const Login = () => {
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={() => setRememberMe(!rememberMe)}
+                  onChange={handleRememberMeChange}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span>Remember me</span>
