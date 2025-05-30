@@ -8,14 +8,20 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
+    "@tanstack/react-query": "^5.17.0",
+    "@tanstack/react-query-devtools": "^5.17.0",
+    "@tanstack/react-virtual": "^3.0.0",
     "axios": "^1.8.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-error-boundary": "^4.0.11",
+    "react-hotkeys-hook": "^4.4.1",
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.4.0",
     "react-scripts": "5.0.1",
     "react-toastify": "^11.0.5",
     "web-vitals": "^2.1.4",
+    "workbox-webpack-plugin": "^7.0.0",
     "zustand": "^5.0.2"
   },
   "scripts": {
@@ -24,7 +30,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "analyze": "npm run build && npx vite-bundle-analyzer dist",
+    "performance": "npm run build && npm run preview -- --port 4173"
   },
   "eslintConfig": {
     "extends": [
@@ -49,7 +57,10 @@
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
+    "rollup-plugin-analyzer": "^4.0.0",
     "tailwindcss": "^3.3.2",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vite-bundle-analyzer": "^0.7.0",
+    "vite-plugin-pwa": "^0.20.5"
   }
 }

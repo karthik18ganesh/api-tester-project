@@ -1,0 +1,1 @@
+import{j as t}from"./chunk-xjDKe2wf.js";import"./chunk-D8-U-K1F.js";import"./chunk-SnPUoUoO.js";const e=()=>t.jsxs("div",{className:"p-6",children:[t.jsx("h1",{className:"text-2xl font-bold",children:"Welcome to the Dashboard"}),t.jsx("p",{className:"mt-2 text-gray-600",children:"Select a menu option to get started."})]});export{e as default};

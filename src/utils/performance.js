@@ -1,5 +1,6 @@
 // Performance optimization utilities
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals';
 
 // Debounce hook for search inputs and API calls
 export const useDebounce = (value, delay) => {
@@ -171,4 +172,236 @@ export const useVirtualization = (items, itemHeight, containerHeight) => {
     totalHeight: items.length * itemHeight,
     onScroll: (e) => setScrollTop(e.target.scrollTop)
   };
+};
+
+// ===== NEW PHASE 4 PERFORMANCE UTILITIES =====
+
+// Web Vitals monitoring hook
+export const useWebVitals = (onMetric) => {
+  useEffect(() => {
+    const handleMetric = (metric) => {
+      // Send metrics to analytics or logging service
+      if (onMetric) {
+        onMetric(metric);
+      }
+      
+      // Log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Web Vitals] ${metric.name}:`, metric.value, metric);
+      }
+    };
+
+    // Register all Web Vitals
+    getCLS(handleMetric);
+    getFID(handleMetric);
+    getFCP(handleMetric);
+    getLCP(handleMetric);
+    getTTFB(handleMetric);
+  }, [onMetric]);
+};
+
+// Performance profiler hook for component rendering
+export const usePerformanceProfiler = (id, metadata = {}) => {
+  const renderCount = useRef(0);
+  const lastRenderTime = useRef(performance.now());
+  const mountTime = useRef(performance.now());
+
+  useEffect(() => {
+    renderCount.current += 1;
+    const currentTime = performance.now();
+    const renderDuration = currentTime - lastRenderTime.current;
+    lastRenderTime.current = currentTime;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Profiler] ${id}:`, {
+        renderCount: renderCount.current,
+        renderDuration: `${renderDuration.toFixed(2)}ms`,
+        totalTime: `${(currentTime - mountTime.current).toFixed(2)}ms`,
+        metadata,
+      });
+    }
+  });
+
+  return {
+    renderCount: renderCount.current,
+    totalTime: performance.now() - mountTime.current,
+  };
+};
+
+// Bundle size tracker (for development)
+export const trackBundleSize = () => {
+  if (process.env.NODE_ENV === 'development' && window.performance) {
+    const navigation = performance.getEntriesByType('navigation')[0];
+    const resources = performance.getEntriesByType('resource');
+    
+    const jsResources = resources.filter(r => r.name.includes('.js'));
+    const cssResources = resources.filter(r => r.name.includes('.css'));
+    
+    const totalJSSize = jsResources.reduce((acc, r) => acc + (r.transferSize || 0), 0);
+    const totalCSSSize = cssResources.reduce((acc, r) => acc + (r.transferSize || 0), 0);
+    
+    console.log('[Bundle Tracker]', {
+      totalJSSize: `${(totalJSSize / 1024).toFixed(2)} KB`,
+      totalCSSSize: `${(totalCSSSize / 1024).toFixed(2)} KB`,
+      jsFiles: jsResources.length,
+      cssFiles: cssResources.length,
+      loadTime: `${navigation.loadEventEnd - navigation.loadEventStart}ms`,
+    });
+  }
+};
+
+// Memory usage monitoring
+export const useMemoryMonitor = (interval = 10000) => {
+  const [memoryInfo, setMemoryInfo] = useState(null);
+
+  useEffect(() => {
+    if (!('memory' in performance)) return;
+
+    const updateMemoryInfo = () => {
+      setMemoryInfo({
+        usedJSHeapSize: performance.memory.usedJSHeapSize,
+        totalJSHeapSize: performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+        timestamp: Date.now(),
+      });
+    };
+
+    updateMemoryInfo();
+    const intervalId = setInterval(updateMemoryInfo, interval);
+
+    return () => clearInterval(intervalId);
+  }, [interval]);
+
+  return memoryInfo;
+};
+
+// Resource loading optimization
+export const useResourcePreloader = () => {
+  const preloadedResources = useRef(new Set());
+
+  const preloadResource = useCallback((href, as = 'fetch') => {
+    if (preloadedResources.current.has(href)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.href = href;
+    link.as = as;
+    link.crossOrigin = 'anonymous';
+    
+    document.head.appendChild(link);
+    preloadedResources.current.add(href);
+  }, []);
+
+  const prefetchResource = useCallback((href) => {
+    if (preloadedResources.current.has(href)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    
+    document.head.appendChild(link);
+    preloadedResources.current.add(href);
+  }, []);
+
+  return { preloadResource, prefetchResource };
+};
+
+// Frame rate monitor
+export const useFrameRate = () => {
+  const [fps, setFps] = useState(0);
+  const frameCount = useRef(0);
+  const lastTime = useRef(performance.now());
+
+  useEffect(() => {
+    let animationFrame;
+
+    const measureFrameRate = () => {
+      const currentTime = performance.now();
+      frameCount.current++;
+
+      if (currentTime - lastTime.current >= 1000) {
+        setFps(Math.round((frameCount.current * 1000) / (currentTime - lastTime.current)));
+        frameCount.current = 0;
+        lastTime.current = currentTime;
+      }
+
+      animationFrame = requestAnimationFrame(measureFrameRate);
+    };
+
+    animationFrame = requestAnimationFrame(measureFrameRate);
+
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, []);
+
+  return fps;
+};
+
+// Critical resource priority hints
+export const useResourceHints = () => {
+  const addResourceHint = useCallback((href, rel, crossOrigin = false) => {
+    const existingHint = document.querySelector(`link[href="${href}"][rel="${rel}"]`);
+    if (existingHint) return;
+
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = href;
+    if (crossOrigin) link.crossOrigin = 'anonymous';
+    
+    document.head.appendChild(link);
+  }, []);
+
+  return {
+    preconnect: (href) => addResourceHint(href, 'preconnect', true),
+    dnsPrefetch: (href) => addResourceHint(href, 'dns-prefetch'),
+    preload: (href) => addResourceHint(href, 'preload'),
+    prefetch: (href) => addResourceHint(href, 'prefetch'),
+  };
+};
+
+// Advanced intersection observer for performance
+export const useAdvancedIntersection = (options = {}) => {
+  const [entries, setEntries] = useState([]);
+  const observerRef = useRef();
+  const elementsRef = useRef(new Map());
+
+  const observe = useCallback((element, callback) => {
+    if (!element) return;
+
+    if (!observerRef.current) {
+      observerRef.current = new IntersectionObserver((entries) => {
+        setEntries(entries);
+        entries.forEach((entry) => {
+          const callback = elementsRef.current.get(entry.target);
+          if (callback) callback(entry);
+        });
+      }, options);
+    }
+
+    elementsRef.current.set(element, callback);
+    observerRef.current.observe(element);
+
+    return () => {
+      if (observerRef.current && element) {
+        observerRef.current.unobserve(element);
+        elementsRef.current.delete(element);
+      }
+    };
+  }, [options]);
+
+  const disconnect = useCallback(() => {
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      elementsRef.current.clear();
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => disconnect();
+  }, [disconnect]);
+
+  return { observe, entries, disconnect };
 }; 
