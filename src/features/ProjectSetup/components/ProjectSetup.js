@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaEdit, FaPlus, FaChevronDown, FaStar, FaRegStar, FaCheck } from "react-icons/fa";
 import { FiTrash2, FiSearch, FiX } from "react-icons/fi";
 import IconButton from "../../../components/common/IconButton";
@@ -7,10 +8,22 @@ import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import { api } from "../../../utils/api";
+import { useProjectStore } from "../../../stores/projectStore";
 
 const pageSize = 6; // Changed from 5 to 6 per request
 
 const ProjectSetup = () => {
+  const navigate = useNavigate();
+  
+  // Use project store instead of local state
+  const { 
+    activeProject, 
+    setActiveProject, 
+    clearActiveProject, 
+    updateProject,
+    removeProject 
+  } = useProjectStore();
+  
   const [data, setData] = useState([]);
   const [formData, setFormData] = useState({
     id: null,
@@ -24,11 +37,6 @@ const ProjectSetup = () => {
   const [formExpanded, setFormExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeProject, setActiveProject] = useState(() => {
-    // Get active project from localStorage or use default
-    const storedProject = localStorage.getItem("activeProject");
-    return storedProject ? JSON.parse(storedProject) : null;
-  });
   
   const isUpdateMode = formData.id !== null;
   
@@ -123,6 +131,19 @@ const ProjectSetup = () => {
 
       if (code === "200") {
         toast.success(message || (isUpdateMode ? "Updated" : "Created"));
+        
+        // If we're updating a project and it's the current active project, update the active project store
+        if (isUpdateMode && activeProject && activeProject.id === formData.id) {
+          const updatedActiveProject = {
+            ...activeProject,
+            name: formData.name,
+            projectId: formData.projectId,
+            description: formData.description,
+          };
+          updateProject(updatedActiveProject);
+          toast.info("Active project details updated");
+        }
+        
         fetchProjects();
         setFormData({ id: null, name: "", projectId: "", description: "" });
       } else {
@@ -150,16 +171,22 @@ const ProjectSetup = () => {
       const { code, message } = json.result;
 
       if (code === "200") {
-        // If the deleted project was active, clear it
-        if (activeProject && activeProject.id === selectedProject.id) {
-          setActiveProject(null);
-          localStorage.removeItem("activeProject");
-          // Trigger a storage event to notify other components
-          window.dispatchEvent(new Event('storage'));
-        }
+        // Use store method to remove project and handle active project clearing
+        removeProject(selectedProject.id);
         
-        toast.success(message || "Project deleted");
-        fetchProjects();
+        // Check if the deleted project was active and navigate accordingly
+        if (activeProject && activeProject.id === selectedProject.id) {
+          toast.success(message || "Project deleted. Please select a new active project.");
+          fetchProjects();
+          
+          // Navigate to dashboard to trigger ProjectActivationGuard and show project selection modal
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1000);
+        } else {
+          toast.success(message || "Project deleted");
+          fetchProjects();
+        }
       } else {
         toast.error(message || "Delete failed");
       }
@@ -178,9 +205,6 @@ const ProjectSetup = () => {
   
   const setProjectAsActive = (project) => {
     setActiveProject(project);
-    localStorage.setItem("activeProject", JSON.stringify(project));
-    // Trigger a storage event to notify other components
-    window.dispatchEvent(new Event('storage'));
     toast.success(`Project "${project.name}" set as active`);
   };
 

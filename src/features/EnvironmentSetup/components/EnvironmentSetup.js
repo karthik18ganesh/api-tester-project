@@ -8,10 +8,14 @@ import IconButton from "../../../components/common/IconButton";
 import { Button } from "../../../components/UI";
 import { api } from "../../../utils/api";
 import ConfirmationModal from "../../../components/common/ConfirmationModal";
+import { useProjectStore } from "../../../stores/projectStore";
 
 const pageSize = 6;
 
 const EnvironmentSetup = () => {
+  // Use project store for active project
+  const { activeProject } = useProjectStore();
+  
   const [data, setData] = useState([]);
   const [formData, setFormData] = useState({
     id: null,
@@ -93,6 +97,17 @@ const EnvironmentSetup = () => {
     e.preventDefault();
     setIsLoading(true);
     
+    // Get active project ID from store
+    let activeProjectId = null;
+    
+    if (activeProject) {
+      activeProjectId = activeProject.id;
+    } else {
+      toast.error("No active project selected. Please select a project first.");
+      setIsLoading(false);
+      return;
+    }
+
     // Prepare the payload for create/update
     const payload = {
       requestMetaData: {
@@ -109,6 +124,11 @@ const EnvironmentSetup = () => {
         // Add any other required fields from the API
       }
     };
+
+    // Add project ID only for CREATE operations, not for UPDATE
+    if (!isUpdateMode) {
+      payload.data.projectId = activeProjectId;
+    }
 
     // Clean up undefined values
     if (!isUpdateMode) {

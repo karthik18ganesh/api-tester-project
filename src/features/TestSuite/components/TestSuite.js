@@ -235,7 +235,7 @@ const TestSuite = () => {
         <div className="flex justify-end mb-4">
           {selected.length === 0 ? (
             <button
-              onClick={() => navigate("/test-suite/create")}
+              onClick={() => navigate("/test-design/test-suite/create")}
               className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
             >
               <FaPlus className="mr-2" />
@@ -314,7 +314,7 @@ const TestSuite = () => {
               ) : (
                 <button 
                   className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
-                  onClick={() => navigate("/test-suite/create")}
+                  onClick={() => navigate("/test-design/test-suite/create")}
                 >
                   <FaPlus className="mr-2" />
                   Create Test Suite
@@ -365,7 +365,7 @@ const TestSuite = () => {
         </td>
         <td
           onClick={() =>
-            navigate("/test-suite/create", {
+            navigate("/test-design/test-suite/create", {
               state: { suite: item },
             })
           }

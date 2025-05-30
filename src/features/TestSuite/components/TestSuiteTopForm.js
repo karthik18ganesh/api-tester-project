@@ -196,7 +196,7 @@ const TestSuiteTopForm = ({
       <div className="flex justify-end gap-2">
         <button
           onClick={handleCancel}
-          className="px-4 py-2 border rounded text-sm text-gray-700 bg-white hover:bg-gray-100"
+          className="px-4 py-2 border rounded text-sm text-gray-700 bg-white hover:bg-gray-100 hover:-translate-y-0.5 transition-all"
           disabled={isSaving}
         >
           Cancel
@@ -204,6 +204,7 @@ const TestSuiteTopForm = ({
         <Button 
           onClick={handleSubmit}
           disabled={isSaving}
+          className="hover:-translate-y-0.5 transition-all"
         >
           {isSaving ? (
             <>

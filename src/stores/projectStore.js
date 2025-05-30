@@ -17,14 +17,6 @@ export const useProjectStore = create(
           activeProject: project,
           error: null 
         });
-        
-        // Show success toast
-        if (project) {
-          toast.success(`Project "${project.name || project.projectName}" is now active`);
-        }
-        
-        // Trigger storage event for backward compatibility with existing components
-        window.dispatchEvent(new Event('storage'));
       },
 
       clearActiveProject: () => {
@@ -32,9 +24,6 @@ export const useProjectStore = create(
           activeProject: null,
           error: null 
         });
-        
-        // Trigger storage event for backward compatibility
-        window.dispatchEvent(new Event('storage'));
       },
 
       setProjects: (projects) => {
@@ -76,11 +65,6 @@ export const useProjectStore = create(
           // Clear active project if it's the one being removed
           activeProject: activeProject?.id === projectId ? null : activeProject
         });
-        
-        // Trigger storage event if active project was cleared
-        if (activeProject?.id === projectId) {
-          window.dispatchEvent(new Event('storage'));
-        }
       },
 
       setLoading: (loading) => {
@@ -107,43 +91,18 @@ export const useProjectStore = create(
         return activeProject?.name || activeProject?.projectName || null;
       },
 
-      // Migration helper for backward compatibility
-      initializeFromLocalStorage: () => {
-        const storedProject = localStorage.getItem('activeProject');
-        if (storedProject) {
-          try {
-            const project = JSON.parse(storedProject);
-            set({ activeProject: project });
-          } catch (error) {
-            console.error('Error parsing stored project:', error);
-            localStorage.removeItem('activeProject');
-          }
-        }
-      },
-
-      // For backward compatibility - sync to localStorage
-      syncToLocalStorage: () => {
-        const { activeProject } = get();
-        if (activeProject) {
-          localStorage.setItem('activeProject', JSON.stringify(activeProject));
-        } else {
-          localStorage.removeItem('activeProject');
-        }
+      // Cleanup method to remove old localStorage key
+      cleanupOldLocalStorage: () => {
+        localStorage.removeItem('activeProject');
       },
     }),
     {
-      name: 'project-storage', // localStorage key
+      name: 'project-storage', // Zustand persistence key
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         activeProject: state.activeProject,
         projects: state.projects,
       }),
-      onRehydrateStorage: () => (state) => {
-        // Sync to old localStorage format for backward compatibility
-        if (state?.activeProject) {
-          localStorage.setItem('activeProject', JSON.stringify(state.activeProject));
-        }
-      },
     }
   )
 ); 

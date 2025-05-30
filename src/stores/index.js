@@ -11,10 +11,13 @@ export { useUIStore } from './uiStore';
 export const initializeStores = () => {
   // Initialize auth store from localStorage for migration
   const { initializeFromLocalStorage: initAuth } = useAuthStore.getState();
-  const { initializeFromLocalStorage: initProject } = useProjectStore.getState();
   
   initAuth();
-  initProject();
+  // Removed project store localStorage initialization - now using Zustand persistence exclusively
+  
+  // Clean up old localStorage key to avoid conflicts
+  const { cleanupOldLocalStorage } = useProjectStore.getState();
+  cleanupOldLocalStorage();
 };
 
 // Store cleanup helper (useful for testing or logout)

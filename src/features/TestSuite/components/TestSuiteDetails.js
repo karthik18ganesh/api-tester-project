@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { nanoid } from "nanoid";
 import TestSuiteAssignmentForm from "./TestSuiteAssignmentForm";
-import TestSuiteTopForm from "./TestSuitTopForm";
+import TestSuiteTopForm from "./TestSuiteTopForm";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { api } from "../../../utils/api";

@@ -4,49 +4,16 @@ import { FaProjectDiagram, FaChevronRight, FaCheck, FaExclamationTriangle } from
 import { FiSettings, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { api } from '../../utils/api';
+import { useProjectStore } from '../../stores/projectStore';
 
-// Custom hook for project activation
+// Custom hook for project activation - Updated to use Zustand store
 export const useProjectActivation = () => {
-  const [activeProject, setActiveProject] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkActiveProject = () => {
-      const storedProject = localStorage.getItem("activeProject");
-      if (storedProject) {
-        try {
-          setActiveProject(JSON.parse(storedProject));
-        } catch (error) {
-          console.error("Error parsing active project:", error);
-          localStorage.removeItem("activeProject");
-          setActiveProject(null);
-        }
-      }
-      setIsLoading(false);
-    };
-
-    checkActiveProject();
-
-    // Listen for storage changes
-    const handleStorageChange = () => {
-      checkActiveProject();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+  const { activeProject, setActiveProject, clearActiveProject } = useProjectStore();
+  const [isLoading, setIsLoading] = useState(false);
 
   const setProjectAsActive = (project) => {
     setActiveProject(project);
-    localStorage.setItem("activeProject", JSON.stringify(project));
-    window.dispatchEvent(new Event('storage'));
     toast.success(`Project "${project.name}" is now active`);
-  };
-
-  const clearActiveProject = () => {
-    setActiveProject(null);
-    localStorage.removeItem("activeProject");
-    window.dispatchEvent(new Event('storage'));
   };
 
   return {
