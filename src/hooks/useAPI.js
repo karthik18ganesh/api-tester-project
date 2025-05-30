@@ -3,12 +3,14 @@ import { useEffect } from 'react';
 import { queryKeys, invalidateQueries } from '../providers/QueryProvider';
 import { toast } from 'react-toastify';
 
-// Base API configuration (replace with your actual API base URL)
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
+// Use the same API configuration as the rest of your app
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
-// Generic fetch function
+// Generic fetch function that matches your existing API utility
 const fetchData = async (url, options = {}) => {
-  const response = await fetch(`${API_BASE_URL}${url}`, {
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  
+  const response = await fetch(fullUrl, {
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -23,11 +25,13 @@ const fetchData = async (url, options = {}) => {
   return response.json();
 };
 
-// API Repository Hooks
+// API Repository Hooks - Updated to match your actual API endpoints
 export const useAPIRepository = (filters = {}) => {
+  const { pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC" } = filters;
+  
   return useQuery({
     queryKey: queryKeys.apiRepository.list(filters),
-    queryFn: () => fetchData('/repository', { method: 'GET' }),
+    queryFn: () => fetchData(`/api/v1/apirepos?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
@@ -35,7 +39,7 @@ export const useAPIRepository = (filters = {}) => {
 export const useAPIRepositoryItem = (id) => {
   return useQuery({
     queryKey: queryKeys.apiRepository.detail(id),
-    queryFn: () => fetchData(`/repository/${id}`),
+    queryFn: () => fetchData(`/api/v1/apirepos/${id}`),
     enabled: !!id,
     staleTime: 10 * 60 * 1000, // 10 minutes for individual items
   });
@@ -116,11 +120,13 @@ export const useUpdateAPIRepositoryItem = () => {
   });
 };
 
-// Test Cases Hooks
+// Test Cases Hooks - Updated to match your actual API endpoints
 export const useTestCases = (filters = {}) => {
+  const { pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC" } = filters;
+  
   return useQuery({
     queryKey: queryKeys.testCases.list(filters),
-    queryFn: () => fetchData('/test-cases', { method: 'GET' }),
+    queryFn: () => fetchData(`/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`),
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 };
@@ -128,7 +134,7 @@ export const useTestCases = (filters = {}) => {
 export const useTestCase = (id) => {
   return useQuery({
     queryKey: queryKeys.testCases.detail(id),
-    queryFn: () => fetchData(`/test-cases/${id}`),
+    queryFn: () => fetchData(`/api/v1/test-cases/${id}`),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });

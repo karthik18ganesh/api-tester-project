@@ -11,8 +11,6 @@ import {
 // Phase 4 Providers and Optimizations
 import { QueryProvider } from "./providers/QueryProvider";
 import { ErrorBoundary } from "./components/ErrorBoundary/ErrorBoundary";
-import { PerformanceDashboard, PerformanceToggle } from "./components/PerformanceMonitor/PerformanceDashboard";
-import { useWebVitals, trackBundleSize } from "./utils/performance";
 
 // Existing components
 import Layout from "./components/common/Layout";
@@ -117,49 +115,10 @@ const LazyProjectProtectedRoute = ({ children }) => (
   </ErrorBoundary>
 );
 
-// Performance monitoring component
-const PerformanceMonitor = () => {
-  const [showPerformance, setShowPerformance] = useState(false);
-
-  // Track Web Vitals
-  useWebVitals((metric) => {
-    // Send to analytics service in production
-    if (process.env.NODE_ENV === 'production' && process.env.REACT_APP_ANALYTICS_URL) {
-      fetch(process.env.REACT_APP_ANALYTICS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'web-vital',
-          metric: metric.name,
-          value: metric.value,
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {
-        // Silently fail analytics
-      });
-    }
-  });
-
-  return (
-    <>
-      <PerformanceToggle 
-        onToggle={() => setShowPerformance(!showPerformance)}
-        isVisible={showPerformance}
-      />
-      <PerformanceDashboard isVisible={showPerformance} />
-    </>
-  );
-};
-
 const EnhancedApp = () => {
-  // Initialize stores and performance tracking on app mount
+  // Initialize stores on app mount
   useEffect(() => {
     initializeStores();
-    
-    // Track bundle size in development
-    if (process.env.NODE_ENV === 'development') {
-      setTimeout(trackBundleSize, 2000);
-    }
 
     // Preload critical routes
     const preloadRoutes = () => {
@@ -178,7 +137,6 @@ const EnhancedApp = () => {
       <QueryProvider>
         <Router>
           <Toast />
-          <PerformanceMonitor />
           <Routes>
             <Route path="/" element={<Navigate to="/login" />} />
             <Route 

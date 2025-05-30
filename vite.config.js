@@ -203,7 +203,6 @@ export default defineConfig({
       'react-toastify',
       'web-vitals',
     ],
-    exclude: ['@tanstack/react-query-devtools'],
   },
 
   // Define global constants
