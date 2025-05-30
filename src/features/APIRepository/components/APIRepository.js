@@ -265,7 +265,7 @@ const APIRepository = () => {
             {searchTerm && (
               <button
                 onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 hover:-translate-y-0.5 transition-all"
               >
                 <FiX />
               </button>
@@ -278,7 +278,7 @@ const APIRepository = () => {
           {selected.length === 0 ? (
             <button
               onClick={() => navigate("/test-design/api-repository/create")}
-              className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+              className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
             >
               <FaPlus className="mr-2" />
               Create API
@@ -290,7 +290,7 @@ const APIRepository = () => {
               </span>
               <button
                 onClick={() => setDeleteModalOpen(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 hover:-translate-y-0.5 transition-all flex items-center"
               >
                 <FaTrash className="mr-2" />
                 Delete
@@ -298,7 +298,7 @@ const APIRepository = () => {
               <div className="relative">
                 <button
                   onClick={() => setExportOpen(!exportOpen)}
-                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
                 >
                   <FaFileExport className="mr-2" />
                   Export
@@ -343,7 +343,7 @@ const APIRepository = () => {
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">{error}</h3>
               <button 
-                className="mt-4 px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors"
+                className="mt-4 px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all"
                 onClick={() => fetchAPIs()}
               >
                 Try Again
@@ -363,7 +363,7 @@ const APIRepository = () => {
               </p>
               {searchTerm ? (
                 <button 
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors flex items-center"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 hover:-translate-y-0.5 transition-all flex items-center"
                   onClick={clearSearch}
                 >
                   <FiX className="mr-2" />
@@ -371,7 +371,7 @@ const APIRepository = () => {
                 </button>
               ) : (
                 <button 
-                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
                   onClick={() => navigate("/test-design/api-repository/create")}
                 >
                   <FaPlus className="mr-2" />
@@ -473,7 +473,7 @@ const APIRepository = () => {
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                    className="px-3 py-1 border rounded-md hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none text-gray-600 transition-all"
                   >
                     Previous
                   </button>
@@ -482,11 +482,11 @@ const APIRepository = () => {
                       key={idx}
                       disabled={item === "..."}
                       onClick={() => item !== "..." && handlePageChange(item)}
-                      className={`px-3 py-1 border rounded-md ${
+                      className={`px-3 py-1 border rounded-md hover:-translate-y-0.5 transition-all ${
                         item === currentPage
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "hover:bg-gray-100 text-gray-600"
-                      } transition-colors`}
+                      }`}
                     >
                       {item}
                     </button>
@@ -494,7 +494,7 @@ const APIRepository = () => {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                    className="px-3 py-1 border rounded-md hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none text-gray-600 transition-all"
                   >
                     Next
                   </button>

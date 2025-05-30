@@ -62,7 +62,7 @@ const VariableModal = ({
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 hover:-translate-y-0.5 transition-all"
           disabled={loading}
         >
           Cancel
@@ -70,7 +70,7 @@ const VariableModal = ({
         <button
           type="button"
           onClick={onSave}
-          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded-md hover:bg-[#4338CA] flex items-center"
+          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded-md hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center"
           disabled={loading}
         >
           {loading && (
@@ -415,7 +415,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     return (
       <div className="flex justify-end mt-4 space-x-1 text-sm">
         <button
-          className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
+          className="px-3 py-1 border rounded hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none transition-all"
           disabled={currentPage === 1}
           onClick={() => setCurrentPage(currentPage - 1)}
         >
@@ -426,7 +426,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           <button
             key={page}
             onClick={() => setCurrentPage(page)}
-            className={`px-3 py-1 rounded ${
+            className={`px-3 py-1 rounded hover:-translate-y-0.5 transition-all ${
               page === currentPage
                 ? "bg-[#4F46E5] text-white"
                 : "border hover:bg-gray-100"
@@ -437,7 +437,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         ))}
         {endPage < totalPages && <span className="px-2">...</span>}
         <button
-          className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-40"
+          className="px-3 py-1 border rounded hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none transition-all"
           disabled={currentPage === totalPages}
           onClick={() => setCurrentPage(currentPage + 1)}
         >
@@ -494,7 +494,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           {unsavedParams > 0 && (
             <button
               onClick={handleCreateAllParameters}
-              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center"
+              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 hover:-translate-y-0.5 transition-all flex items-center"
               disabled={!testCaseId || loading || creatingParameters}
             >
               {creatingParameters ? (
@@ -514,7 +514,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           {/* Add Variable Button - Always available when we have testCaseId */}
           <button
             onClick={handleOpenAddModal}
-            className="px-3 py-1 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
+            className="px-3 py-1 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center"
             disabled={!testCaseId || loading}
           >
             <FiPlus className="mr-1" />
@@ -611,7 +611,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                     {testCaseId && (
                       <button
                         onClick={handleOpenAddModal}
-                        className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] flex items-center"
+                        className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center"
                       >
                         <FiPlus className="mr-1" />
                         Create Your First Variable
@@ -730,14 +730,14 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                 setIsDeleteModalOpen(false);
                 setDeleteVariable(null);
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 hover:-translate-y-0.5 transition-all"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               onClick={handleDeleteVariable}
-              className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 flex items-center"
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 hover:-translate-y-0.5 transition-all flex items-center"
               disabled={loading}
             >
               {loading && (

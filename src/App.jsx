@@ -75,12 +75,6 @@ const ExecutionDetailsView = lazy(() =>
 const FunctionsVariables = lazy(() => 
   import("./features/FunctionsVariables/FunctionsVariables")
 );
-const DesignSystemDemo = lazy(() => 
-  import("./components/demo/DesignSystemDemo")
-);
-const ModalTestDemo = lazy(() => 
-  import("./components/demo/ModalTestDemo")
-);
 
 // Enhanced loading component with skeleton
 const EnhancedLoadingSpinner = () => (
@@ -148,30 +142,6 @@ const EnhancedApp = () => {
                 <ErrorBoundary>
                   <Suspense fallback={<EnhancedLoadingSpinner />}>
                     <Login />
-                  </Suspense>
-                </ErrorBoundary>
-              } 
-            />
-            
-            {/* Design System Demo - Development/Demo Route */}
-            <Route 
-              path="/design-system-demo" 
-              element={
-                <ErrorBoundary>
-                  <Suspense fallback={<EnhancedLoadingSpinner />}>
-                    <DesignSystemDemo />
-                  </Suspense>
-                </ErrorBoundary>
-              } 
-            />
-            
-            {/* Modal Test Demo - Development/Demo Route */}
-            <Route 
-              path="/modal-test-demo" 
-              element={
-                <ErrorBoundary>
-                  <Suspense fallback={<EnhancedLoadingSpinner />}>
-                    <ModalTestDemo />
                   </Suspense>
                 </ErrorBoundary>
               } 

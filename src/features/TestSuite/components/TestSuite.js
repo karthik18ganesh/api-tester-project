@@ -235,8 +235,8 @@ const TestSuite = () => {
         <div className="flex justify-end mb-4">
           {selected.length === 0 ? (
             <button
-              onClick={() => navigate("/test-design/test-suite/create")}
-              className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+              onClick={() => navigate("/test-suite/create")}
+              className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
             >
               <FaPlus className="mr-2" />
               Create Test Suite
@@ -248,7 +248,7 @@ const TestSuite = () => {
               </span>
               <button
                 onClick={() => setShowModal(true)}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 hover:-translate-y-0.5 transition-all flex items-center"
               >
                 <FaTrash className="mr-2" />
                 Delete
@@ -256,7 +256,7 @@ const TestSuite = () => {
               <div className="relative">
                 <button
                   onClick={() => setExportOpen(!exportOpen)}
-                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
                 >
                   <FaFileExport className="mr-2" />
                   Export
@@ -305,7 +305,7 @@ const TestSuite = () => {
               </p>
               {searchTerm ? (
                 <button 
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors flex items-center"
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 hover:-translate-y-0.5 transition-all flex items-center"
                   onClick={clearSearch}
                 >
                   <FiX className="mr-2" />
@@ -313,8 +313,8 @@ const TestSuite = () => {
                 </button>
               ) : (
                 <button 
-                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
-                  onClick={() => navigate("/test-design/test-suite/create")}
+                  className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
+                  onClick={() => navigate("/test-suite/create")}
                 >
                   <FaPlus className="mr-2" />
                   Create Test Suite
@@ -365,7 +365,7 @@ const TestSuite = () => {
         </td>
         <td
           onClick={() =>
-            navigate("/test-design/test-suite/create", {
+            navigate("/test-suite/create", {
               state: { suite: item },
             })
           }
@@ -415,7 +415,7 @@ const TestSuite = () => {
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                    className="px-3 py-1 border rounded-md hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none text-gray-600 transition-all"
                   >
                     Previous
                   </button>
@@ -424,11 +424,11 @@ const TestSuite = () => {
                       key={idx}
                       disabled={item === "..."}
                       onClick={() => item !== "..." && setCurrentPage(item)}
-                      className={`px-3 py-1 border rounded-md ${
+                      className={`px-3 py-1 border rounded-md hover:-translate-y-0.5 transition-all ${
                         item === currentPage
                           ? "bg-indigo-600 text-white border-indigo-600"
                           : "hover:bg-gray-100 text-gray-600"
-                      } transition-colors`}
+                      }`}
                     >
                       {item}
                     </button>
@@ -436,7 +436,7 @@ const TestSuite = () => {
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                     disabled={currentPage === totalPages || totalPages === 0}
-                    className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-40 text-gray-600 transition-colors"
+                    className="px-3 py-1 border rounded-md hover:bg-gray-100 hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:transform-none text-gray-600 transition-all"
                   >
                     Next
                   </button>

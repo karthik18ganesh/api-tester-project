@@ -723,7 +723,7 @@ const APIRepositoryDetails = () => {
               <button
                 onClick={handleSave}
                 disabled={isLoading}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md flex items-center gap-1 hover:bg-indigo-700 disabled:opacity-50"
+                className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-md flex items-center gap-1 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
@@ -810,7 +810,7 @@ const APIRepositoryDetails = () => {
                   <button
                     onClick={handleSend}
                     disabled={responseData.isLoading || !requestConfig.url}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 w-full"
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50 w-full"
                   >
                     {responseData.isLoading ? (
                       <>
@@ -837,7 +837,7 @@ const APIRepositoryDetails = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 focus:outline-none ${
+                  className={`px-4 py-3 text-sm font-medium border-b-2 hover:-translate-y-0.5 transition-all focus:outline-none ${
                     activeTab === tab
                       ? "border-indigo-600 text-indigo-600"
                       : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
@@ -857,7 +857,7 @@ const APIRepositoryDetails = () => {
                     <h3 className="text-sm font-medium text-gray-700">Query Parameters</h3>
                     <button
                       onClick={() => handleAddRow("params")}
-                      className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center"
+                      className="text-indigo-600 hover:text-indigo-800 hover:-translate-y-0.5 transition-all text-sm flex items-center"
                     >
                       <FaPlus className="mr-1" size={10} />
                       <span>Add</span>
@@ -928,7 +928,7 @@ const APIRepositoryDetails = () => {
                     <h3 className="text-sm font-medium text-gray-700">Headers</h3>
                     <button
                       onClick={() => handleAddRow("headers")}
-                      className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center"
+                      className="text-indigo-600 hover:text-indigo-800 hover:-translate-y-0.5 transition-all text-sm flex items-center"
                     >
                       <FaPlus className="mr-1" size={10} />
                       <span>Add</span>
@@ -1206,10 +1206,10 @@ const APIRepositoryDetails = () => {
                                 </td>
                                 <td className="px-3 py-2">
                                   <input
-                                    type={item.type === "file" ? "text" : "text"}
+                                    type="text"
                                     value={item.value}
                                     onChange={e => handleRowChange("formData", index, "value", e.target.value)}
-                                    placeholder={item.type === "file" ? "File path" : "Value or $\\{paramName\\}"}
+                                    placeholder="Value or ${paramName}"
                                     className={`w-full border-0 p-0 focus:ring-0 ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                     disabled={!item.enabled}
                                   />
@@ -1218,7 +1218,7 @@ const APIRepositoryDetails = () => {
                                   <select
                                     value={item.type}
                                     onChange={e => handleRowChange("formData", index, "type", e.target.value)}
-                                    className={`border-0 p-0 ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
+                                    className={`w-full border-0 p-0 focus:ring-0 text-sm ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                     disabled={!item.enabled}
                                   >
                                     <option value="text">Text</option>
@@ -1244,10 +1244,10 @@ const APIRepositoryDetails = () => {
                   {requestConfig.body.type === "x-www-form-urlencoded" && (
                     <div>
                       <div className="mb-2 flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-700">URL Encoded Form</h3>
+                        <h3 className="text-sm font-medium text-gray-700">URL Encoded Data</h3>
                         <button
                           onClick={() => handleAddRow("urlEncoded")}
-                          className="text-indigo-600 hover:text-indigo-800 text-sm flex items-center"
+                          className="text-indigo-600 hover:text-indigo-800 hover:-translate-y-0.5 transition-all text-sm flex items-center"
                         >
                           <FaPlus className="mr-1" size={10} />
                           <span>Add</span>
@@ -1290,7 +1290,7 @@ const APIRepositoryDetails = () => {
                                     type="text"
                                     value={item.value}
                                     onChange={e => handleRowChange("urlEncoded", index, "value", e.target.value)}
-                                    placeholder="Value or $\\{paramName\\}"
+                                    placeholder="Value or ${paramName}"
                                     className={`w-full border-0 p-0 focus:ring-0 ${!item.enabled ? "bg-gray-50 text-gray-400" : ""}`}
                                     disabled={!item.enabled}
                                   />
@@ -1314,113 +1314,120 @@ const APIRepositoryDetails = () => {
                   {requestConfig.body.type === "none" && (
                     <div className="mt-4">
                       <p className="text-sm text-gray-600">
-                        No body will be sent with this request.
+                        No request body will be sent.
                       </p>
                     </div>
                   )}
                 </div>
               )}
-              
-              {/* Parameters info and help text */}
-              {detectedParams.length > 0 ? (
-                <div className="mt-6 bg-gray-50 p-3 rounded-md border border-gray-100">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Tip:</span> You can use <code className="bg-gray-100 px-1 py-0.5 rounded">{"$"}{"{paramName}"}</code> syntax in any field to create parameterized values.
-                    These parameters will be detected and can be filled with actual values when creating Test Cases.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-6 bg-blue-50 p-3 rounded-md border border-blue-100">
-                  <p className="text-sm text-blue-800">
-                    <span className="font-medium">Tip:</span> Use <code className="bg-blue-100 px-1 py-0.5 rounded">{"$"}{"{paramName}"}</code> syntax in URL, headers, or body to create parameterized APIs.
-                  </p>
-                </div>
-              )}
             </div>
+            
+            {/* Parameters Summary */}
+            <ParametersSummary />
           </div>
           
           {/* Response Section */}
-          <div 
-            ref={responseRef}
-            className="bg-white border rounded-md shadow-sm overflow-hidden"
-          >
-            <div className="flex items-center justify-between border-b p-4 bg-gray-50">
-              <h3 className="font-medium text-gray-700">Response</h3>
-              
-              {responseData.status && (
-                <div className="flex items-center gap-4">
-                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${getStatusBadgeColor(responseData.status)}`}>
-                    Status: {responseData.status} {responseData.statusText}
-                  </span>
-                  
-                  {responseData.time && (
-                    <span className="text-xs text-gray-500">
-                      Time: {responseData.time}ms
-                    </span>
-                  )}
-                  
-                  {responseData.size && (
-                    <span className="text-xs text-gray-500">
-                      Size: {typeof responseData.size === 'number' ? `${(responseData.size / 1024).toFixed(2)} KB` : responseData.size}
-                    </span>
-                  )}
-                  
-                  <button
-                    onClick={copyResponseToClipboard}
-                    className="text-gray-500 hover:text-indigo-600"
-                    title="Copy response"
-                    disabled={!responseData.data}
-                  >
-                    <FiClipboard />
-                  </button>
-                </div>
+          <div ref={responseRef} className="bg-white border rounded-md shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">Response</h3>
+              {responseData.data && (
+                <button
+                  onClick={copyResponseToClipboard}
+                  className="text-indigo-600 hover:text-indigo-800 hover:-translate-y-0.5 transition-all text-sm flex items-center"
+                >
+                  <FiCopy className="mr-1" />
+                  Copy
+                </button>
               )}
             </div>
-
+            
             <div className="p-4">
               {responseData.isLoading ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3"></div>
+                  <span className="text-gray-600">Sending request...</span>
                 </div>
               ) : responseData.error ? (
-                <div className="p-4 bg-red-50 text-red-700 rounded-md">
-                  <h4 className="font-medium mb-2">Error</h4>
-                  <p>{responseData.error}</p>
+                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">Request Error</h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <p>{responseData.error}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : responseData.data ? (
                 <div>
-                  {/* Tabs for Response, Headers, etc. */}
-                  <div className="border-b mb-4">
-                    <div className="flex">
-                      <button className="px-4 py-2 border-b-2 border-indigo-600 text-indigo-600 text-sm font-medium">
-                        Response
-                      </button>
-                      <button className="px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 text-sm font-medium">
-                        Headers
-                      </button>
+                  {/* Response Status */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(responseData.status)}`}>
+                        {responseData.status} {responseData.statusText}
+                      </span>
+                      {responseData.time && (
+                        <span className="text-sm text-gray-600">
+                          {responseData.time}ms
+                        </span>
+                      )}
+                      {responseData.size && (
+                        <span className="text-sm text-gray-600">
+                          {responseData.size} bytes
+                        </span>
+                      )}
                     </div>
                   </div>
                   
                   {/* Response Body */}
-                  <div className="overflow-auto max-h-96">
-                    <pre className="bg-gray-50 p-4 rounded-md text-sm font-mono whitespace-pre-wrap">
-                      {formatJsonResponse(responseData.data)}
-                    </pre>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Response Body</h4>
+                    <div className="border rounded-md bg-gray-50">
+                      <pre className="p-4 text-sm font-mono overflow-auto max-h-96">
+                        {formatJsonResponse(responseData.data)}
+                      </pre>
+                    </div>
                   </div>
+                  
+                  {/* Response Headers */}
+                  {Object.keys(responseData.headers).length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Response Headers</h4>
+                      <div className="border rounded-md overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Header</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {Object.entries(responseData.headers).map(([key, value]) => (
+                              <tr key={key}>
+                                <td className="px-3 py-2 text-sm font-medium text-gray-900">{key}</td>
+                                <td className="px-3 py-2 text-sm text-gray-600">{value}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div className="text-center py-12 text-gray-500">
-                  <FiSend className="inline-block mb-2 h-8 w-8" />
-                  <p>Submit a request to see the response</p>
+                <div className="text-center py-8 text-gray-500">
+                  <FiSend className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">Ready to send</p>
+                  <p className="text-sm">Click the Send button to execute the request</p>
                 </div>
               )}
             </div>
           </div>
-          
-          {/* Parameters Summary displayed at bottom instead */}
-          {detectedParams.length > 0 && (
-            <ParametersSummary />
-          )}
         </>
       )}
     </div>

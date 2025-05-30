@@ -99,7 +99,7 @@ const Sidebar = () => {
     {
       label: "Test Suite",
       route: "/test-design/test-suite",
-      icon: <FiLayers />,
+      icon: <FiFolder />,
       requiresProject: true,
     },
     {

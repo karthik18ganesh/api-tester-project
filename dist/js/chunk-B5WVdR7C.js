@@ -1,1 +1,0 @@
-import{j as s}from"./chunk-xjDKe2wf.js";import"./chunk-D8-U-K1F.js";const t=({icon:t,className:o="",...r})=>s.jsx("button",{className:`p-2 text-gray-500 hover:text-[#4F46E5] transition-colors duration-200 ${o}`,...r,children:s.jsx(t,{size:18})});export{t as I};

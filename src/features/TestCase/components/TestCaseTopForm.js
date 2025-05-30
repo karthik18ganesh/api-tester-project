@@ -460,7 +460,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         <button
           type="button"
           onClick={handleCancel}
-          className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 hover:-translate-y-0.5 transition-all"
           disabled={loading}
         >
           Cancel
@@ -468,7 +468,7 @@ const TestCaseTopForm = ({ onParametersDetected, onTestCaseSaved }) => {
         <button
           type="button"
           onClick={handleSubmit}
-          className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] transition-colors flex items-center ${
+          className={`px-4 py-2 bg-[#4F46E5] text-white rounded text-sm hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center ${
             loading ? "opacity-50 cursor-not-allowed" : ""
           }`}
           disabled={loading}

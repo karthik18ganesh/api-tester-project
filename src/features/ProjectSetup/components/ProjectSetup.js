@@ -194,16 +194,6 @@ const ProjectSetup = () => {
       
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-semibold">Project Setup</h2>
-        <Button 
-          className="flex items-center gap-2" 
-          onClick={() => {
-            clearForm();
-            setFormExpanded(true);
-          }}
-        >
-          <FaPlus size={14} />
-          <span>New Project</span>
-        </Button>
       </div>
 
       {/* Enhanced Form with animation */}

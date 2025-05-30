@@ -1,6 +1,12 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { FiX, FiAlertTriangle } from 'react-icons/fi';
 import Button from './Button';
+
+// Portal component to render modal at document.body level
+const Portal = ({ children }) => {
+  return createPortal(children, document.body);
+};
 
 const Modal = ({ 
   isOpen, 
@@ -55,37 +61,51 @@ const Modal = ({
   };
 
   return (
-    <div className="modal-container" onClick={handleOverlayClick}>
-      <div className="modal-backdrop" />
+    <Portal>
       <div 
-        ref={modalRef}
-        className={`modal-content ${sizeClasses[size]} ${className}`}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? "modal-title" : undefined}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        onClick={handleOverlayClick}
       >
-        {(title || showCloseButton) && (
-          <div className="modal-header">
-            {title && (
-              <h3 id="modal-title" className="modal-title">{title}</h3>
-            )}
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
-                aria-label="Close modal"
-              >
-                <FiX className="w-5 h-5" />
-              </button>
-            )}
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" />
+        
+        {/* Modal Content */}
+        <div 
+          ref={modalRef}
+          className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden transform transition-all duration-300 ease-out ${className}`}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={title ? "modal-title" : undefined}
+          style={{
+            animation: 'scaleIn 0.3s ease-out'
+          }}
+        >
+          {/* Header */}
+          {(title || showCloseButton) && (
+            <div className="relative px-6 py-6 border-b border-gray-200">
+              {title && (
+                <h3 id="modal-title" className="text-xl font-bold text-gray-900 pr-8">{title}</h3>
+              )}
+              {showCloseButton && (
+                <button
+                  onClick={onClose}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+                  aria-label="Close modal"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* Body */}
+          <div className="px-6 py-6 overflow-y-auto">
+            {children}
           </div>
-        )}
-        <div className="modal-body">
-          {children}
         </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 
