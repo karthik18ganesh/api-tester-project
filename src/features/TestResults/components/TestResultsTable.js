@@ -35,7 +35,7 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
   };
 
   const handleExport = (format) => {
-    console.log(`Exporting as ${format}`);
+    // Export functionality would be implemented here
     setShowExportDropdown(false);
   };
 

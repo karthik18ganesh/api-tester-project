@@ -49,41 +49,31 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   // Fetch existing variables from API
   const fetchVariables = async () => {
     if (!testCaseId) {
-      console.log("No testCaseId provided, skipping variable fetch");
       setInitialLoadComplete(true);
       return;
     }
     
     try {
       setLoading(true);
-      console.log(`Fetching variables for test case ID: ${testCaseId}`);
       
       const response = await api(`/api/v1/variables/${testCaseId}`);
-      console.log("Variables API response:", response);
       
       if (response.result?.code === "200") {
         const variablesData = response.result.data || [];
-        console.log("Variables data:", variablesData);
         setVariables(Array.isArray(variablesData) ? variablesData : []);
       } else if (response.result?.code === "404") {
         // No variables found - this is normal for new test cases
-        console.log("No variables found for test case, setting empty array");
         setVariables([]);
       } else {
-        console.warn("Unexpected response code:", response.result?.code);
         setVariables([]);
       }
     } catch (err) {
-      console.error("Error fetching variables:", err);
-      
       // Handle different error scenarios
       if (err.message.includes("404") || err.message.toLowerCase().includes("not found")) {
         // No variables exist yet - this is normal
-        console.log("404 error - no variables exist yet, setting empty array");
         setVariables([]);
       } else {
         // Other errors - show user-friendly message but don't block the UI
-        console.error("Non-404 error fetching variables:", err);
         toast.error("Could not load existing variables, but you can still create new ones");
         setVariables([]);
       }
@@ -108,9 +98,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         }
       };
 
-      console.log("Creating variable with payload:", requestBody);
       const response = await api("/api/v1/variables", "POST", requestBody);
-      console.log("Create variable response:", response);
       
       if (response.result?.code === "200") {
         return response.result.data;
@@ -118,7 +106,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         throw new Error(response.result?.message || "Failed to create variable");
       }
     } catch (err) {
-      console.error("Error creating variable:", err);
       throw err;
     }
   };
@@ -320,11 +307,9 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
   // Load variables when component mounts or testCaseId changes
   useEffect(() => {
-    console.log("TestCaseConfigurationForm mounted with testCaseId:", testCaseId);
     if (testCaseId) {
       fetchVariables();
     } else {
-      console.log("No testCaseId, setting initial load complete");
       setInitialLoadComplete(true);
     }
   }, [testCaseId]);

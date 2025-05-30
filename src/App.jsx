@@ -1,6 +1,6 @@
 // Updated App.js with Project Activation Guard
 
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,29 +8,54 @@ import {
   Navigate,
 } from "react-router-dom";
 import Layout from "./components/common/Layout";
-import EnvironmentSetup from "./features/EnvironmentSetup/components/EnvironmentSetup";
-import ProjectSetup from "./features/ProjectSetup/components/ProjectSetup";
-import TestSuite from "./features/TestSuite/components/TestSuite";
-import TestSuiteDetails from "./features/TestSuite/components/TestSuiteDetails";
-import TestPackage from "./features/TestPackage/components/TestPackage";
-import TestPackageDetails from "./features/TestPackage/components/TestPackageDetails";
-import Dashboard from "./components/common/Dashboard";
-import Login from "./features/Login/components/Login";
 import Toast from "./components/common/Toast";
-import TestCase from "./features/TestCase/components/TestCase";
-import TestCaseDetails from "./features/TestCase/components/TestCaseDetails";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import ProjectActivationGuard from "./components/common/ProjectActivationGuard";
 import ProjectProtectedRoute from "./components/common/ProjectProtectedRoute";
-import APIRepository from "./features/APIRepository/components/APIRepository";
-import APIRepositoryDetails from "./features/APIRepository/components/APIRepositoryDetails";
-import TestExecution from "./features/TestExecution/components/TestExecution";
-import TestCaseDetailsView from "./features/TestExecution/components/TestCaseDetailsView";
-import TestResults from "./features/TestResults/components/TestResults";
-import ExecutionDetailsView from "./features/TestResults/components/ExecutionDetailsView";
+import LoadingSpinner from "./components/common/LoadingSpinner";
 
 // Import Zustand stores
 import { initializeStores } from "./stores";
+
+// Lazy load feature components for code splitting
+const EnvironmentSetup = lazy(() => import("./features/EnvironmentSetup/components/EnvironmentSetup"));
+const ProjectSetup = lazy(() => import("./features/ProjectSetup/components/ProjectSetup"));
+const TestSuite = lazy(() => import("./features/TestSuite/components/TestSuite"));
+const TestSuiteDetails = lazy(() => import("./features/TestSuite/components/TestSuiteDetails"));
+const TestPackage = lazy(() => import("./features/TestPackage/components/TestPackage"));
+const TestPackageDetails = lazy(() => import("./features/TestPackage/components/TestPackageDetails"));
+const Dashboard = lazy(() => import("./components/common/Dashboard"));
+const Login = lazy(() => import("./features/Login/components/Login"));
+const TestCase = lazy(() => import("./features/TestCase/components/TestCase"));
+const TestCaseDetails = lazy(() => import("./features/TestCase/components/TestCaseDetails"));
+const APIRepository = lazy(() => import("./features/APIRepository/components/APIRepository"));
+const APIRepositoryDetails = lazy(() => import("./features/APIRepository/components/APIRepositoryDetails"));
+const TestExecution = lazy(() => import("./features/TestExecution/components/TestExecution"));
+const TestCaseDetailsView = lazy(() => import("./features/TestExecution/components/TestCaseDetailsView"));
+const TestResults = lazy(() => import("./features/TestResults/components/TestResults"));
+const ExecutionDetailsView = lazy(() => import("./features/TestResults/components/ExecutionDetailsView"));
+
+// Wrapper component for protected routes with loading
+const LazyProtectedRoute = ({ children }) => (
+  <ProtectedRoute>
+    <Suspense fallback={<LoadingSpinner />}>
+      {children}
+    </Suspense>
+  </ProtectedRoute>
+);
+
+// Wrapper component for project protected routes with loading
+const LazyProjectProtectedRoute = ({ children }) => (
+  <ProtectedRoute>
+    <ProjectActivationGuard>
+      <ProjectProtectedRoute>
+        <Suspense fallback={<LoadingSpinner />}>
+          {children}
+        </Suspense>
+      </ProjectProtectedRoute>
+    </ProjectActivationGuard>
+  </ProtectedRoute>
+);
 
 const EnhancedApp = () => {
   // Initialize stores on app mount
@@ -43,19 +68,22 @@ const EnhancedApp = () => {
       <Toast />
       <Routes>
         <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="/login" element={<Login />} />
+        <Route 
+          path="/login" 
+          element={
+            <Suspense fallback={<LoadingSpinner />}>
+              <Login />
+            </Suspense>
+          } 
+        />
         <Route element={<Layout />}>
           {/* Dashboard - requires active project */}
           <Route 
             path="/dashboard" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <Dashboard />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <Dashboard />
+              </LazyProjectProtectedRoute>
             } 
           />
           
@@ -63,9 +91,9 @@ const EnhancedApp = () => {
           <Route
             path="/admin/project-setup"
             element={
-              <ProtectedRoute>
+              <LazyProtectedRoute>
                 <ProjectSetup />
-              </ProtectedRoute>
+              </LazyProtectedRoute>
             }
           />
           
@@ -73,13 +101,9 @@ const EnhancedApp = () => {
           <Route
             path="/admin/environment-setup"
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <EnvironmentSetup />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <EnvironmentSetup />
+              </LazyProjectProtectedRoute>
             }
           />
           
@@ -87,97 +111,65 @@ const EnhancedApp = () => {
           <Route 
             path="/test-design/api-repository" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <APIRepository />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <APIRepository />
+              </LazyProjectProtectedRoute>
             } 
           />
           <Route
             path="/test-design/api-repository/create"
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <APIRepositoryDetails />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <APIRepositoryDetails />
+              </LazyProjectProtectedRoute>
             }
           />
           <Route 
             path="/test-design/test-suite" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestSuite />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestSuite />
+              </LazyProjectProtectedRoute>
             } 
           />
           <Route
             path="/test-design/test-suite/create"
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestSuiteDetails />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestSuiteDetails />
+              </LazyProjectProtectedRoute>
             }
           />
           <Route 
             path="/test-design/test-package" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestPackage />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestPackage />
+              </LazyProjectProtectedRoute>
             } 
           />
           <Route
             path="/test-design/test-package/create"
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestPackageDetails />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestPackageDetails />
+              </LazyProjectProtectedRoute>
             }
           />
           <Route 
             path="/test-design/test-case" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestCase />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestCase />
+              </LazyProjectProtectedRoute>
             } 
           />
           <Route
             path="/test-design/test-case/create"
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestCaseDetails />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestCaseDetails />
+              </LazyProjectProtectedRoute>
             }
           />
           
@@ -185,52 +177,36 @@ const EnhancedApp = () => {
           <Route 
             path="/test-execution" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestExecution />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestExecution />
+              </LazyProjectProtectedRoute>
             } 
           />
           
           <Route 
             path="/test-execution/results/:executionId" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <ExecutionDetailsView />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <ExecutionDetailsView />
+              </LazyProjectProtectedRoute>
             } 
           />
           
           <Route 
             path="/test-execution/results/:executionId/:testCaseId" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestCaseDetailsView />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestCaseDetailsView />
+              </LazyProjectProtectedRoute>
             } 
           />
           
           <Route 
             path="/test-results" 
             element={
-              <ProtectedRoute>
-                <ProjectActivationGuard>
-                  <ProjectProtectedRoute>
-                    <TestResults />
-                  </ProjectProtectedRoute>
-                </ProjectActivationGuard>
-              </ProtectedRoute>
+              <LazyProjectProtectedRoute>
+                <TestResults />
+              </LazyProjectProtectedRoute>
             } 
           />
         </Route>

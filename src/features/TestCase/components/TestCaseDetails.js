@@ -1,5 +1,5 @@
 // src/features/TestCase/TestCaseDetails.js
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import TestCaseTopForm from "./TestCaseTopForm";
@@ -13,37 +13,49 @@ const TestCaseDetails = () => {
   const [savedTestCaseId, setSavedTestCaseId] = useState(null);
   const [showConfiguration, setShowConfiguration] = useState(false);
   
-  // Check if we're in edit mode
-  const isEditMode = !!location.state?.testCase;
+  // Memoize values to prevent unnecessary re-renders
+  const testCase = useMemo(() => location.state?.testCase, [location.state?.testCase]);
+  const isEditMode = useMemo(() => !!testCase, [testCase]);
+  const testCaseId = useMemo(() => testCase?.testCaseId, [testCase?.testCaseId]);
 
-  // Handle when parameters are detected in the top form
-  const handleParametersDetected = (parameters) => {
-    console.log("Parameters detected:", parameters);
+  // Stable callback for handling parameters detected
+  const handleParametersDetected = useCallback((parameters) => {
     setDetectedParameters(parameters || []); // Handle null/undefined
     setShowConfiguration(true);
-  };
+  }, []);
 
-  // Handle when test case is saved
-  const handleTestCaseSaved = (testCaseId, parameters = []) => {
-    console.log("Test case saved:", testCaseId, "Parameters:", parameters);
+  // Stable callback for handling test case saved
+  const handleTestCaseSaved = useCallback((testCaseId, parameters = []) => {
     setSavedTestCaseId(testCaseId);
     setTestCaseSaved(true);
     
     // Always show configuration form after save, regardless of parameters
     setDetectedParameters(parameters || []);
     setShowConfiguration(true);
-  };
+  }, []);
+
+  // Helper function to extract parameters
+  const extractParameters = useCallback((text) => {
+    if (!text) return [];
+    const paramRegex = /\$\{([^}]+)\}/g;
+    const params = [];
+    let match;
+    
+    while ((match = paramRegex.exec(text)) !== null) {
+      params.push(match[1]);
+    }
+    
+    return params;
+  }, []);
 
   // For edit mode, show configuration immediately if we have a test case ID
   React.useEffect(() => {
-    if (isEditMode && location.state?.testCase?.testCaseId) {
-      console.log("Edit mode detected, showing configuration form");
-      setSavedTestCaseId(location.state.testCase.testCaseId);
+    if (isEditMode && testCaseId) {
+      setSavedTestCaseId(testCaseId);
       setTestCaseSaved(true);
       setShowConfiguration(true);
       
       // Extract any parameters from the existing test case
-      const testCase = location.state.testCase;
       const existingParams = [];
       
       // Check URL for parameters
@@ -67,21 +79,7 @@ const TestCaseDetails = () => {
       const uniqueParams = [...new Set(existingParams)];
       setDetectedParameters(uniqueParams);
     }
-  }, [isEditMode, location.state]);
-
-  // Helper function to extract parameters
-  const extractParameters = (text) => {
-    if (!text) return [];
-    const paramRegex = /\$\{([^}]+)\}/g;
-    const params = [];
-    let match;
-    
-    while ((match = paramRegex.exec(text)) !== null) {
-      params.push(match[1]);
-    }
-    
-    return params;
-  };
+  }, [isEditMode, testCaseId, testCase, extractParameters]); // Use stable, memoized dependencies
 
   return (
     <div className="p-6">
@@ -103,8 +101,8 @@ const TestCaseDetails = () => {
       {(showConfiguration || testCaseSaved || isEditMode) && (
         <TestCaseConfigurationForm 
           detectedParameters={detectedParameters}
-          testCaseId={savedTestCaseId || location.state?.testCase?.testCaseId}
-          key={`config-${savedTestCaseId || location.state?.testCase?.testCaseId}`} // Force re-render when ID changes
+          testCaseId={savedTestCaseId || testCaseId}
+          key={`config-${savedTestCaseId || testCaseId}`} // Force re-render when ID changes
         />
       )}
     </div>

@@ -232,12 +232,8 @@ const ModernTestExecution = () => {
       const executedBy = localStorage.getItem('userId') || 'current.user';
       const execConfig = getExecutionConfig(selectedItem);
       
-      console.log(`Executing ${execConfig.name}:`, execConfig.id);
-      
       // Execute using the appropriate method
       const executionResponse = await execConfig.method(execConfig.id, executedBy);
-      
-      console.log(`${execConfig.name} execution response:`, executionResponse);
       
       // Use unified transformation for all execution types
       const transformedResults = transformExecutionResults(executionResponse);

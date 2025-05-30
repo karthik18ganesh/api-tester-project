@@ -2,10 +2,17 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const API_PREFIX = '/api/v1/apirepos';
 
+// Debug logging utility - only logs in development
+const debugLog = (message, data = null) => {
+  if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true') {
+    console.log(`[API Debug] ${message}`, data || '');
+  }
+};
+
 // Generic API fetch function
 export const api = async (path, method = "GET", body = null, headers = {}) => {
   const url = `${BASE_URL}${path}`;
-  console.log(`Calling API: ${method} ${url}`);
+  debugLog(`${method} ${url}`);
   
   const defaultHeaders = { "Content-Type": "application/json", ...headers };
 

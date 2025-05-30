@@ -47,8 +47,6 @@ const ModernTestResults = () => {
         'DESC'
       );
       
-      console.log('Execution history response:', response);
-      
       // Handle the response format based on the sample provided
       if (response && response.result && response.result.code === "200") {
         const { data } = response.result;
@@ -438,7 +436,7 @@ const ModernTestResults = () => {
   };
 
   const handleExport = (format) => {
-    console.log(`Export as ${format}`);
+    // Export functionality would be implemented here
   };
 
   const clearAllFilters = () => {
