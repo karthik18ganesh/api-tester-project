@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FiX, FiAlertTriangle } from 'react-icons/fi';
 import Button from './Button';
 
@@ -12,6 +12,8 @@ const Modal = ({
   closeOnOverlayClick = true,
   showCloseButton = true
 }) => {
+  const modalRef = useRef(null);
+
   const sizeClasses = {
     sm: 'max-w-sm',
     md: 'max-w-md',
@@ -19,6 +21,30 @@ const Modal = ({
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl'
   };
+
+  // Handle ESC key press
+  useEffect(() => {
+    const handleEscapeKey = (event) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscapeKey);
+      // Focus the modal for better accessibility
+      if (modalRef.current) {
+        modalRef.current.focus();
+      }
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -31,14 +57,24 @@ const Modal = ({
   return (
     <div className="modal-container" onClick={handleOverlayClick}>
       <div className="modal-backdrop" />
-      <div className={`modal-content ${sizeClasses[size]} ${className}`}>
+      <div 
+        ref={modalRef}
+        className={`modal-content ${sizeClasses[size]} ${className}`}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
+      >
         {(title || showCloseButton) && (
           <div className="modal-header">
-            <h3 className="modal-title">{title}</h3>
+            {title && (
+              <h3 id="modal-title" className="modal-title">{title}</h3>
+            )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100"
+                aria-label="Close modal"
               >
                 <FiX className="w-5 h-5" />
               </button>

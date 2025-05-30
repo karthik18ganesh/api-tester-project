@@ -161,7 +161,7 @@ const Dashboard = () => {
       <div className="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome back! 👋</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome!!</h1>
             <p className="text-gray-600">Here's what's happening with your API testing today.</p>
           </div>
           <div className="hidden md:flex items-center gap-6">

@@ -7,6 +7,7 @@ import Breadcrumb from "../../../components/common/Breadcrumb";
 import IconButton from "../../../components/common/IconButton";
 import { Button } from "../../../components/UI";
 import { api } from "../../../utils/api";
+import ConfirmationModal from "../../../components/common/ConfirmationModal";
 
 const pageSize = 6;
 
@@ -475,56 +476,18 @@ const EnvironmentSetup = () => {
         )}
       </div>
 
-      {/* Enhanced Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center">
-            <div className="fixed inset-0 transition-opacity" onClick={() => setShowModal(false)}>
-              <div className="absolute inset-0 bg-gray-900 opacity-50"></div>
-            </div>
-            
-            <div className="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full p-6">
-              <div className="mb-4">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                  <FiTrash2 className="h-6 w-6 text-red-600" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2 text-center">
-                  Delete Environment
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Are you sure you want to delete <span className="font-medium text-gray-900">"{selectedEnv?.environmentName}"</span>? This action cannot be undone.
-                </p>
-              </div>
-              
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                  onClick={() => setShowModal(false)}
-                >
-                  Cancel
-                </button>
-                <Button 
-                  onClick={handleDelete} 
-                  className="bg-red-600 hover:bg-red-700"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Deleting...
-                    </div>
-                  ) : (
-                    "Delete"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Enhanced Modal - FIXED: Replace custom modal with ConfirmationModal */}
+      <ConfirmationModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onConfirm={handleDelete}
+        title="Delete Environment"
+        message={`Are you sure you want to delete "${selectedEnv?.environmentName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        loading={isLoading}
+      />
     </div>
   );
 };

@@ -1,12 +1,87 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FiTrash2, FiPlus, FiSettings, FiCheckCircle, FiEdit3 } from "react-icons/fi";
 import { FaMagic } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api } from "../../../utils/api";
-import ConfirmationModal from "../../../components/common/ConfirmationModal";
+import Modal from "../../../components/UI/Modal";
 
 const ITEMS_PER_PAGE = 6;
+
+// FIXED: Extract VariableModal as a separate component using standardized Modal
+const VariableModal = ({ 
+  isOpen, 
+  isEdit, 
+  formData, 
+  onFormChange, 
+  onSave, 
+  onClose, 
+  loading, 
+  detectedParameters 
+}) => {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isEdit ? 'Edit Variable' : 'Add New Variable'}
+      size="md"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => onFormChange('name', e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="variable_name"
+            autoFocus
+          />
+          {detectedParameters?.includes(formData.name) && (
+            <div className="text-xs text-blue-600 mt-1">
+              💡 This matches a detected parameter
+            </div>
+          )}
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+          <input
+            type="text"
+            value={formData.value}
+            onChange={(e) => onFormChange('value', e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="variable value"
+          />
+        </div>
+      </div>
+      
+      <div className="flex justify-end space-x-2 mt-6">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded-md hover:bg-[#4338CA] flex items-center"
+          disabled={loading}
+        >
+          {loading && (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          )}
+          {isEdit ? 'Update' : 'Create'}
+        </button>
+      </div>
+    </Modal>
+  );
+};
 
 const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTestCaseId }) => {
   const location = useLocation();
@@ -45,6 +120,35 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     transactionId: Date.now().toString(),
     timestamp: new Date().toISOString()
   });
+
+  // FIXED: Use useCallback to prevent unnecessary re-renders
+  const handleFormChange = useCallback((field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleCloseModals = useCallback(() => {
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setFormData({ name: "", value: "" });
+    setEditingVariable(null);
+  }, []);
+
+  const handleOpenAddModal = useCallback(() => {
+    setFormData({ name: "", value: "" });
+    setIsAddModalOpen(true);
+  }, []);
+
+  const handleOpenEditModal = useCallback((variable) => {
+    setFormData({
+      name: variable.name || "",
+      value: variable.value || ""
+    });
+    setEditingVariable(variable);
+    setIsEditModalOpen(true);
+  }, []);
 
   // Fetch existing variables from API
   const fetchVariables = async () => {
@@ -204,37 +308,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // FIXED: Modal handlers with proper state management
-  const handleOpenAddModal = () => {
-    setFormData({ name: "", value: "" });
-    setEditingVariable(null);
-    setIsAddModalOpen(true);
-  };
-
-  const handleOpenEditModal = (variable) => {
-    setFormData({
-      name: variable.name || "",
-      value: variable.value || ""
-    });
-    setEditingVariable(variable);
-    setIsEditModalOpen(true);
-  };
-
-  const handleCloseModals = () => {
-    setIsAddModalOpen(false);
-    setIsEditModalOpen(false);
-    setFormData({ name: "", value: "" });
-    setEditingVariable(null);
-  };
-
-  // FIXED: Proper form change handler to prevent focus issues
-  const handleFormChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   // FIXED: Save variable (create or update) with corrected API format
   const handleSaveVariable = async () => {
     const { name, value } = formData;
@@ -370,76 +443,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         >
           Next
         </button>
-      </div>
-    );
-  };
-
-  // FIXED: Variable Modal Component - Removed description field and fixed focus issues
-  const VariableModal = ({ isOpen, isEdit = false }) => {
-    if (!isOpen) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            {isEdit ? <FiEdit3 className="mr-2 text-indigo-600" /> : <FiPlus className="mr-2 text-indigo-600" />}
-            {isEdit ? 'Edit Variable' : 'Add New Variable'}
-          </h3>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleFormChange('name', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="variable_name"
-                autoFocus
-              />
-              {detectedParameters?.includes(formData.name) && (
-                <div className="text-xs text-blue-600 mt-1">
-                  💡 This matches a detected parameter
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
-              <input
-                type="text"
-                value={formData.value}
-                onChange={(e) => handleFormChange('value', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="variable value"
-              />
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-2 mt-6">
-            <button
-              type="button"
-              onClick={handleCloseModals}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveVariable}
-              className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded-md hover:bg-[#4338CA] flex items-center"
-              disabled={loading}
-            >
-              {loading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              )}
-              {isEdit ? 'Update' : 'Create'}
-            </button>
-          </div>
-        </div>
       </div>
     );
   };
@@ -695,20 +698,56 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       )}
 
       {/* Modals */}
-      <VariableModal isOpen={isAddModalOpen} isEdit={false} />
-      <VariableModal isOpen={isEditModalOpen} isEdit={true} />
+      <VariableModal isOpen={isAddModalOpen} isEdit={false} formData={formData} onFormChange={handleFormChange} onSave={handleSaveVariable} onClose={handleCloseModals} loading={loading} detectedParameters={detectedParameters} />
+      <VariableModal isOpen={isEditModalOpen} isEdit={true} formData={formData} onFormChange={handleFormChange} onSave={handleSaveVariable} onClose={handleCloseModals} loading={loading} detectedParameters={detectedParameters} />
       
-      {/* Confirmation Modal for Delete */}
-      <ConfirmationModal 
+      {/* Delete Confirmation Modal */}
+      <Modal
         isOpen={isDeleteModalOpen}
         onClose={() => {
           setIsDeleteModalOpen(false);
           setDeleteVariable(null);
         }}
-        onConfirm={handleDeleteVariable}
         title="Delete Variable"
-        message={`Are you sure you want to delete "${deleteVariable?.name}"? This action cannot be undone.`}
-      />
+        size="sm"
+      >
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mb-4">
+            <FiTrash2 className="w-6 h-6 text-red-600" />
+          </div>
+          
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Delete Variable
+          </h3>
+          
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to delete "{deleteVariable?.name}"? This action cannot be undone.
+          </p>
+          
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setDeleteVariable(null);
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteVariable}
+              className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 flex items-center"
+              disabled={loading}
+            >
+              {loading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              )}
+              Delete
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

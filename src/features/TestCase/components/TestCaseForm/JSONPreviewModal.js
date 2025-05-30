@@ -1,24 +1,30 @@
 import React from 'react';
+import Modal from '../../../../components/UI/Modal';
 
 const JSONPreviewModal = ({ title, content, onClose }) => {
   if (!content) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 relative">
-        <h2 className="text-lg font-semibold mb-4">{title}</h2>
-        <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-96 text-sm whitespace-pre-wrap">
+    <Modal 
+      isOpen={!!content} 
+      onClose={onClose} 
+      title={title}
+      size="2xl"
+    >
+      <div className="space-y-4">
+        <pre className="bg-gray-100 p-4 rounded-lg overflow-auto max-h-96 text-sm whitespace-pre-wrap font-mono border">
           {content}
         </pre>
-        <button
-          className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 w-6 h-6 flex items-center justify-center"
-          onClick={onClose}
-          aria-label="Close modal"
-        >
-          ✕
-        </button>
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 
