@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaEdit, FaPlus, FaChevronDown, FaStar, FaRegStar, FaCheck } from "react-icons/fa";
 import { FiTrash2, FiSearch, FiX } from "react-icons/fi";
 import IconButton from "../../../components/common/IconButton";
-import Button from "../../../components/common/Button";
+import { Button } from "../../../components/UI";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";

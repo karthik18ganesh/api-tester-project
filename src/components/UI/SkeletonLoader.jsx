@@ -1,277 +1,210 @@
 import React from 'react';
 
-// Base skeleton component with customizable properties
-const Skeleton = ({ 
-  width = 'w-full', 
-  height = 'h-4', 
-  rounded = 'rounded', 
+const SkeletonLoader = ({ 
+  variant = 'text',
+  width = '100%',
+  height,
+  lines = 3,
   className = '',
-  animate = true 
+  animate = true
 }) => {
-  const baseClasses = `bg-gray-200 ${width} ${height} ${rounded} ${className}`;
-  const animationClasses = animate ? 'animate-pulse' : '';
-  
-  return <div className={`${baseClasses} ${animationClasses}`} />;
-};
+  const baseClasses = [
+    'bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 bg-[length:200%_100%] rounded',
+    animate && 'animate-shimmer',
+    className
+  ].filter(Boolean).join(' ');
 
-// Advanced skeleton with shimmer effect
-const ShimmerSkeleton = ({ 
-  width = 'w-full', 
-  height = 'h-4', 
-  rounded = 'rounded', 
-  className = '' 
-}) => {
-  return (
-    <div className={`relative ${width} ${height} ${rounded} ${className} overflow-hidden bg-gray-200`}>
-      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white via-white to-transparent opacity-60" />
-    </div>
-  );
-};
-
-// Text skeleton variations
-export const TextSkeleton = ({ lines = 1, className = '' }) => {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      {Array.from({ length: lines }).map((_, index) => (
-        <Skeleton
-          key={index}
-          width={index === lines - 1 ? 'w-3/4' : 'w-full'}
-          height="h-4"
-          className="last:w-3/4"
-        />
-      ))}
-    </div>
-  );
-};
-
-// Card skeleton for API repository items
-export const CardSkeleton = ({ className = '' }) => {
-  return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <Skeleton width="w-1/2" height="h-6" className="mb-2" />
-          <Skeleton width="w-3/4" height="h-4" />
-        </div>
-        <Skeleton width="w-8" height="h-8" rounded="rounded-full" />
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <TextSkeleton lines={2} />
-      </div>
-      
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2">
-          <Skeleton width="w-16" height="h-6" rounded="rounded-full" />
-          <Skeleton width="w-20" height="h-6" rounded="rounded-full" />
-        </div>
-        <Skeleton width="w-24" height="h-8" rounded="rounded-md" />
-      </div>
-    </div>
-  );
-};
-
-// Table skeleton for test results
-export const TableSkeleton = ({ rows = 5, columns = 4, className = '' }) => {
-  return (
-    <div className={`bg-white rounded-lg border border-gray-200 overflow-hidden ${className}`}>
-      {/* Table header */}
-      <div className="bg-gray-50 p-4 border-b border-gray-200">
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
-          {Array.from({ length: columns }).map((_, index) => (
-            <Skeleton key={index} width="w-20" height="h-4" />
-          ))}
-        </div>
-      </div>
-      
-      {/* Table rows */}
-      <div className="divide-y divide-gray-200">
-        {Array.from({ length: rows }).map((_, rowIndex) => (
-          <div key={rowIndex} className="p-4">
-            <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
-              {Array.from({ length: columns }).map((_, colIndex) => (
-                <Skeleton 
-                  key={colIndex} 
-                  width={colIndex === 0 ? 'w-32' : 'w-16'} 
-                  height="h-4" 
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// List skeleton for navigation or menu items
-export const ListSkeleton = ({ items = 6, showIcon = true, className = '' }) => {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      {Array.from({ length: items }).map((_, index) => (
-        <div key={index} className="flex items-center space-x-3 p-3 rounded-lg">
-          {showIcon && (
-            <Skeleton width="w-6" height="h-6" rounded="rounded" />
-          )}
-          <div className="flex-1">
-            <Skeleton width="w-3/4" height="h-4" className="mb-1" />
-            <Skeleton width="w-1/2" height="h-3" />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// Form skeleton
-export const FormSkeleton = ({ fields = 4, className = '' }) => {
-  return (
-    <div className={`space-y-6 ${className}`}>
-      {Array.from({ length: fields }).map((_, index) => (
-        <div key={index} className="space-y-2">
-          <Skeleton width="w-24" height="h-4" />
-          <Skeleton width="w-full" height="h-10" rounded="rounded-md" />
-        </div>
-      ))}
-      
-      <div className="flex space-x-3 pt-4">
-        <Skeleton width="w-24" height="h-10" rounded="rounded-md" />
-        <Skeleton width="w-20" height="h-10" rounded="rounded-md" />
-      </div>
-    </div>
-  );
-};
-
-// Chart/Graph skeleton
-export const ChartSkeleton = ({ className = '' }) => {
-  return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
-      <div className="flex items-center justify-between mb-6">
-        <Skeleton width="w-32" height="h-6" />
-        <div className="flex space-x-2">
-          <Skeleton width="w-16" height="h-6" rounded="rounded-full" />
-          <Skeleton width="w-16" height="h-6" rounded="rounded-full" />
-        </div>
-      </div>
-      
-      {/* Chart area */}
-      <div className="relative h-64 bg-gray-50 rounded">
-        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around p-4 space-x-2">
-          {Array.from({ length: 7 }).map((_, index) => (
-            <Skeleton
-              key={index}
-              width="w-8"
-              height={`h-${Math.floor(Math.random() * 32) + 8}`}
-              className="flex-shrink-0"
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Legend */}
-      <div className="flex justify-center space-x-6 mt-4">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="flex items-center space-x-2">
-            <Skeleton width="w-3" height="h-3" rounded="rounded-full" />
-            <Skeleton width="w-16" height="h-4" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Navigation skeleton
-export const NavigationSkeleton = ({ className = '' }) => {
-  return (
-    <div className={`bg-white border-r border-gray-200 h-full ${className}`}>
-      <div className="p-4">
-        <Skeleton width="w-32" height="h-8" className="mb-6" />
-        
-        <nav className="space-y-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="flex items-center space-x-3 p-2 rounded-md">
-              <Skeleton width="w-5" height="h-5" />
-              <Skeleton width="w-24" height="h-4" />
-            </div>
-          ))}
-        </nav>
-      </div>
-    </div>
-  );
-};
-
-// Test execution skeleton with status indicators
-export const TestExecutionSkeleton = ({ className = '' }) => {
-  return (
-    <div className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <Skeleton width="w-8" height="h-8" rounded="rounded-full" />
-          <div>
-            <Skeleton width="w-32" height="h-5" className="mb-1" />
-            <Skeleton width="w-24" height="h-4" />
-          </div>
-        </div>
-        <div className="flex space-x-2">
-          <Skeleton width="w-16" height="h-6" rounded="rounded-full" />
-          <Skeleton width="w-8" height="h-8" rounded="rounded-md" />
-        </div>
-      </div>
-      
-      {/* Progress bar */}
-      <div className="mb-4">
-        <div className="flex justify-between text-sm mb-1">
-          <Skeleton width="w-20" height="h-4" />
-          <Skeleton width="w-12" height="h-4" />
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <Skeleton width="w-1/3" height="h-2" rounded="rounded-full" className="bg-blue-300" />
-        </div>
-      </div>
-      
-      {/* Test steps */}
+  const variants = {
+    text: () => (
       <div className="space-y-3">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded">
-            <Skeleton width="w-4" height="h-4" rounded="rounded-full" />
-            <div className="flex-1">
-              <Skeleton width="w-2/3" height="h-4" className="mb-1" />
-              <Skeleton width="w-1/3" height="h-3" />
+        {Array.from({ length: lines }).map((_, index) => (
+          <div
+            key={index}
+            className={`${baseClasses} h-4`}
+            style={{
+              width: index === lines - 1 ? '75%' : width
+            }}
+          />
+        ))}
+      </div>
+    ),
+    
+    title: () => (
+      <div className={`${baseClasses} h-8 mb-4`} style={{ width }} />
+    ),
+    
+    paragraph: () => (
+      <div className="space-y-2">
+        <div className={`${baseClasses} h-6 mb-3`} style={{ width: '60%' }} />
+        <div className={`${baseClasses} h-4`} style={{ width: '100%' }} />
+        <div className={`${baseClasses} h-4`} style={{ width: '90%' }} />
+        <div className={`${baseClasses} h-4`} style={{ width: '75%' }} />
+      </div>
+    ),
+    
+    card: () => (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className={`${baseClasses} h-6 mb-4`} style={{ width: '70%' }} />
+        <div className="space-y-2">
+          <div className={`${baseClasses} h-4`} style={{ width: '100%' }} />
+          <div className={`${baseClasses} h-4`} style={{ width: '85%' }} />
+          <div className={`${baseClasses} h-4`} style={{ width: '60%' }} />
+        </div>
+        <div className="mt-6 flex justify-between">
+          <div className={`${baseClasses} h-8 w-20`} />
+          <div className={`${baseClasses} h-8 w-16`} />
+        </div>
+      </div>
+    ),
+    
+    list: () => (
+      <div className="space-y-4">
+        {Array.from({ length: lines }).map((_, index) => (
+          <div key={index} className="flex items-center space-x-4">
+            <div className={`${baseClasses} h-12 w-12 rounded-full flex-shrink-0`} />
+            <div className="flex-1 space-y-2">
+              <div className={`${baseClasses} h-4`} style={{ width: '60%' }} />
+              <div className={`${baseClasses} h-3`} style={{ width: '40%' }} />
             </div>
-            <Skeleton width="w-16" height="h-6" rounded="rounded-full" />
+            <div className={`${baseClasses} h-6 w-16`} />
           </div>
         ))}
       </div>
-    </div>
-  );
+    ),
+    
+    table: () => (
+      <div className="space-y-3">
+        {/* Table Header */}
+        <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className={`${baseClasses} h-4`} />
+          ))}
+        </div>
+        {/* Table Rows */}
+        {Array.from({ length: lines }).map((_, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-4 gap-4 p-4 border-b border-gray-100">
+            {Array.from({ length: 4 }).map((_, colIndex) => (
+              <div key={colIndex} className={`${baseClasses} h-4`} />
+            ))}
+          </div>
+        ))}
+      </div>
+    ),
+    
+    metric: () => (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`${baseClasses} h-12 w-12 rounded-xl`} />
+            <div className="space-y-2">
+              <div className={`${baseClasses} h-4 w-24`} />
+              <div className={`${baseClasses} h-6 w-16`} />
+            </div>
+          </div>
+          <div className={`${baseClasses} h-6 w-12 rounded-full`} />
+        </div>
+      </div>
+    ),
+    
+    avatar: () => (
+      <div className={`${baseClasses} rounded-full`} 
+           style={{ 
+             width: height || '48px', 
+             height: height || '48px' 
+           }} 
+      />
+    ),
+    
+    button: () => (
+      <div className={`${baseClasses} h-10 rounded-lg`} style={{ width }} />
+    ),
+    
+    custom: () => (
+      <div 
+        className={baseClasses}
+        style={{ 
+          width, 
+          height: height || '1rem' 
+        }}
+      />
+    )
+  };
+
+  const SkeletonComponent = variants[variant];
+  
+  return SkeletonComponent ? <SkeletonComponent /> : variants.custom();
 };
 
-// Page skeleton wrapper
-export const PageSkeleton = ({ children, className = '' }) => {
-  return (
-    <div className={`animate-pulse ${className}`}>
-      {children}
+// Compound components for common patterns
+SkeletonLoader.Dashboard = ({ cardCount = 4 }) => (
+  <div className="space-y-8">
+    {/* Hero Section */}
+    <div className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-2xl p-8">
+      <div className="space-y-4">
+        <SkeletonLoader variant="title" width="40%" />
+        <SkeletonLoader variant="text" lines={2} />
+      </div>
     </div>
-  );
-};
+    
+    {/* Metrics Grid */}
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${Math.min(cardCount, 4)} gap-6`}>
+      {Array.from({ length: cardCount }).map((_, index) => (
+        <SkeletonLoader key={index} variant="metric" />
+      ))}
+    </div>
+    
+    {/* Content Sections */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2">
+        <SkeletonLoader variant="card" />
+      </div>
+      <div>
+        <SkeletonLoader variant="list" lines={4} />
+      </div>
+    </div>
+  </div>
+);
 
-// Advanced loading skeleton with staggered animation
-export const StaggeredSkeleton = ({ children, staggerDelay = 100, className = '' }) => {
-  return (
-    <div className={className}>
-      {React.Children.map(children, (child, index) => (
-        <div 
-          style={{ 
-            animationDelay: `${index * staggerDelay}ms` 
-          }}
-          className="animate-pulse"
-        >
-          {child}
+SkeletonLoader.Table = ({ rows = 5, columns = 4 }) => (
+  <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    {/* Table Header */}
+    <div className="bg-gray-50 p-4">
+      <div className={`grid grid-cols-${columns} gap-4`}>
+        {Array.from({ length: columns }).map((_, index) => (
+          <SkeletonLoader key={index} variant="custom" height="16px" width="80%" />
+        ))}
+      </div>
+    </div>
+    
+    {/* Table Body */}
+    <div className="divide-y divide-gray-100">
+      {Array.from({ length: rows }).map((_, rowIndex) => (
+        <div key={rowIndex} className="p-4">
+          <div className={`grid grid-cols-${columns} gap-4`}>
+            {Array.from({ length: columns }).map((_, colIndex) => (
+              <SkeletonLoader key={colIndex} variant="custom" height="16px" />
+            ))}
+          </div>
         </div>
       ))}
     </div>
-  );
-};
+  </div>
+);
 
-export default Skeleton; 
+SkeletonLoader.Form = ({ fields = 3 }) => (
+  <div className="space-y-6">
+    {Array.from({ length: fields }).map((_, index) => (
+      <div key={index} className="space-y-2">
+        <SkeletonLoader variant="custom" height="16px" width="25%" />
+        <SkeletonLoader variant="button" height="44px" />
+        <SkeletonLoader variant="custom" height="14px" width="60%" />
+      </div>
+    ))}
+    <div className="flex gap-3 pt-4">
+      <SkeletonLoader variant="button" width="120px" />
+      <SkeletonLoader variant="button" width="80px" />
+    </div>
+  </div>
+);
+
+export default SkeletonLoader; 

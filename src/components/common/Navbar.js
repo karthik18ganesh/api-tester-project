@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSearch, FaCog, FaUserCircle, FaBell, FaChevronDown } from "react-icons/fa";
-import { FiLogOut, FiUser, FiSettings, FiHelpCircle, FiGrid, FiLayers, FiArchive, FiX } from "react-icons/fi";
+import { FiLogOut, FiUser, FiSettings, FiHelpCircle, FiGrid, FiLayers, FiArchive, FiX, FiGlobe, FiFolder } from "react-icons/fi";
 import Logo from "../../assets/Logo.svg";
 import { toast } from "react-toastify";
 import { api } from "../../utils/api";
@@ -352,43 +352,37 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm relative z-30">
-        {/* Left - Logo & Active Project */}
-        <div className="flex items-center gap-3">
-          <img src={Logo} alt="Logo" className="w-6 h-6" />
-          <div className="flex items-center">
-            <h1 className="text-lg font-semibold text-gray-800 mr-2">
-              {activeProject ? activeProject.name : "Automation"}
-            </h1>
-            {activeProject && (
-              <span className="bg-indigo-100 text-indigo-800 text-xs font-medium py-0.5 px-2 rounded-full">
-                {activeProject.projectId}
-              </span>
-            )}
+      <header className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+        {/* Left - Logo */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            
           </div>
         </div>
 
-        {/* Center - Search */}
-        <div className="relative w-[640px]">
+        {/* Center - Enhanced Search */}
+        <div className="relative w-[600px]">
           <button
             onClick={() => openSearchModal()}
-            className="w-full flex items-center px-4 py-2.5 text-gray-500 bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200 rounded-lg hover:from-white hover:to-gray-50 hover:border-gray-300 hover:shadow-md transition-all duration-200 group focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full flex items-center px-4 py-2.5 text-gray-500 bg-white border border-gray-300 rounded-lg hover:border-indigo-300 hover:shadow-md transition-all duration-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           >
-            <FaSearch className="text-gray-400 mr-3 group-hover:text-indigo-500 transition-colors duration-200" />
-            <span className="flex-1 text-left text-sm font-medium group-hover:text-gray-700">Search test cases, suites, or packages...</span>
-            <div className="flex items-center space-x-1 text-xs text-gray-400 bg-white px-2 py-1 rounded-md border border-gray-200 group-hover:border-gray-300 transition-all duration-200">
-              <kbd className="font-mono">⌘</kbd>
-              <kbd className="font-mono">K</kbd>
+            <FaSearch className="text-gray-400 mr-3" />
+            <span className="flex-1 text-left text-sm text-gray-600">
+              Search test cases, suites, or packages...
+            </span>
+            <div className="flex items-center space-x-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded border">
+              <kbd className="font-mono font-semibold">⌘</kbd>
+              <kbd className="font-mono font-semibold">K</kbd>
             </div>
           </button>
         </div>
 
         {/* Right - Icons & User Profile */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           {/* Settings Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
-              className="text-gray-500 hover:text-indigo-600 cursor-pointer transition-colors"
+              className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
               onClick={() => setShowDropdown(!showDropdown)}
               aria-label="Settings"
             >
@@ -396,14 +390,18 @@ const Navbar = () => {
             </button>
 
             {showDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg z-50 py-1 animate-fade-in">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-900">Quick Settings</h3>
+                </div>
                 <button
                   onClick={() => {
                     navigate("/admin/user-settings");
                     setShowDropdown(false);
                   }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
+                  <FiUser className="mr-3 h-4 w-4" />
                   User Settings
                 </button>
                 <button
@@ -411,8 +409,9 @@ const Navbar = () => {
                     navigate("/admin/environment-setup");
                     setShowDropdown(false);
                   }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
+                  <FiGlobe className="mr-3 h-4 w-4" />
                   Environment Setup
                 </button>
                 <button
@@ -420,8 +419,9 @@ const Navbar = () => {
                     navigate("/admin/project-setup");
                     setShowDropdown(false);
                   }}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
+                  <FiFolder className="mr-3 h-4 w-4" />
                   Project Setup
                 </button>
               </div>
@@ -431,13 +431,13 @@ const Navbar = () => {
           {/* Notifications */}
           <div className="relative">
             <button
-              className="text-gray-500 hover:text-indigo-600 cursor-pointer transition-colors"
+              className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
               aria-label="Notifications"
             >
               <FaBell className="h-5 w-5" />
               {notifications.count > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-4 w-4 flex items-center justify-center rounded-full animate-pulse">
-                  {notifications.count}
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold h-5 w-5 flex items-center justify-center rounded-full">
+                  {notifications.count > 9 ? '9+' : notifications.count}
                 </span>
               )}
             </button>
@@ -446,11 +446,11 @@ const Navbar = () => {
           {/* User Profile Dropdown */}
           <div className="relative" ref={profileDropdownRef}>
             <button
-              className="flex items-center gap-2 text-gray-700 hover:text-indigo-600 cursor-pointer transition-colors"
+              className="flex items-center gap-3 p-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
               onClick={() => setShowProfileDropdown(!showProfileDropdown)}
               aria-label="User profile"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {userData.avatar ? (
                   <img 
                     src={userData.avatar} 
@@ -458,12 +458,14 @@ const Navbar = () => {
                     className="h-8 w-8 rounded-full object-cover border-2 border-gray-200"
                   />
                 ) : (
-                  <div className="h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
-                    <FaUserCircle className="h-6 w-6" />
+                  <div className="h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                    <FaUserCircle className="h-5 w-5" />
                   </div>
                 )}
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-medium">{userData.name}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {userData.name}
+                  </p>
                   <p className="text-xs text-gray-500">{userData.role}</p>
                 </div>
                 <FaChevronDown className="h-3 w-3 text-gray-400" />
@@ -471,57 +473,75 @@ const Navbar = () => {
             </button>
 
             {showProfileDropdown && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border rounded-md shadow-lg z-50 py-1 animate-fade-in">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-medium text-gray-900">{userData.name}</p>
-                  <p className="text-sm text-gray-500 truncate">{userData.email}</p>
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    {userData.avatar ? (
+                      <img 
+                        src={userData.avatar} 
+                        alt={userData.name} 
+                        className="h-10 w-10 rounded-full object-cover border-2 border-white"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                        <FaUserCircle className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{userData.name}</p>
+                      <p className="text-sm text-gray-600 truncate">{userData.email}</p>
+                      <p className="text-xs text-indigo-600">{userData.role}</p>
+                    </div>
+                  </div>
                 </div>
                 
-                <button
-                  onClick={() => {
-                    navigate("/profile");
-                    setShowProfileDropdown(false);
-                  }}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  <FiUser className="mr-3 h-4 w-4 text-gray-400" />
-                  Your Profile
-                </button>
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      navigate("/profile");
+                      setShowProfileDropdown(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <FiUser className="mr-3 h-4 w-4" />
+                    Your Profile
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      navigate("/settings");
+                      setShowProfileDropdown(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <FiSettings className="mr-3 h-4 w-4" />
+                    Account Settings
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      navigate("/help");
+                      setShowProfileDropdown(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <FiHelpCircle className="mr-3 h-4 w-4" />
+                    Help & Support
+                  </button>
+                </div>
                 
-                <button
-                  onClick={() => {
-                    navigate("/settings");
-                    setShowProfileDropdown(false);
-                  }}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  <FiSettings className="mr-3 h-4 w-4 text-gray-400" />
-                  Settings
-                </button>
-                
-                <button
-                  onClick={() => {
-                    navigate("/help");
-                    setShowProfileDropdown(false);
-                  }}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  <FiHelpCircle className="mr-3 h-4 w-4 text-gray-400" />
-                  Help Center
-                </button>
-                
-                <div className="border-t border-gray-100 mt-1"></div>
-                
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setShowProfileDropdown(false);
-                  }}
-                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
-                >
-                  <FiLogOut className="mr-3 h-4 w-4 text-red-500" />
-                  Logout
-                </button>
+                <div className="border-t border-gray-100 pt-1">
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setShowProfileDropdown(false);
+                    }}
+                    className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <FiLogOut className="mr-3 h-4 w-4" />
+                    Sign Out
+                  </button>
+                </div>
               </div>
             )}
           </div>

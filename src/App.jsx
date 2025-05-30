@@ -74,6 +74,12 @@ const TestResults = lazy(() =>
 const ExecutionDetailsView = lazy(() => 
   import("./features/TestResults/components/ExecutionDetailsView")
 );
+const FunctionsVariables = lazy(() => 
+  import("./features/FunctionsVariables/FunctionsVariables")
+);
+const DesignSystemDemo = lazy(() => 
+  import("./components/demo/DesignSystemDemo")
+);
 
 // Enhanced loading component with skeleton
 const EnhancedLoadingSpinner = () => (
@@ -185,6 +191,19 @@ const EnhancedApp = () => {
                 </ErrorBoundary>
               } 
             />
+            
+            {/* Design System Demo - Development/Demo Route */}
+            <Route 
+              path="/design-system-demo" 
+              element={
+                <ErrorBoundary>
+                  <Suspense fallback={<EnhancedLoadingSpinner />}>
+                    <DesignSystemDemo />
+                  </Suspense>
+                </ErrorBoundary>
+              } 
+            />
+            
             <Route element={<Layout />}>
               {/* Dashboard - requires active project */}
               <Route 
@@ -278,6 +297,14 @@ const EnhancedApp = () => {
                 element={
                   <LazyProjectProtectedRoute>
                     <TestCaseDetails />
+                  </LazyProjectProtectedRoute>
+                }
+              />
+              <Route
+                path="/test-design/functions-variables"
+                element={
+                  <LazyProjectProtectedRoute>
+                    <FunctionsVariables />
                   </LazyProjectProtectedRoute>
                 }
               />

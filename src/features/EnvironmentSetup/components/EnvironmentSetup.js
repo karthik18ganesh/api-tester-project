@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import IconButton from "../../../components/common/IconButton";
-import Button from "../../../components/common/Button";
+import { Button } from "../../../components/UI";
 import { api } from "../../../utils/api";
 
 const pageSize = 6;
