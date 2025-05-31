@@ -45,12 +45,11 @@ export const apiRepository = {
     return apiRepository.update(apiData);
   },
 
-  // UPDATED: Update existing API repository with static envId = 1 for development
+  // UPDATED: Update existing API repository - use environment from request data
   update: async (apiData) => {
     // Use the directly passed formatted payload from component
     if (apiData.requestMetaData && apiData.data) {
-      // FIXED: Set envId to 1 (development) statically
-      apiData.data.envId = 1;
+      // Remove the hardcoded envId = 1, use the one provided in the data
       
       // If it's a create operation (no apiId), use POST
       if (!apiData.data.apiId) {
@@ -70,7 +69,7 @@ export const apiRepository = {
       data: {
         apiId: apiData.id,
         apiRepoName: apiData.name,
-        envId: 1, // FIXED: Static envId = 1 for development
+        envId: apiData.environment, // Use the environment from the request data
         method: apiData.method,
         url: apiData.url,
         description: apiData.description,
@@ -83,13 +82,30 @@ export const apiRepository = {
             .filter(p => p.enabled && p.key.trim())
             .reduce((obj, p) => ({ ...obj, [p.key]: p.value }), {}),
           pathParams: {},  // Extract from URL if available
-          auth: apiData.auth.type !== "No Auth" ? {
+          auth: apiData.auth && apiData.auth.type !== "No Auth" ? {
             type: apiData.auth.type === "Bearer Token" ? "BEARER" : 
                   apiData.auth.type === "Basic Auth" ? "BASIC" : 
                   apiData.auth.type === "API Key" ? "API_KEY" : "NONE",
             token: apiData.auth.bearerToken || "",
             username: apiData.auth.username || "",
-            password: apiData.auth.password || ""
+            password: apiData.auth.password || "",
+            keyName: apiData.auth.apiKeyName || "",
+            keyValue: apiData.auth.apiKeyValue || "",
+            addTo: apiData.auth.apiKeyAddTo || "Header"
+          } : undefined,
+          body: apiData.body && apiData.body.type !== "none" ? {
+            type: apiData.body.type,
+            contentType: apiData.body.contentType,
+            raw: apiData.body.raw,
+            formData: apiData.body.formData ? apiData.body.formData
+              .filter(item => item.enabled && item.key)
+              .reduce((obj, item) => ({ 
+                ...obj, 
+                [item.key]: { value: item.value, type: item.type } 
+              }), {}) : undefined,
+            urlEncoded: apiData.body.urlEncoded ? apiData.body.urlEncoded
+              .filter(item => item.enabled && item.key)
+              .reduce((obj, item) => ({ ...obj, [item.key]: item.value }), {}) : undefined
           } : undefined
         }
       }
@@ -100,8 +116,59 @@ export const apiRepository = {
     return api(API_PREFIX, method, requestBody);
   },
 
-  // UPDATED: Execute API with static envId = 1
+  // UPDATED: Execute API - use environment from request data
   execute: async (apiData) => {
+    // Prepare auth data
+    let authData = undefined;
+    if (apiData.auth && apiData.auth.type !== "No Auth") {
+      authData = {
+        type: apiData.auth.type === "Bearer Token" ? "BEARER" : 
+              apiData.auth.type === "Basic Auth" ? "BASIC" : 
+              apiData.auth.type === "API Key" ? "API_KEY" : "NONE"
+      };
+      
+      if (apiData.auth.type === "Bearer Token") {
+        authData.token = apiData.auth.bearerToken || "";
+      } else if (apiData.auth.type === "Basic Auth") {
+        authData.username = apiData.auth.username || "";
+        authData.password = apiData.auth.password || "";
+      } else if (apiData.auth.type === "API Key") {
+        authData.keyName = apiData.auth.apiKeyName || "";
+        authData.keyValue = apiData.auth.apiKeyValue || "";
+        authData.addTo = apiData.auth.apiKeyAddTo || "Header";
+      }
+    }
+    
+    // Prepare body data
+    let bodyData = undefined;
+    if (apiData.body && apiData.body.type !== "none") {
+      bodyData = {
+        type: apiData.body.type,
+        contentType: apiData.body.contentType
+      };
+      
+      if (apiData.body.type === "raw") {
+        bodyData.raw = apiData.body.raw;
+      } else if (apiData.body.type === "form-data") {
+        bodyData.formData = {};
+        apiData.body.formData
+          .filter(item => item.enabled && item.key)
+          .forEach(item => {
+            bodyData.formData[item.key] = {
+              value: item.value,
+              type: item.type
+            };
+          });
+      } else if (apiData.body.type === "x-www-form-urlencoded") {
+        bodyData.urlEncoded = {};
+        apiData.body.urlEncoded
+          .filter(item => item.enabled && item.key)
+          .forEach(item => {
+            bodyData.urlEncoded[item.key] = item.value;
+          });
+      }
+    }
+
     // Prepare the request body according to API documentation
     const requestBody = {
       requestMetaData: {
@@ -112,7 +179,7 @@ export const apiRepository = {
       data: {
         apiId: apiData.id,
         apiRepoName: apiData.name,
-        envId: 1, // FIXED: Static envId = 1 for development
+        envId: apiData.environment, // Use the environment from the request data
         method: apiData.method,
         url: apiData.url,
         request: {
@@ -123,14 +190,8 @@ export const apiRepository = {
             .filter(p => p.enabled && p.key.trim())
             .reduce((obj, p) => ({ ...obj, [p.key]: p.value }), {}),
           pathParams: {},  // Extract from URL if available
-          auth: apiData.auth.type !== "No Auth" ? {
-            type: apiData.auth.type === "Bearer Token" ? "BEARER" : 
-                  apiData.auth.type === "Basic Auth" ? "BASIC" : 
-                  apiData.auth.type === "API Key" ? "API_KEY" : "NONE",
-            token: apiData.auth.bearerToken || "",
-            username: apiData.auth.username || "",
-            password: apiData.auth.password || ""
-          } : undefined
+          auth: authData,
+          body: bodyData
         }
       }
     };

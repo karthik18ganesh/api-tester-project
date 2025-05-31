@@ -6,7 +6,7 @@ import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import ConfirmationModal from "../../../components/common/ConfirmationModal";
-import { apiRepository } from "../../../utils/api";
+import { apiRepository, environments } from "../../../utils/api";
 
 const pageSize = 6;
 
@@ -21,6 +21,7 @@ const APIRepository = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState(null);
+  const [environmentsMap, setEnvironmentsMap] = useState(new Map());
   const [pagination, setPagination] = useState({
     totalElements: 0,
     totalPages: 0,
@@ -35,6 +36,24 @@ const APIRepository = () => {
   // Updated calculated pagination values
   const totalPages = pagination.totalPages;
   const currentData = filteredData;
+
+  const fetchEnvironments = async () => {
+    try {
+      const response = await environments.getAll();
+      
+      if (response && response.result && response.result.data) {
+        const envMap = new Map();
+        response.result.data.content.forEach(env => {
+          envMap.set(env.environmentId, env.environmentName);
+        });
+        setEnvironmentsMap(envMap);
+      }
+    } catch (error) {
+      console.error("Error fetching environments:", error);
+      // Set empty map as fallback
+      setEnvironmentsMap(new Map());
+    }
+  };
 
   const fetchAPIs = async (page = 0) => {
     setLoading(true);
@@ -164,35 +183,30 @@ const APIRepository = () => {
     }
   };
 
-  // Get environment badge color
-  const getEnvironmentBadge = (env) => {
-    const envName = typeof env === 'string' ? env.toLowerCase() : '';
+  // Display environment name from the environments map
+  const formatEnvironmentName = (envId) => {
+    if (!envId) return "Unknown";
     
-    // Extract environment name by removing prefix
-    const normalizedEnv = envName.replace(/^env_/i, '');
+    const envName = environmentsMap.get(envId);
+    return envName || `Environment ${envId}`;
+  };
+
+  // Get environment badge color based on environment name
+  const getEnvironmentBadge = (envId) => {
+    const envName = formatEnvironmentName(envId).toLowerCase();
     
-    switch(normalizedEnv) {
-      case 'production':
+    switch(true) {
+      case envName.includes('production') || envName.includes('prod'):
         return "bg-red-100 text-red-800";
-      case 'staging':
+      case envName.includes('staging') || envName.includes('stage'):
         return "bg-amber-100 text-amber-800";
-      case 'development':
+      case envName.includes('development') || envName.includes('dev'):
         return "bg-green-100 text-green-800";
-      case 'testing':
-      case 'qa':
+      case envName.includes('testing') || envName.includes('test') || envName.includes('qa'):
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
-  };
-
-  // Display environment name without the prefix
-  const formatEnvironmentName = (env) => {
-    if (!env) return "Unknown";
-    
-    // Extract environment name by removing prefix and capitalizing
-    const name = env.replace(/^env_/i, '');
-    return name.charAt(0).toUpperCase() + name.slice(1);
   };
 
   // Pagination helpers
@@ -228,7 +242,13 @@ const APIRepository = () => {
 
   // Load data on component mount
   useEffect(() => {
-    fetchAPIs();
+    // Fetch both environments and APIs
+    const initializeData = async () => {
+      await fetchEnvironments();
+      await fetchAPIs();
+    };
+    
+    initializeData();
   }, []);
 
   return (

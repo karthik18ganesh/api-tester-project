@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import Logo from "../../../assets/Logo.svg";
+import { FiActivity, FiZap } from "react-icons/fi";
 import { nanoid } from "nanoid";
 import BgImage from "../../../assets/lp-bg.jpg";
 import { api } from "../../../utils/api";
@@ -103,11 +103,22 @@ const Login = () => {
       <div className="relative z-10 flex flex-col items-center max-w-md w-full">
         <div className="bg-white/80 backdrop-blur-md p-6 rounded-xl shadow-xl border-2 border-indigo-100 w-full">
           <div className="flex flex-col items-center mb-6">
-            <div className="bg-indigo-600 p-3 rounded-full shadow-md mb-4">
-              <img src={Logo} alt="Logo" className="h-10 w-10" />
+            {/* Modern Logo with Icon + Text */}
+            <div className="flex items-center mb-4">
+              <div className="bg-indigo-600 p-2 rounded-lg shadow-md mr-3">
+                <FiActivity className="h-8 w-8 text-white" />
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-bold text-gray-900">
+                  API<span className="text-indigo-600">Tester</span>
+                </h1>
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+                  Automation Platform
+                </p>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 text-center">
-              Welcome
+            <h2 className="text-xl font-semibold text-gray-900 text-center">
+              Welcome Back
             </h2>
             <p className="text-gray-600 text-center text-sm mt-1">
               Enter your credentials to access your account

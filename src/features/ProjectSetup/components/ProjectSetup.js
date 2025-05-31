@@ -378,24 +378,24 @@ const ProjectSetup = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
-                  <tr>
-                    <th className="p-4 font-medium">Status</th>
-                    <th className="p-4 font-medium">Name</th>
-                    <th className="p-4 font-medium">Project ID</th>
-                    <th className="p-4 font-medium">Description</th>
-                    <th className="p-4 font-medium">Date</th>
-                    <th className="p-4 text-right font-medium">Actions</th>
+                  <tr className="align-middle">
+                    <th className="p-4 font-medium text-center w-24">Status</th>
+                    <th className="p-4 font-medium w-48">Name</th>
+                    <th className="p-4 font-medium w-32">Project ID</th>
+                    <th className="p-4 font-medium w-64">Description</th>
+                    <th className="p-4 font-medium w-36">Date</th>
+                    <th className="p-4 text-right font-medium w-32">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentData.map((project, index) => (
                     <tr 
                       key={project.id} 
-                      className={`border-b border-gray-200 hover:bg-indigo-50/30 transition-colors ${
+                      className={`border-b border-gray-200 hover:bg-indigo-50/30 transition-colors align-middle min-h-16 ${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                       } ${activeProject && activeProject.id === project.id ? 'bg-indigo-50' : ''}`}
                     >
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center align-middle w-24">
                         <button
                           onClick={() => setProjectAsActive(project)}
                           className="relative inline-flex items-center h-6 rounded-full w-11 focus:outline-none transition-colors"
@@ -418,18 +418,19 @@ const ProjectSetup = () => {
                           ></span>
                         </button>
                       </td>
-                      <td className="p-4 font-medium text-indigo-700">{project.name}</td>
-                      <td className="p-4 text-gray-600">{project.projectId}</td>
-                      <td className="p-4 text-gray-600 line-clamp-2">{project.description}</td>
-                      <td className="p-4 text-gray-500">
-                        <div>
-                          <div>Created: {project.date}</div>
-                          {project.updatedDate && project.updatedDate !== project.date && (
-                            <div className="text-xs text-gray-400">Updated: {project.updatedDate}</div>
-                          )}
+                      <td className="p-4 font-medium text-indigo-700 align-middle w-48">{project.name}</td>
+                      <td className="p-4 text-gray-600 align-middle w-32">{project.projectId}</td>
+                      <td className="p-4 text-gray-600 align-middle w-64">
+                        <div className="truncate" title={project.description}>
+                          {project.description || 'No description'}
                         </div>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-gray-500 align-middle w-36">
+                        <div className="truncate" title={`Created: ${project.date}${project.updatedDate && project.updatedDate !== project.date ? ` | Updated: ${project.updatedDate}` : ''}`}>
+                          {project.updatedDate && project.updatedDate !== project.date ? project.updatedDate : project.date}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right align-middle w-32">
                         <div className="flex justify-end gap-1">
                           <IconButton 
                             icon={FaEdit} 
