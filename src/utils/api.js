@@ -2,6 +2,8 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const API_PREFIX = '/api/v1/apirepos';
 
+import { useAuthStore } from '../stores/authStore';
+
 // Debug logging utility - only logs in development
 const debugLog = (message, data = null) => {
   if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true') {
@@ -204,8 +206,14 @@ export const apiRepository = {
 export const testExecution = {
   // Execute test package
   executePackage: async (packageId, executedBy) => {
+    // If no executedBy provided, get from auth store
+    if (!executedBy) {
+      const { user } = useAuthStore.getState();
+      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+    }
+    
     const requestBody = {
-      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+      executedBy: executedBy
     };
     
     return api(`/api/v1/test-execution/package/${packageId}`, "POST", requestBody);
@@ -213,8 +221,14 @@ export const testExecution = {
 
   // Execute test suite
   executeSuite: async (suiteId, executedBy) => {
+    // If no executedBy provided, get from auth store
+    if (!executedBy) {
+      const { user } = useAuthStore.getState();
+      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+    }
+    
     const requestBody = {
-      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+      executedBy: executedBy
     };
     
     return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
@@ -222,8 +236,14 @@ export const testExecution = {
 
   // Execute individual test case - FIXED ENDPOINT
   executeTestCase: async (testCaseId, executedBy) => {
+    // If no executedBy provided, get from auth store
+    if (!executedBy) {
+      const { user } = useAuthStore.getState();
+      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+    }
+    
     const requestBody = {
-      executedBy: executedBy || localStorage.getItem('userId') || 'anonymous'
+      executedBy: executedBy
     };
     
     return api(`/api/v1/test-execution/case/${testCaseId}`, "POST", requestBody);

@@ -7,6 +7,7 @@ import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
 import { api, testExecution } from '../../../utils/api';
+import { useAuthStore } from '../../../stores/authStore';
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const ModernTestExecution = () => {
   const [testHierarchy, setTestHierarchy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { user } = useAuthStore();
 
   // Fetch the hierarchy from the API
   const fetchHierarchy = async () => {
@@ -229,7 +231,7 @@ const ModernTestExecution = () => {
     setExecutionResult(null);
 
     try {
-      const executedBy = localStorage.getItem('userId') || 'current.user';
+      const executedBy = user?.username || localStorage.getItem('userId') || 'current.user';
       const execConfig = getExecutionConfig(selectedItem);
       
       // Execute using the appropriate method
@@ -280,7 +282,7 @@ const ModernTestExecution = () => {
         id: executionId,
         status: 'Failed',
         instanceId: executionId,
-        executedBy: localStorage.getItem('userId') || 'current.user',
+        executedBy: user?.username || localStorage.getItem('userId') || 'current.user',
         environment: settings.environment,
         executedAt: new Date().toLocaleString(),
         passedCount: 0,
