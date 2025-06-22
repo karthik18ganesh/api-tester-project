@@ -23,15 +23,16 @@ import {
 import { FaBars, FaChevronDown, FaChevronUp, FaProjectDiagram } from "react-icons/fa";
 import Logo from "../../assets/Logo.svg";
 import { useProjectActivation } from "./ProjectActivationGuard";
+import { useUIStore } from "../../stores/uiStore";
 
 const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [testDesignOpen, setTestDesignOpen] = useState(false);
   const [testExecutionOpen, setTestExecutionOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { activeProject, hasActiveProject } = useProjectActivation();
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
 
   useEffect(() => {
     // Auto-expand sections based on current route
@@ -248,7 +249,7 @@ const Sidebar = () => {
           </div>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={toggleSidebar}
           className={`text-gray-500 hover:text-indigo-600 transition-colors p-2 rounded-lg hover:bg-gray-50 ${
             collapsed && "mt-0"
           }`}
@@ -387,7 +388,7 @@ const Sidebar = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs text-gray-500 font-medium">APP VERSION</div>
-              <div className="text-sm font-semibold text-gray-700">v2.1.0</div>
+              <div className="text-sm font-semibold text-gray-700">v1.0.0</div>
             </div>
             <div className="w-2 h-2 bg-green-500 rounded-full" title="System Online"></div>
           </div>
