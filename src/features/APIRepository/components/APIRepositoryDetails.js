@@ -452,10 +452,7 @@ const APIRepositoryDetails = () => {
         error: null,
       });
       
-      // Scroll to response section
-      if (responseRef.current) {
-        responseRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+      // Response section will be visible without auto-scroll to maintain UI integrity
     } catch (error) {
       console.error("Request error:", error);
       
@@ -1090,7 +1087,7 @@ const APIRepositoryDetails = () => {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-white">
+    <div className="p-6 space-y-6 bg-white min-h-screen">
       {/* Breadcrumb */}
       <Breadcrumb
         items={[
@@ -2070,7 +2067,7 @@ const APIRepositoryDetails = () => {
           </div>
           
           {/* Response Section */}
-          <div ref={responseRef} className="bg-white border rounded-md shadow-sm overflow-hidden">
+          <div ref={responseRef} className="bg-white border rounded-md shadow-sm overflow-hidden max-w-full">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-800">Response</h3>
               {responseData.data && (
@@ -2095,7 +2092,7 @@ const APIRepositoryDetails = () => {
               )}
             </div>
             
-            <div className="p-4">
+            <div className="p-4 max-h-screen overflow-y-auto">
               {responseData.isLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mr-3"></div>
@@ -2212,7 +2209,7 @@ const APIRepositoryDetails = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="border rounded-md bg-gray-50 overflow-hidden">
+                    <div className="border rounded-md bg-gray-50 overflow-hidden max-w-full">
                       <div className="bg-gray-100 px-3 py-2 border-b flex justify-between items-center">
                         <span className="text-xs text-gray-600 font-medium">Response Data</span>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -2226,7 +2223,7 @@ const APIRepositoryDetails = () => {
                           )}
                         </div>
                       </div>
-                      <pre className="p-4 text-sm font-mono overflow-auto max-h-96 bg-white">
+                      <pre className="p-4 text-sm font-mono overflow-x-auto overflow-y-auto max-h-96 bg-white whitespace-pre-wrap break-words max-w-full">
                         {formatJsonResponse(responseData.data)}
                       </pre>
                     </div>
@@ -2245,33 +2242,35 @@ const APIRepositoryDetails = () => {
                           Copy Headers
                         </button>
                       </div>
-                      <div className="border rounded-md overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Header</th>
-                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
-                              <th className="w-16 px-3 py-2"></th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {Object.entries(responseData.headers).map(([key, value]) => (
-                              <tr key={key}>
-                                <td className="px-3 py-2 text-sm font-medium text-gray-900">{key}</td>
-                                <td className="px-3 py-2 text-sm text-gray-600 break-all">{value}</td>
-                                <td className="px-3 py-2 text-right">
-                                  <button
-                                    onClick={() => copyResponsePart('header', `${key}: ${value}`)}
-                                    className="text-gray-400 hover:text-gray-600"
-                                    title="Copy header"
-                                  >
-                                    <FiCopy size={12} />
-                                  </button>
-                                </td>
+                      <div className="border rounded-md overflow-hidden max-w-full">
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Header</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                                <th className="w-16 px-3 py-2"></th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {Object.entries(responseData.headers).map(([key, value]) => (
+                                <tr key={key}>
+                                  <td className="px-3 py-2 text-sm font-medium text-gray-900 min-w-0">{key}</td>
+                                  <td className="px-3 py-2 text-sm text-gray-600 break-all max-w-xs overflow-hidden">{value}</td>
+                                  <td className="px-3 py-2 text-right">
+                                    <button
+                                      onClick={() => copyResponsePart('header', `${key}: ${value}`)}
+                                      className="text-gray-400 hover:text-gray-600"
+                                      title="Copy header"
+                                    >
+                                      <FiCopy size={12} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   )}
