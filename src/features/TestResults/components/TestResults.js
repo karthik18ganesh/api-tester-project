@@ -4,6 +4,8 @@ import { toast } from 'react-toastify';
 import TestResultsTable from './TestResultsTable';
 import ExecutionDetailsView from './ExecutionDetailsView';
 import TestCaseDetailsView from '../../TestExecution/components/TestCaseDetailsView';
+import AssertionSummaryCard from './AssertionSummaryCard';
+import AssertionResultsList from './AssertionResultsList';
 import Breadcrumb from '../../../components/common/Breadcrumb';
 import { testExecution } from '../../../utils/api';
 
@@ -69,7 +71,9 @@ const ModernTestResults = () => {
           successRate: execution.executionSummary?.successRate || 0,
           executionTime: execution.executionTimeMs || 0,
           environmentName: execution.environmentName || 'Unknown',
-          testCaseResults: execution.testCaseResults || []
+          testCaseResults: execution.testCaseResults || [],
+          // Enhanced assertion support
+          assertionSummary: execution.assertionSummary || null
         }));
         
         setExecutionHistory(formattedHistory);
@@ -192,51 +196,88 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Create detailed execution data from API response
+  // Create detailed execution data from API response with enhanced assertion support
   const createDetailedExecutionData = async (execution) => {
     try {
       // Check if we have detailed test case results in the current data
       if (execution.testCaseResults && execution.testCaseResults.length > 0) {
-        // Transform the existing testCaseResults
-        const results = execution.testCaseResults.map((testCase) => ({
-          id: `tc-${testCase.testCaseId}`,
-          name: testCase.testCaseName || 'API Test Case',
-          status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-          duration: `${testCase.executionTimeMs}ms`,
-          request: {
-            method: testCase.httpMethod,
-            url: testCase.url,
-            headers: testCase.requestHeaders || {},
-            body: testCase.requestBody
-          },
-          response: {
-            status: testCase.statusCode,
-            data: testCase.responseBody,
-            headers: testCase.responseHeaders || {}
-          },
-          assertions: [
+        // Transform the existing testCaseResults with enhanced assertion data
+        const results = execution.testCaseResults.map((testCase) => {
+          // Check if this test case already has assertion results from execution
+          const hasAssertionResults = testCase.assertions && Array.isArray(testCase.assertions);
+          const hasAssertionSummary = testCase.assertionSummary && typeof testCase.assertionSummary === 'object';
+
+          // Use existing assertion data if available, otherwise fallback to basic assertions
+          const assertions = hasAssertionResults ? testCase.assertions.map(assertion => ({
+            id: assertion.id,
+            name: assertion.name || assertion.description || 'Assertion',
+            type: assertion.type || 'system',
+            status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+            actualValue: assertion.actualValue,
+            expectedValue: assertion.expectedValue,
+            path: assertion.path,
+            error: assertion.error,
+            executionTime: assertion.executionTime || 0
+          })) : [
             {
-              id: 1,
-              description: 'HTTP Status Code Validation',
+              id: 'basic-status',
+              name: 'HTTP Status Code Validation',
+              type: 'system',
               status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              actualValue: testCase.statusCode,
+              expectedValue: '2xx',
               ...(testCase.executionStatus !== 'PASSED' && {
                 error: testCase.errorMessage || `Expected successful response but got status ${testCase.statusCode}`
               })
             },
             {
-              id: 2,
-              description: 'Response Time Validation',
+              id: 'basic-time',
+              name: 'Response Time Validation',
+              type: 'system', 
               status: testCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
+              actualValue: `${testCase.executionTimeMs}ms`,
+              expectedValue: '< 5000ms',
               ...(testCase.executionTimeMs > 5000 && {
                 error: `Response time ${testCase.executionTimeMs}ms exceeded 5000ms limit`
               })
             }
-          ],
-          testSuiteId: testCase.testSuiteId,
-          testSuiteName: testCase.testSuiteName,
-          testCaseId: testCase.testCaseId,
-          resultId: testCase.resultId
-        }));
+          ];
+
+          // Calculate assertion summary if not provided
+          const assertionSummary = hasAssertionSummary ? testCase.assertionSummary : {
+            total: assertions.length,
+            passed: assertions.filter(a => a.status === 'Passed').length,
+            failed: assertions.filter(a => a.status === 'Failed').length,
+            successRate: assertions.length > 0 ? Math.round((assertions.filter(a => a.status === 'Passed').length / assertions.length) * 100) : 0
+          };
+
+          // Determine overall status based on assertion results
+          const overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+
+          return {
+            id: `tc-${testCase.testCaseId}`,
+            name: testCase.testCaseName || 'API Test Case',
+            status: overallStatus,
+            duration: `${testCase.executionTimeMs}ms`,
+            request: {
+              method: testCase.httpMethod,
+              url: testCase.url,
+              headers: testCase.requestHeaders || {},
+              body: testCase.requestBody
+            },
+            response: {
+              status: testCase.statusCode,
+              data: testCase.responseBody,
+              headers: testCase.responseHeaders || {}
+            },
+            assertions: assertions,
+            assertionSummary: assertionSummary,
+            testSuiteId: testCase.testSuiteId,
+            testSuiteName: testCase.testSuiteName,
+            testCaseId: testCase.testCaseId,
+            resultId: testCase.resultId
+          };
+        });
 
         return {
           id: execution.id,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaCheck, FaTimes, FaChevronLeft, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import Breadcrumb from '../../../components/common/Breadcrumb';
+import AssertionResultsView from '../../TestResults/components/AssertionResultsView';
 import { testExecution } from '../../../utils/api';
 
 // Collapsible component for sections
@@ -87,46 +88,84 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
               return;
             }
             
-            // Create the test case details
-            const testCaseDetails = {
-              id: testCaseId,
-              name: targetTestCase.testCaseName || 'API Test Case',
-              status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-              duration: `${targetTestCase.executionTimeMs || 0}ms`,
-              request: {
-                method: targetTestCase.httpMethod,
-                url: targetTestCase.url,
-                headers: targetTestCase.requestHeaders || {},
-                body: targetTestCase.requestBody
-              },
-              response: {
-                status: targetTestCase.statusCode,
-                data: targetTestCase.responseBody,
-                headers: targetTestCase.responseHeaders || {}
-              },
-              assertions: [
-                {
-                  id: 1,
-                  description: 'HTTP Status Code Validation',
-                  status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                  ...(targetTestCase.executionStatus !== 'PASSED' && {
-                    error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
-                  })
+                          // Create the test case details with enhanced assertion support
+              const testCaseDetails = {
+                id: testCaseId,
+                name: targetTestCase.testCaseName || 'API Test Case',
+                status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                duration: `${targetTestCase.executionTimeMs || 0}ms`,
+                request: {
+                  method: targetTestCase.httpMethod,
+                  url: targetTestCase.url,
+                  headers: targetTestCase.requestHeaders || {},
+                  body: targetTestCase.requestBody
                 },
-                {
-                  id: 2,
-                  description: 'Response Time Validation',
-                  status: targetTestCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
-                  ...(targetTestCase.executionTimeMs > 5000 && {
-                    error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
-                  })
-                }
-              ],
-              executedBy: executionData.executedBy,
-              executionDate: executionData.executionDate,
-              testSuiteId: targetTestCase.testSuiteId,
-              testSuiteName: targetTestCase.testSuiteName
-            };
+                response: {
+                  status: targetTestCase.statusCode,
+                  data: targetTestCase.responseBody,
+                  headers: targetTestCase.responseHeaders || {}
+                },
+                // Enhanced assertion results
+                assertionResults: targetTestCase.assertionResults || [
+                  {
+                    assertionId: 'basic-status',
+                    assertionName: 'HTTP Status Code Validation',
+                    status: targetTestCase.executionStatus === 'PASSED' ? 'PASSED' : 'FAILED',
+                    actualValue: targetTestCase.statusCode,
+                    expectedValue: '2xx',
+                    executionTime: 2,
+                    path: 'response.status',
+                    type: 'status_code',
+                    ...(targetTestCase.executionStatus !== 'PASSED' && {
+                      error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
+                    })
+                  },
+                  {
+                    assertionId: 'basic-time',
+                    assertionName: 'Response Time Validation',
+                    status: targetTestCase.executionTimeMs <= 5000 ? 'PASSED' : 'FAILED',
+                    actualValue: `${targetTestCase.executionTimeMs}ms`,
+                    expectedValue: '< 5000ms',
+                    executionTime: 1,
+                    path: 'execution.responseTime',
+                    type: 'response_time',
+                    ...(targetTestCase.executionTimeMs > 5000 && {
+                      error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
+                    })
+                  }
+                ],
+                assertionSummary: targetTestCase.assertionSummary || {
+                  total: 2,
+                  passed: targetTestCase.executionStatus === 'PASSED' && targetTestCase.executionTimeMs <= 5000 ? 2 : 
+                          targetTestCase.executionStatus === 'PASSED' || targetTestCase.executionTimeMs <= 5000 ? 1 : 0,
+                  failed: targetTestCase.executionStatus !== 'PASSED' || targetTestCase.executionTimeMs > 5000 ? 
+                          (targetTestCase.executionStatus !== 'PASSED' && targetTestCase.executionTimeMs > 5000 ? 2 : 1) : 0,
+                  skipped: 0
+                },
+                // Legacy compatibility
+                assertions: [
+                  {
+                    id: 1,
+                    description: 'HTTP Status Code Validation',
+                    status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+                    ...(targetTestCase.executionStatus !== 'PASSED' && {
+                      error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
+                    })
+                  },
+                  {
+                    id: 2,
+                    description: 'Response Time Validation',
+                    status: targetTestCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
+                    ...(targetTestCase.executionTimeMs > 5000 && {
+                      error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
+                    })
+                  }
+                ],
+                executedBy: executionData.executedBy,
+                executionDate: executionData.executionDate,
+                testSuiteId: targetTestCase.testSuiteId,
+                testSuiteName: targetTestCase.testSuiteName
+              };
             
             // Create execution summary
             const transformedExecution = {
@@ -419,52 +458,68 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
 
       <div className="border rounded-lg shadow-sm overflow-hidden bg-white mb-6">
         <div className="bg-gray-50 p-4 border-b">
-          <h2 className="font-semibold text-lg text-gray-800">Assertions</h2>
+          <h2 className="font-semibold text-lg text-gray-800">
+            Assertions 
+            {testCase.assertionSummary && (
+              <span className="text-sm font-normal text-gray-600 ml-2">
+                ({testCase.assertionSummary.passed}/{testCase.assertionSummary.total} passed)
+              </span>
+            )}
+          </h2>
         </div>
-        <div className="divide-y divide-gray-100">
-          {testCase.assertions && testCase.assertions.map((assertion) => (
-            <div key={assertion.id} className="p-4 hover:bg-gray-50">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start">
-                  <div className={`mt-0.5 rounded-full p-1 mr-3 ${
-                    assertion.status === 'Passed' 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-red-100 text-red-600'
-                  }`}>
-                    {assertion.status === 'Passed' ? (
-                      <FaCheck className="h-4 w-4" />
-                    ) : (
-                      <FaTimes className="h-4 w-4" />
-                    )}
-                  </div>
-                  
-                  <div>
-                    <div className="font-medium">Assertion #{assertion.id}</div>
-                    <div className="text-gray-600 mt-1">{assertion.description}</div>
-                    
-                    {assertion.status !== 'Passed' && assertion.error && (
-                      <div className="mt-2 bg-red-50 text-red-700 p-2 rounded text-sm border border-red-100">
-                        {assertion.error}
+        <div className="p-4">
+          {testCase.assertionResults && testCase.assertionResults.length > 0 ? (
+            <AssertionResultsView 
+              assertions={testCase.assertionResults}
+              summary={testCase.assertionSummary}
+              compact={false}
+            />
+          ) : testCase.assertions && testCase.assertions.length > 0 ? (
+            // Fallback to legacy assertions display
+            <div className="space-y-3">
+              {testCase.assertions.map((assertion) => (
+                <div key={assertion.id} className="p-4 hover:bg-gray-50 border rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start">
+                      <div className={`mt-0.5 rounded-full p-1 mr-3 ${
+                        assertion.status === 'Passed' 
+                          ? 'bg-green-100 text-green-600' 
+                          : 'bg-red-100 text-red-600'
+                      }`}>
+                        {assertion.status === 'Passed' ? (
+                          <FaCheck className="h-4 w-4" />
+                        ) : (
+                          <FaTimes className="h-4 w-4" />
+                        )}
                       </div>
-                    )}
+                      
+                      <div>
+                        <div className="font-medium">Assertion #{assertion.id}</div>
+                        <div className="text-gray-600 mt-1">{assertion.description}</div>
+                        
+                        {assertion.status !== 'Passed' && assertion.error && (
+                          <div className="mt-2 bg-red-50 text-red-700 p-2 rounded text-sm border border-red-100">
+                            {assertion.error}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        assertion.status === 'Passed' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {assertion.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                
-                <div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    assertion.status === 'Passed' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {assertion.status}
-                  </span>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-
-          {(!testCase.assertions || testCase.assertions.length === 0) && (
-            <div className="p-4 text-center text-gray-500">
+          ) : (
+            <div className="text-center text-gray-500 py-8">
               No assertions found for this test case
             </div>
           )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaFilter, FaDownload, FaSearch } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaFilter, FaDownload, FaSearch, FaBullseye } from 'react-icons/fa';
 
 const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, currentPage, pageSize }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -201,7 +201,8 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
               <tr>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution ID</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Passed/Failed</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tests</th>
+                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assertions</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Executed at</th>
                 <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Executed by</th>
               </tr>
@@ -232,10 +233,31 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center">
-                      <span className="text-green-600 font-medium mr-1">{execution.passedFailed?.split('/')[0] || '0'}</span>
+                      <span className="text-green-600 font-medium mr-1">{execution.passedTests || execution.passedFailed?.split('/')[0] || '0'}</span>
                       <span className="text-gray-500">/</span>
-                      <span className="text-red-600 font-medium ml-1">{execution.passedFailed?.split('/')[1] || '0'}</span>
+                      <span className="text-red-600 font-medium ml-1">{execution.failedTests || (execution.totalTests - (execution.passedTests || 0)) || execution.passedFailed?.split('/')[1] || '0'}</span>
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {execution.totalTests || (execution.passedTests || 0) + (execution.failedTests || 0)} total
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    {execution.assertionSummary && execution.assertionSummary.total > 0 ? (
+                      <div className="flex items-center">
+                                                 <FaBullseye className="mr-1 h-3 w-3 text-gray-500" />
+                        <span className="text-green-600 font-medium mr-1">{execution.assertionSummary.passed}</span>
+                        <span className="text-gray-500">/</span>
+                        <span className="text-red-600 font-medium ml-1">{execution.assertionSummary.failed}</span>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {execution.assertionSummary.total} total
+                          {execution.assertionSummary.skipped > 0 && (
+                            <span className="text-gray-400 ml-1">({execution.assertionSummary.skipped} skipped)</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-gray-400 text-sm">No assertions</div>
+                    )}
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center text-gray-500">

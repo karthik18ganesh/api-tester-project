@@ -202,7 +202,7 @@ export const apiRepository = {
   }
 };
 
-// Test Execution specific endpoints
+// Enhanced Test Execution specific endpoints with assertion support
 export const testExecution = {
   // Execute test package
   executePackage: async (packageId, executedBy) => {
@@ -257,6 +257,16 @@ export const testExecution = {
   // Get execution history/results
   getExecutionHistory: async (pageNo = 0, limit = 10, sortBy = "executionDate", sortDir = "DESC") => {
     return api(`/api/v1/test-execution?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  },
+
+  // NEW: Get detailed assertion results for execution
+  getExecutionAssertions: async (executionId) => {
+    return api(`/api/v1/test-execution/${executionId}/assertions`, "GET");
+  },
+
+  // NEW: Get assertion summary for execution
+  getExecutionAssertionSummary: async (executionId) => {
+    return api(`/api/v1/test-execution/${executionId}/assertions/summary`, "GET");
   }
 };
 
@@ -549,6 +559,115 @@ export const globalSearch = {
   // Search across all entities
   search: async (keyword) => {
     return api(`/api/global-search?keyword=${encodeURIComponent(keyword)}`, "GET");
+  }
+};
+
+// Assertion specific endpoints
+export const assertions = {
+  // Get assertions for a test case
+  getByTestCase: async (testCaseId) => {
+    return api(`/api/v1/test-cases/${testCaseId}/assertions`, "GET");
+  },
+
+  // Create new assertion
+  create: async (assertionData) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: assertionData
+    };
+    return api("/api/v1/assertions", "POST", requestBody);
+  },
+
+  // Update existing assertion
+  update: async (assertionId, assertionData) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        ...assertionData,
+        assertionId: assertionId
+      }
+    };
+    return api("/api/v1/assertions", "PUT", requestBody);
+  },
+
+  // Delete assertion
+  delete: async (assertionId) => {
+    return api(`/api/v1/assertions/${assertionId}`, "DELETE");
+  },
+
+  // Bulk delete assertions
+  bulkDelete: async (assertionIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: assertionIds
+    };
+    return api("/api/v1/assertions/bulk-delete", "DELETE", requestBody);
+  },
+
+  // Test assertion against sample response
+  test: async (assertion, sampleResponse) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        assertion: assertion,
+        sampleResponse: sampleResponse
+      }
+    };
+    return api("/api/v1/assertions/test", "POST", requestBody);
+  },
+
+  // Get assertion templates
+  getTemplates: async () => {
+    return api("/api/v1/assertion-templates", "GET");
+  },
+
+  // Create assertion from template
+  createFromTemplate: async (templateId, testCaseId, customConfig = {}) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        templateId: templateId,
+        testCaseId: testCaseId,
+        customConfig: customConfig
+      }
+    };
+    return api("/api/v1/assertions/from-template", "POST", requestBody);
+  },
+
+  // Update assertion priority/order
+  updatePriorities: async (testCaseId, assertionPriorities) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        testCaseId: testCaseId,
+        assertionPriorities: assertionPriorities // [{ assertionId, priority }]
+      }
+    };
+    return api("/api/v1/assertions/priorities", "PUT", requestBody);
   }
 };
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FiTrash2, FiPlus, FiSettings, FiCheckCircle, FiEdit3 } from "react-icons/fi";
+import { FiTrash2, FiPlus, FiSettings, FiCheckCircle, FiEdit3, FiTarget } from "react-icons/fi";
 import { FaMagic } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api } from "../../../utils/api";
 import Modal from "../../../components/UI/Modal";
+import AssertionBuilder from "./AssertionBuilder/AssertionBuilder";
 
 const ITEMS_PER_PAGE = 6;
 
@@ -87,6 +88,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("Variables");
   const [variables, setVariables] = useState([]);
+  const [assertions, setAssertions] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [creatingParameters, setCreatingParameters] = useState(false);
@@ -148,6 +150,11 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     });
     setEditingVariable(variable);
     setIsEditModalOpen(true);
+  }, []);
+
+  // FIXED: Memoize the assertions change handler to prevent infinite re-renders
+  const handleAssertionsChange = useCallback((newAssertions) => {
+    setAssertions(newAssertions);
   }, []);
 
   // Fetch existing variables from API
@@ -556,7 +563,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
       {/* Tabs */}
       <div className="flex mb-4 border-b">
-        {["Variables", "Functions"].map((tab) => (
+        {["Variables", "Assertions", "Functions"].map((tab) => (
           <button
             key={tab}
             className={`py-2 px-4 font-medium ${
@@ -566,125 +573,145 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
             }`}
             onClick={() => setActiveTab(tab)}
           >
+            {tab === "Assertions" && <FiTarget className="inline mr-1" />}
             {tab}
             {tab === "Variables" && variables.length > 0 && (
               <span className="ml-1 bg-gray-200 text-gray-700 text-xs px-1.5 py-0.5 rounded-full">
                 {variables.length}
               </span>
             )}
+            {tab === "Assertions" && assertions.length > 0 && (
+              <span className="ml-1 bg-gray-200 text-gray-700 text-xs px-1.5 py-0.5 rounded-full">
+                {assertions.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Variables Table */}
-      <div className="border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-left text-xs uppercase text-gray-500 border-b">
-            <tr>
-              <th className="p-3 font-medium">Name</th>
-              <th className="p-3 font-medium">Value</th>
-              <th className="p-3 font-medium">Type</th>
-              <th className="p-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading && variables.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="p-4 text-center">
-                  <div className="flex justify-center items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
-                    Loading variables...
-                  </div>
-                </td>
-              </tr>
-            ) : paginatedVariables.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="p-8 text-center text-gray-500">
-                  <div className="flex flex-col items-center">
-                    <FiSettings className="h-8 w-8 text-gray-300 mb-3" />
-                    <div className="text-lg font-medium mb-2">No variables created yet</div>
-                    <div className="text-sm mb-4">
-                      {testCaseId 
-                        ? "Create variables to store reusable values for your test case"
-                        : "Save the test case first to start creating variables"}
-                    </div>
-                    {testCaseId && (
-                      <button
-                        onClick={handleOpenAddModal}
-                        className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center"
-                      >
-                        <FiPlus className="mr-1" />
-                        Create Your First Variable
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              paginatedVariables.map((variable) => {
-                const isDetectedParam = detectedParameters?.includes(variable.name);
-                const hasValue = variable.value && variable.value.trim() !== '';
-                
-                return (
-                  <tr key={variable.variableId} className="hover:bg-gray-50">
-                    <td className="p-3">
-                      <div className="flex items-center">
-                        <span className="font-medium">{variable.name}</span>
-                        {isDetectedParam && (
-                          <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
-                            Parameter
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <div className="truncate max-w-xs">
-                        {hasValue ? (
-                          <span className="text-gray-900">{variable.value}</span>
-                        ) : (
-                          <span className="text-gray-400 italic">Empty</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        isDetectedParam 
-                          ? 'bg-blue-100 text-blue-700' 
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {isDetectedParam ? 'Auto-detected' : 'Manual'}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleOpenEditModal(variable)}
-                          className="text-gray-400 hover:text-[#4F46E5] transition-colors"
-                          title="Edit variable"
-                          disabled={loading}
-                        >
-                          <FiEdit3 size={16} />
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(variable)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
-                          title="Delete variable"
-                          disabled={loading}
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
+      {/* Tab Content */}
+      {activeTab === "Variables" && (
+        <>
+          <div className="border rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 text-left text-xs uppercase text-gray-500 border-b">
+                <tr>
+                  <th className="p-3 font-medium">Name</th>
+                  <th className="p-3 font-medium">Value</th>
+                  <th className="p-3 font-medium">Type</th>
+                  <th className="p-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {loading && variables.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="p-4 text-center">
+                      <div className="flex justify-center items-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
+                        Loading variables...
                       </div>
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : paginatedVariables.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" className="p-8 text-center text-gray-500">
+                      <div className="flex flex-col items-center">
+                        <FiSettings className="h-8 w-8 text-gray-300 mb-3" />
+                        <div className="text-lg font-medium mb-2">No variables created yet</div>
+                        <div className="text-sm mb-4">
+                          {testCaseId 
+                            ? "Create variables to store reusable values for your test case"
+                            : "Save the test case first to start creating variables"}
+                        </div>
+                        {testCaseId && (
+                          <button
+                            onClick={handleOpenAddModal}
+                            className="px-4 py-2 bg-[#4F46E5] text-white text-sm rounded hover:bg-[#4338CA] hover:-translate-y-0.5 transition-all flex items-center"
+                          >
+                            <FiPlus className="mr-1" />
+                            Create Your First Variable
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedVariables.map((variable) => {
+                    const isDetectedParam = detectedParameters?.includes(variable.name);
+                    const hasValue = variable.value && variable.value.trim() !== '';
+                    
+                    return (
+                      <tr key={variable.variableId} className="hover:bg-gray-50">
+                        <td className="p-3">
+                          <div className="flex items-center">
+                            <span className="font-medium">{variable.name}</span>
+                            {isDetectedParam && (
+                              <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded-full">
+                                Parameter
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="truncate max-w-xs">
+                            {hasValue ? (
+                              <span className="text-gray-900">{variable.value}</span>
+                            ) : (
+                              <span className="text-gray-400 italic">Empty</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            isDetectedParam 
+                              ? 'bg-blue-100 text-blue-700' 
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {isDetectedParam ? 'Auto-detected' : 'Manual'}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleOpenEditModal(variable)}
+                              className="text-gray-400 hover:text-[#4F46E5] transition-colors"
+                              title="Edit variable"
+                              disabled={loading}
+                            >
+                              <FiEdit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(variable)}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                              title="Delete variable"
+                              disabled={loading}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      {renderPagination()}
+          {/* Pagination */}
+          {renderPagination()}
+        </>
+      )}
+
+      {/* Assertions Tab Content */}
+      {activeTab === "Assertions" && (
+        <div className="mt-4">
+          <AssertionBuilder 
+            testCaseId={testCaseId}
+            onAssertionsChange={handleAssertionsChange}
+          />
+        </div>
+      )}
 
       {/* Functions Tab Content */}
       {activeTab === "Functions" && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaCheck, FaTimes, FaFileAlt, FaClock, FaUser, FaServer, FaCalendarAlt, FaExternalLinkAlt, FaLayerGroup, FaVial } from 'react-icons/fa';
+import AssertionSummaryCard from '../../TestResults/components/AssertionSummaryCard';
 
 const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllResults }) => {
   if (!results && !inProgress) {
@@ -34,6 +35,15 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
         return sum + duration;
       }, 0) / executionInfo.results.length)
     : 0;
+
+  // Calculate assertion summary
+  const assertionSummary = executionInfo.assertionSummary || 
+    (executionInfo.results && executionInfo.results.length > 0 ? {
+      total: executionInfo.results.reduce((sum, result) => sum + (result.assertionSummary?.total || 0), 0),
+      passed: executionInfo.results.reduce((sum, result) => sum + (result.assertionSummary?.passed || 0), 0),
+      failed: executionInfo.results.reduce((sum, result) => sum + (result.assertionSummary?.failed || 0), 0),
+      skipped: executionInfo.results.reduce((sum, result) => sum + (result.assertionSummary?.skipped || 0), 0)
+    } : null);
 
   return (
     <div className="border rounded-md p-5 h-full overflow-auto bg-white shadow-sm">
@@ -136,6 +146,17 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
           )}
         </div>
 
+        {/* Assertion Summary */}
+        {!inProgress && assertionSummary && assertionSummary.total > 0 && (
+          <div className="mb-6">
+            <AssertionSummaryCard 
+              summary={assertionSummary} 
+              compact={true}
+              executionTime={avgDuration}
+            />
+          </div>
+        )}
+
         {/* Additional Statistics */}
         {!inProgress && executionInfo.results.length > 0 && (
           <div className="grid grid-cols-2 gap-3 mb-6">
@@ -211,6 +232,27 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
                         )}
                       </div>
                       
+                      {/* Assertion indicator */}
+                      {result.assertionSummary && result.assertionSummary.total > 0 && (
+                        <div className="flex items-center gap-2 text-xs mt-1">
+                          <span className="text-gray-500">Assertions:</span>
+                          <span className="text-green-600 font-medium">
+                            {result.assertionSummary.passed}
+                          </span>
+                          {result.assertionSummary.failed > 0 && (
+                            <>
+                              <span className="text-gray-400">/</span>
+                              <span className="text-red-600 font-medium">
+                                {result.assertionSummary.failed}
+                              </span>
+                            </>
+                          )}
+                          <span className="text-gray-400">
+                            ({result.assertionSummary.total} total)
+                          </span>
+                        </div>
+                      )}
+
                       {/* Show execution details */}
                       {result.executionDate && (
                         <div className="text-xs text-gray-400 mt-1">

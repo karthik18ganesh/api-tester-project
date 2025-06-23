@@ -6,8 +6,9 @@ import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api, testExecution } from '../../../utils/api';
+import { api, testExecution, assertions } from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
+import { AssertionEngine } from '../../TestCase/utils/assertionEngine';
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -91,17 +92,107 @@ const ModernTestExecution = () => {
     }
   };
 
-  // Unified transformation function for all execution types
-  const transformExecutionResults = (executionResponse) => {
+  // Enhanced transformation function with assertion execution
+  const transformExecutionResults = async (executionResponse) => {
     const testCaseResults = executionResponse.testCaseResult || [];
     
-    const results = testCaseResults.map((testCase) => {
+    const results = await Promise.all(testCaseResults.map(async (testCase) => {
       const isSuccessful = testCase.executionStatus === 'PASSED';
+
+      // Fetch and execute assertions for this test case
+      let assertionResults = [];
+      let totalAssertions = 0;
+      let passedAssertions = 0;
+      let failedAssertions = 0;
+
+      try {
+        // Fetch assertions for the test case
+        const assertionsResponse = await assertions.getByTestCase(testCase.testCaseId);
+        
+        if (assertionsResponse.result?.code === "200" && assertionsResponse.result.data) {
+          const testCaseAssertions = assertionsResponse.result.data;
+          
+          if (Array.isArray(testCaseAssertions) && testCaseAssertions.length > 0) {
+            // Execute assertions against the API response
+            const apiResponse = {
+              status: testCase.statusCode,
+              data: testCase.responseBody,
+              headers: testCase.responseHeaders || {}
+            };
+            
+            const executionContext = {
+              responseTime: testCase.executionTimeMs || 0,
+              executionTimeMs: testCase.executionTimeMs || 0
+            };
+
+            assertionResults = await AssertionEngine.executeAssertions(
+              testCaseAssertions,
+              apiResponse,
+              executionContext
+            );
+
+            totalAssertions = assertionResults.length;
+            passedAssertions = assertionResults.filter(r => r.status === 'PASSED').length;
+            failedAssertions = assertionResults.filter(r => r.status === 'FAILED').length;
+          }
+        }
+      } catch (error) {
+        console.error(`Error executing assertions for test case ${testCase.testCaseId}:`, error);
+        // Add error assertion result
+        assertionResults.push({
+          id: 'assertion-error',
+          name: 'Assertion Execution Error',
+          type: 'system',
+          status: 'ERROR',
+          error: `Failed to execute assertions: ${error.message}`,
+          executionTime: 0
+        });
+        totalAssertions = 1;
+        failedAssertions = 1;
+      }
+
+              // Add legacy basic assertions if no custom assertions exist
+        if (assertionResults.length === 0) {
+          assertionResults = [
+            {
+              assertionId: 'basic-request',
+              assertionName: `HTTP ${testCase.httpMethod} request validation`,
+              type: 'system',
+              status: isSuccessful ? 'PASSED' : 'FAILED',
+              actualValue: testCase.executionStatus,
+              expectedValue: 'PASSED',
+              executionTime: 0,
+              path: 'execution.status',
+              ...(testCase.errorMessage && { 
+                error: testCase.errorMessage 
+              })
+            },
+            {
+              assertionId: 'basic-status',
+              assertionName: 'Response status validation',
+              type: 'system',
+              status: (testCase.statusCode >= 200 && testCase.statusCode < 300) ? 'PASSED' : 'FAILED',
+              actualValue: testCase.statusCode,
+              expectedValue: '2xx',
+              executionTime: 0,
+              path: 'response.status',
+              ...(testCase.statusCode >= 400 && { 
+                error: `HTTP ${testCase.statusCode} error response` 
+              })
+            }
+          ];
+          totalAssertions = 2;
+          passedAssertions = assertionResults.filter(r => r.status === 'PASSED').length;
+          failedAssertions = assertionResults.filter(r => r.status === 'FAILED').length;
+        }
+
+      // Calculate overall test case status based on assertions
+      const overallStatus = failedAssertions === 0 && passedAssertions > 0 ? 'Passed' : 'Failed';
 
       return {
         id: `tc-${testCase.testCaseId}`,
         name: testCase.testCaseName || `Test Case ${testCase.testCaseId}`,
-        status: isSuccessful ? 'Passed' : 'Failed',
+        status: overallStatus,
         duration: `${testCase.executionTimeMs}ms`,
         request: {
           method: testCase.httpMethod,
@@ -114,24 +205,22 @@ const ModernTestExecution = () => {
           data: testCase.responseBody,
           headers: testCase.responseHeaders || {}
         },
-        assertions: [
-          {
-            id: 1,
-            description: `HTTP ${testCase.httpMethod} request validation`,
-            status: isSuccessful ? 'Passed' : 'Failed',
-            ...(testCase.errorMessage && { 
-              error: testCase.errorMessage 
-            })
-          },
-          {
-            id: 2,
-            description: 'Response status validation',
-            status: (testCase.statusCode >= 200 && testCase.statusCode < 300) ? 'Passed' : 'Failed',
-            ...(testCase.statusCode >= 400 && { 
-              error: `HTTP ${testCase.statusCode} error response` 
-            })
-          }
-        ],
+        // Enhanced assertion support
+        assertionResults: assertionResults,
+        assertionSummary: {
+          total: totalAssertions,
+          passed: passedAssertions,
+          failed: failedAssertions,
+          skipped: 0,
+          successRate: totalAssertions > 0 ? Math.round((passedAssertions / totalAssertions) * 100) : 0
+        },
+        // Legacy compatibility
+        assertions: assertionResults.map((assertion, index) => ({
+          id: assertion.assertionId || assertion.id || index + 1,
+          description: assertion.assertionName || assertion.name,
+          status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+          error: assertion.error || null
+        })),
         executionId: testCase.resultId,
         testCaseId: testCase.testCaseId,
         executedBy: executionResponse.executedBy,
@@ -140,18 +229,30 @@ const ModernTestExecution = () => {
         testSuiteName: testCase.testSuiteName,
         environment: testCase.environmentName || executionResponse.environmentName
       };
-    });
+    }));
+
+    // Recalculate summary based on assertion results
+    const totalAssertions = results.reduce((acc, result) => acc + result.assertionSummary.total, 0);
+    const passedAssertions = results.reduce((acc, result) => acc + result.assertionSummary.passed, 0);
+    const failedAssertions = results.reduce((acc, result) => acc + result.assertionSummary.failed, 0);
 
     return {
       results,
-      passedCount: executionResponse.passed || 0,
-      failedCount: executionResponse.failed || 0,
-      errorCount: executionResponse.error || 0,
-      totalTests: executionResponse.totalTests || results.length,
+      passedCount: results.filter(r => r.status === 'Passed').length,
+      failedCount: results.filter(r => r.status === 'Failed').length,
+      errorCount: 0, // Will be calculated based on assertion errors
+      totalTests: results.length,
       executionTime: executionResponse.executionTimeMs,
-      successRate: executionResponse.successRate,
+      successRate: results.length > 0 ? Math.round((results.filter(r => r.status === 'Passed').length / results.length) * 100) : 0,
       environmentName: executionResponse.environmentName,
-      executionStatus: executionResponse.executionStatus
+      executionStatus: executionResponse.executionStatus,
+      assertionSummary: {
+        total: totalAssertions,
+        passed: passedAssertions,
+        failed: failedAssertions,
+        skipped: 0,
+        successRate: totalAssertions > 0 ? Math.round((passedAssertions / totalAssertions) * 100) : 0
+      }
     };
   };
 
@@ -238,7 +339,7 @@ const ModernTestExecution = () => {
       const executionResponse = await execConfig.method(execConfig.id, executedBy);
       
       // Use unified transformation for all execution types
-      const transformedResults = transformExecutionResults(executionResponse);
+      const transformedResults = await transformExecutionResults(executionResponse);
       
       // Create execution result object
       const executionId = `exec-${executionResponse.executionId}`;
