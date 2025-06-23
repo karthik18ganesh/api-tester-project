@@ -105,62 +105,27 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
                   data: targetTestCase.responseBody,
                   headers: targetTestCase.responseHeaders || {}
                 },
-                // Enhanced assertion results
-                assertionResults: targetTestCase.assertionResults || [
-                  {
-                    assertionId: 'basic-status',
-                    assertionName: 'HTTP Status Code Validation',
-                    status: targetTestCase.executionStatus === 'PASSED' ? 'PASSED' : 'FAILED',
-                    actualValue: targetTestCase.statusCode,
-                    expectedValue: '2xx',
-                    executionTime: 2,
-                    path: 'response.status',
-                    type: 'status_code',
-                    ...(targetTestCase.executionStatus !== 'PASSED' && {
-                      error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
-                    })
-                  },
-                  {
-                    assertionId: 'basic-time',
-                    assertionName: 'Response Time Validation',
-                    status: targetTestCase.executionTimeMs <= 5000 ? 'PASSED' : 'FAILED',
-                    actualValue: `${targetTestCase.executionTimeMs}ms`,
-                    expectedValue: '< 5000ms',
-                    executionTime: 1,
-                    path: 'execution.responseTime',
-                    type: 'response_time',
-                    ...(targetTestCase.executionTimeMs > 5000 && {
-                      error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
-                    })
-                  }
-                ],
+                // Backend assertion results - use directly when available
+                assertionResults: targetTestCase.assertionResults && Array.isArray(targetTestCase.assertionResults) 
+                  ? targetTestCase.assertionResults
+                  : [], // Empty array when no assertions available
                 assertionSummary: targetTestCase.assertionSummary || {
-                  total: 2,
-                  passed: targetTestCase.executionStatus === 'PASSED' && targetTestCase.executionTimeMs <= 5000 ? 2 : 
-                          targetTestCase.executionStatus === 'PASSED' || targetTestCase.executionTimeMs <= 5000 ? 1 : 0,
-                  failed: targetTestCase.executionStatus !== 'PASSED' || targetTestCase.executionTimeMs > 5000 ? 
-                          (targetTestCase.executionStatus !== 'PASSED' && targetTestCase.executionTimeMs > 5000 ? 2 : 1) : 0,
+                  total: 0,
+                  passed: 0,
+                  failed: 0,
                   skipped: 0
                 },
-                // Legacy compatibility
-                assertions: [
-                  {
-                    id: 1,
-                    description: 'HTTP Status Code Validation',
-                    status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                    ...(targetTestCase.executionStatus !== 'PASSED' && {
-                      error: targetTestCase.errorMessage || `Expected successful response but got status ${targetTestCase.statusCode}`
-                    })
-                  },
-                  {
-                    id: 2,
-                    description: 'Response Time Validation',
-                    status: targetTestCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
-                    ...(targetTestCase.executionTimeMs > 5000 && {
-                      error: `Response time ${targetTestCase.executionTimeMs}ms exceeded 5000ms limit`
-                    })
-                  }
-                ],
+                // Legacy compatibility - use backend data or fallback to execution status
+                assertions: targetTestCase.assertionResults && Array.isArray(targetTestCase.assertionResults)
+                  ? targetTestCase.assertionResults.map((assertion, index) => ({
+                      id: assertion.assertionId || index + 1,
+                      description: assertion.assertionName || 'Assertion',
+                      status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+                      ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+                        error: assertion.errorMessage
+                      })
+                    }))
+                  : [], // Empty array when no assertions available
                 executedBy: executionData.executedBy,
                 executionDate: executionData.executionDate,
                 testSuiteId: targetTestCase.testSuiteId,

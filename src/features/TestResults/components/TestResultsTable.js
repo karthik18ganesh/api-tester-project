@@ -243,11 +243,13 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
                   </td>
                   <td className="py-4 px-4">
                     {execution.assertionSummary && execution.assertionSummary.total > 0 ? (
-                      <div className="flex items-center">
-                                                 <FaBullseye className="mr-1 h-3 w-3 text-gray-500" />
-                        <span className="text-green-600 font-medium mr-1">{execution.assertionSummary.passed}</span>
-                        <span className="text-gray-500">/</span>
-                        <span className="text-red-600 font-medium ml-1">{execution.assertionSummary.failed}</span>
+                      <div>
+                        <div className="flex items-center">
+                          <FaBullseye className="mr-1 h-3 w-3 text-gray-500" />
+                          <span className="text-green-600 font-medium mr-1">{execution.assertionSummary.passed}</span>
+                          <span className="text-gray-500">/</span>
+                          <span className="text-red-600 font-medium ml-1">{execution.assertionSummary.failed}</span>
+                        </div>
                         <div className="text-xs text-gray-500 mt-1">
                           {execution.assertionSummary.total} total
                           {execution.assertionSummary.skipped > 0 && (

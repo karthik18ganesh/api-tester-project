@@ -6,9 +6,8 @@ import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api, testExecution, assertions } from '../../../utils/api';
+import { api, testExecution } from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
-import { AssertionEngine } from '../../TestCase/utils/assertionEngine';
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -92,102 +91,29 @@ const ModernTestExecution = () => {
     }
   };
 
-  // Enhanced transformation function with assertion execution
-  const transformExecutionResults = async (executionResponse) => {
+  // Transformation function using backend assertion data
+  const transformExecutionResults = (executionResponse) => {
     const testCaseResults = executionResponse.testCaseResult || [];
     
-    const results = await Promise.all(testCaseResults.map(async (testCase) => {
-      const isSuccessful = testCase.executionStatus === 'PASSED';
+    const results = testCaseResults.map((testCase) => {
+      // Use assertion results directly from backend
+      const assertionResults = testCase.assertionResults || [];
+      
+      // Use assertion summary directly from backend
+      const assertionSummary = testCase.assertionSummary || {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        skipped: 0
+      };
 
-      // Fetch and execute assertions for this test case
-      let assertionResults = [];
-      let totalAssertions = 0;
-      let passedAssertions = 0;
-      let failedAssertions = 0;
+      // Calculate success rate if not provided
+      const successRate = assertionSummary.total > 0 
+        ? Math.round((assertionSummary.passed / assertionSummary.total) * 100) 
+        : 0;
 
-      try {
-        // Fetch assertions for the test case
-        const assertionsResponse = await assertions.getByTestCase(testCase.testCaseId);
-        
-        if (assertionsResponse.result?.code === "200" && assertionsResponse.result.data) {
-          const testCaseAssertions = assertionsResponse.result.data;
-          
-          if (Array.isArray(testCaseAssertions) && testCaseAssertions.length > 0) {
-            // Execute assertions against the API response
-            const apiResponse = {
-              status: testCase.statusCode,
-              data: testCase.responseBody,
-              headers: testCase.responseHeaders || {}
-            };
-            
-            const executionContext = {
-              responseTime: testCase.executionTimeMs || 0,
-              executionTimeMs: testCase.executionTimeMs || 0
-            };
-
-            assertionResults = await AssertionEngine.executeAssertions(
-              testCaseAssertions,
-              apiResponse,
-              executionContext
-            );
-
-            totalAssertions = assertionResults.length;
-            passedAssertions = assertionResults.filter(r => r.status === 'PASSED').length;
-            failedAssertions = assertionResults.filter(r => r.status === 'FAILED').length;
-          }
-        }
-      } catch (error) {
-        console.error(`Error executing assertions for test case ${testCase.testCaseId}:`, error);
-        // Add error assertion result
-        assertionResults.push({
-          id: 'assertion-error',
-          name: 'Assertion Execution Error',
-          type: 'system',
-          status: 'ERROR',
-          error: `Failed to execute assertions: ${error.message}`,
-          executionTime: 0
-        });
-        totalAssertions = 1;
-        failedAssertions = 1;
-      }
-
-              // Add legacy basic assertions if no custom assertions exist
-        if (assertionResults.length === 0) {
-          assertionResults = [
-            {
-              assertionId: 'basic-request',
-              assertionName: `HTTP ${testCase.httpMethod} request validation`,
-              type: 'system',
-              status: isSuccessful ? 'PASSED' : 'FAILED',
-              actualValue: testCase.executionStatus,
-              expectedValue: 'PASSED',
-              executionTime: 0,
-              path: 'execution.status',
-              ...(testCase.errorMessage && { 
-                error: testCase.errorMessage 
-              })
-            },
-            {
-              assertionId: 'basic-status',
-              assertionName: 'Response status validation',
-              type: 'system',
-              status: (testCase.statusCode >= 200 && testCase.statusCode < 300) ? 'PASSED' : 'FAILED',
-              actualValue: testCase.statusCode,
-              expectedValue: '2xx',
-              executionTime: 0,
-              path: 'response.status',
-              ...(testCase.statusCode >= 400 && { 
-                error: `HTTP ${testCase.statusCode} error response` 
-              })
-            }
-          ];
-          totalAssertions = 2;
-          passedAssertions = assertionResults.filter(r => r.status === 'PASSED').length;
-          failedAssertions = assertionResults.filter(r => r.status === 'FAILED').length;
-        }
-
-      // Calculate overall test case status based on assertions
-      const overallStatus = failedAssertions === 0 && passedAssertions > 0 ? 'Passed' : 'Failed';
+      // Determine overall test case status based on backend assertion summary
+      const overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
 
       return {
         id: `tc-${testCase.testCaseId}`,
@@ -205,21 +131,29 @@ const ModernTestExecution = () => {
           data: testCase.responseBody,
           headers: testCase.responseHeaders || {}
         },
-        // Enhanced assertion support
-        assertionResults: assertionResults,
+        // Backend assertion support
+        assertionResults: assertionResults.map(assertion => ({
+          id: assertion.assertionId,
+          name: assertion.assertionName || 'Assertion',
+          type: 'custom',
+          status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+          actualValue: assertion.actualValue,
+          expectedValue: assertion.expectedValue,
+          executionTime: assertion.executionTime || 0,
+          ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+            error: assertion.errorMessage
+          })
+        })),
         assertionSummary: {
-          total: totalAssertions,
-          passed: passedAssertions,
-          failed: failedAssertions,
-          skipped: 0,
-          successRate: totalAssertions > 0 ? Math.round((passedAssertions / totalAssertions) * 100) : 0
+          ...assertionSummary,
+          successRate: successRate
         },
         // Legacy compatibility
         assertions: assertionResults.map((assertion, index) => ({
-          id: assertion.assertionId || assertion.id || index + 1,
-          description: assertion.assertionName || assertion.name,
+          id: assertion.assertionId || index + 1,
+          description: assertion.assertionName || 'Assertion',
           status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
-          error: assertion.error || null
+          error: assertion.errorMessage || null
         })),
         executionId: testCase.resultId,
         testCaseId: testCase.testCaseId,
@@ -229,7 +163,7 @@ const ModernTestExecution = () => {
         testSuiteName: testCase.testSuiteName,
         environment: testCase.environmentName || executionResponse.environmentName
       };
-    }));
+    });
 
     // Recalculate summary based on assertion results
     const totalAssertions = results.reduce((acc, result) => acc + result.assertionSummary.total, 0);
@@ -339,7 +273,7 @@ const ModernTestExecution = () => {
       const executionResponse = await execConfig.method(execConfig.id, executedBy);
       
       // Use unified transformation for all execution types
-      const transformedResults = await transformExecutionResults(executionResponse);
+      const transformedResults = transformExecutionResults(executionResponse);
       
       // Create execution result object
       const executionId = `exec-${executionResponse.executionId}`;

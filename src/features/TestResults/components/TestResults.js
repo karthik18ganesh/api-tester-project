@@ -55,26 +55,54 @@ const ModernTestResults = () => {
         const executions = data.content || [];
         
         // Transform API data to the expected format
-        const formattedHistory = executions.map(execution => ({
-          id: `exec-${execution.executionId}`,
-          executionId: execution.executionId,
-          status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-          passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.totalTests || 0}`,
-          executedAt: formatExecutionDate(execution.executionDate),
-          executedBy: execution.executedBy || 'Unknown',
-          date: execution.executionDate ? new Date(execution.executionDate.replace(' ', 'T')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          rawData: execution, // Store raw data for detailed view
-          totalTests: execution.executionSummary?.totalTests || 0,
-          passedTests: execution.executionSummary?.passedTests || 0,
-          failedTests: execution.executionSummary?.failedTests || 0,
-          errorTests: execution.executionSummary?.errorTests || 0,
-          successRate: execution.executionSummary?.successRate || 0,
-          executionTime: execution.executionTimeMs || 0,
-          environmentName: execution.environmentName || 'Unknown',
-          testCaseResults: execution.testCaseResults || [],
-          // Enhanced assertion support
-          assertionSummary: execution.assertionSummary || null
-        }));
+        const formattedHistory = executions.map(execution => {
+          // Calculate aggregated assertion summary from all test case results
+          let totalAssertions = 0;
+          let passedAssertions = 0;
+          let failedAssertions = 0;
+          let skippedAssertions = 0;
+
+          if (execution.testCaseResults && execution.testCaseResults.length > 0) {
+            execution.testCaseResults.forEach(testCase => {
+              if (testCase.assertionSummary) {
+                totalAssertions += testCase.assertionSummary.total || 0;
+                passedAssertions += testCase.assertionSummary.passed || 0;
+                failedAssertions += testCase.assertionSummary.failed || 0;
+                skippedAssertions += testCase.assertionSummary.skipped || 0;
+              }
+            });
+          }
+
+          // Create aggregated assertion summary
+          const aggregatedAssertionSummary = totalAssertions > 0 ? {
+            total: totalAssertions,
+            passed: passedAssertions,
+            failed: failedAssertions,
+            skipped: skippedAssertions,
+            successRate: Math.round((passedAssertions / totalAssertions) * 100)
+          } : null;
+
+          return {
+            id: `exec-${execution.executionId}`,
+            executionId: execution.executionId,
+            status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+            passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.totalTests || 0}`,
+            executedAt: formatExecutionDate(execution.executionDate),
+            executedBy: execution.executedBy || 'Unknown',
+            date: execution.executionDate ? new Date(execution.executionDate.replace(' ', 'T')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            rawData: execution, // Store raw data for detailed view
+            totalTests: execution.executionSummary?.totalTests || 0,
+            passedTests: execution.executionSummary?.passedTests || 0,
+            failedTests: execution.executionSummary?.failedTests || 0,
+            errorTests: execution.executionSummary?.errorTests || 0,
+            successRate: execution.executionSummary?.successRate || 0,
+            executionTime: execution.executionTimeMs || 0,
+            environmentName: execution.environmentName || 'Unknown',
+            testCaseResults: execution.testCaseResults || [],
+            // Backend assertion support - use aggregated assertion summary
+            assertionSummary: aggregatedAssertionSummary
+          };
+        });
         
         setExecutionHistory(formattedHistory);
         setPagination({
@@ -196,63 +224,47 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
-  // Create detailed execution data from API response with enhanced assertion support
+  // Create detailed execution data from API response using backend assertion data
   const createDetailedExecutionData = async (execution) => {
     try {
       // Check if we have detailed test case results in the current data
       if (execution.testCaseResults && execution.testCaseResults.length > 0) {
-        // Transform the existing testCaseResults with enhanced assertion data
+        // Transform the existing testCaseResults using backend assertion data
         const results = execution.testCaseResults.map((testCase) => {
-          // Check if this test case already has assertion results from execution
-          const hasAssertionResults = testCase.assertions && Array.isArray(testCase.assertions);
-          const hasAssertionSummary = testCase.assertionSummary && typeof testCase.assertionSummary === 'object';
+          // Use assertion results directly from backend when available
+          const assertions = testCase.assertionResults && Array.isArray(testCase.assertionResults) 
+            ? testCase.assertionResults.map(assertion => ({
+                id: assertion.assertionId,
+                name: assertion.assertionName || 'Assertion',
+                type: 'custom',
+                status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+                actualValue: assertion.actualValue,
+                expectedValue: assertion.expectedValue,
+                executionTime: assertion.executionTime || 0,
+                ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+                  error: assertion.errorMessage
+                })
+              })) 
+            : []; // Empty array when no assertions available
 
-          // Use existing assertion data if available, otherwise fallback to basic assertions
-          const assertions = hasAssertionResults ? testCase.assertions.map(assertion => ({
-            id: assertion.id,
-            name: assertion.name || assertion.description || 'Assertion',
-            type: assertion.type || 'system',
-            status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
-            actualValue: assertion.actualValue,
-            expectedValue: assertion.expectedValue,
-            path: assertion.path,
-            error: assertion.error,
-            executionTime: assertion.executionTime || 0
-          })) : [
-            {
-              id: 'basic-status',
-              name: 'HTTP Status Code Validation',
-              type: 'system',
-              status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-              actualValue: testCase.statusCode,
-              expectedValue: '2xx',
-              ...(testCase.executionStatus !== 'PASSED' && {
-                error: testCase.errorMessage || `Expected successful response but got status ${testCase.statusCode}`
-              })
-            },
-            {
-              id: 'basic-time',
-              name: 'Response Time Validation',
-              type: 'system', 
-              status: testCase.executionTimeMs <= 5000 ? 'Passed' : 'Failed',
-              actualValue: `${testCase.executionTimeMs}ms`,
-              expectedValue: '< 5000ms',
-              ...(testCase.executionTimeMs > 5000 && {
-                error: `Response time ${testCase.executionTimeMs}ms exceeded 5000ms limit`
-              })
-            }
-          ];
-
-          // Calculate assertion summary if not provided
-          const assertionSummary = hasAssertionSummary ? testCase.assertionSummary : {
+          // Use assertion summary directly from backend when available
+          const assertionSummary = testCase.assertionSummary || {
             total: assertions.length,
             passed: assertions.filter(a => a.status === 'Passed').length,
             failed: assertions.filter(a => a.status === 'Failed').length,
-            successRate: assertions.length > 0 ? Math.round((assertions.filter(a => a.status === 'Passed').length / assertions.length) * 100) : 0
+            skipped: 0,
+            successRate: 0
           };
 
-          // Determine overall status based on assertion results
-          const overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+          // Calculate success rate if not provided
+          if (assertionSummary.total > 0 && !assertionSummary.successRate) {
+            assertionSummary.successRate = Math.round((assertionSummary.passed / assertionSummary.total) * 100);
+          }
+
+          // Determine overall status based on execution status when no assertions available
+          const overallStatus = testCase.assertionResults && testCase.assertionSummary
+            ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
+            : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
 
           return {
             id: `tc-${testCase.testCaseId}`,
@@ -303,37 +315,66 @@ const ModernTestResults = () => {
           const detailsData = detailedResponse.result.data;
           const testCaseResults = detailsData.testCaseResult || [];
           
-          const results = testCaseResults.map((testCase) => ({
-            id: `tc-${testCase.testCaseId}`,
-            name: testCase.testCaseName || 'API Test Case',
-            status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-            duration: `${testCase.executionTimeMs}ms`,
-            request: {
-              method: testCase.httpMethod,
-              url: testCase.url,
-              headers: testCase.requestHeaders || {},
-              body: testCase.requestBody
-            },
-            response: {
-              status: testCase.statusCode,
-              data: testCase.responseBody,
-              headers: testCase.responseHeaders || {}
-            },
-            assertions: [
-              {
-                id: 1,
-                description: 'HTTP Status Code Validation',
-                status: testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                ...(testCase.executionStatus !== 'PASSED' && {
-                  error: testCase.errorMessage || `Expected successful response but got status ${testCase.statusCode}`
-                })
-              }
-            ],
-            testSuiteId: testCase.testSuiteId,
-            testSuiteName: testCase.testSuiteName,
-            testCaseId: testCase.testCaseId,
-            resultId: testCase.resultId
-          }));
+          const results = testCaseResults.map((testCase) => {
+            // Use assertion results directly from backend when available
+            const assertions = testCase.assertionResults && Array.isArray(testCase.assertionResults)
+              ? testCase.assertionResults.map(assertion => ({
+                  id: assertion.assertionId,
+                  name: assertion.assertionName || 'Assertion',
+                  type: 'custom',
+                  status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+                  actualValue: assertion.actualValue,
+                  expectedValue: assertion.expectedValue,
+                  executionTime: assertion.executionTime || 0,
+                  ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+                    error: assertion.errorMessage
+                  })
+                }))
+              : []; // Empty array when no assertions available
+
+            // Use assertion summary directly from backend when available
+            const assertionSummary = testCase.assertionSummary || {
+              total: assertions.length,
+              passed: assertions.filter(a => a.status === 'Passed').length,
+              failed: assertions.filter(a => a.status === 'Failed').length,
+              skipped: 0,
+              successRate: 0
+            };
+
+            // Calculate success rate if not provided
+            if (assertionSummary.total > 0 && !assertionSummary.successRate) {
+              assertionSummary.successRate = Math.round((assertionSummary.passed / assertionSummary.total) * 100);
+            }
+
+            // Determine overall status based on execution status when no assertions available
+            const overallStatus = testCase.assertionResults && testCase.assertionSummary
+              ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
+              : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
+
+            return {
+              id: `tc-${testCase.testCaseId}`,
+              name: testCase.testCaseName || 'API Test Case',
+              status: overallStatus,
+              duration: `${testCase.executionTimeMs}ms`,
+              request: {
+                method: testCase.httpMethod,
+                url: testCase.url,
+                headers: testCase.requestHeaders || {},
+                body: testCase.requestBody
+              },
+              response: {
+                status: testCase.statusCode,
+                data: testCase.responseBody,
+                headers: testCase.responseHeaders || {}
+              },
+              assertions: assertions,
+              assertionSummary: assertionSummary,
+              testSuiteId: testCase.testSuiteId,
+              testSuiteName: testCase.testSuiteName,
+              testCaseId: testCase.testCaseId,
+              resultId: testCase.resultId
+            };
+          });
 
           return {
             id: execution.id,
