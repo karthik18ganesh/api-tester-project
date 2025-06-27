@@ -1,5 +1,7 @@
-import React from 'react';
-import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaFilter, FaDownload, FaSearch, FaBullseye } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaClock, FaChevronDown, FaChevronUp, FaEye } from 'react-icons/fa';
+import { FiFilter, FiSearch, FiX, FiMoreHorizontal, FiDownload } from 'react-icons/fi';
+import { getTestCaseDisplayStatus, getStatusBadgeClass, getAssertionSubtitle } from '../../../utils/testStatusUtils';
 
 const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, currentPage, pageSize }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -75,13 +77,13 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 pr-4 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64"
             />
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
               >
-                ×
+                <FiX className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -92,7 +94,7 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
               className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
             >
-              <FaFilter className="text-gray-500" />
+              <FiFilter className="text-gray-500" />
               <span>
                 {filterStatus === 'all' ? 'All Status' : 
                  filterStatus === 'passed' ? 'Passed' : 
@@ -138,7 +140,7 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
               className="flex items-center gap-1 px-3 py-2 border rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
               onClick={() => setShowExportDropdown(!showExportDropdown)}
             >
-              <FaDownload className="text-gray-500" />
+              <FiDownload className="text-gray-500" />
               <span>Export</span>
             </button>
             
@@ -174,7 +176,7 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
       {filteredResults.length === 0 ? (
         <div className="p-8 text-center">
           <div className="bg-gray-100 rounded-full p-3 inline-flex mb-4">
-            <FaSearch className="h-6 w-6 text-gray-400" />
+            <FiSearch className="h-6 w-6 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">No results found</h3>
           <p className="text-gray-500 mb-4">
@@ -208,73 +210,81 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredResults.map((execution) => (
-                <tr key={execution.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-4 px-4">
-                    <button 
-                      className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
-                      onClick={() => onViewExecution && onViewExecution(execution.id)}
-                    >
-                      {execution.id}
-                    </button>
-                  </td>
-                  <td className="py-4 px-4">
-                    {execution.status === 'Passed' ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        <FaCheck className="mr-1 h-3 w-3" />
-                        Passed
+              {filteredResults.map((execution) => {
+                const displayStatus = getTestCaseDisplayStatus(execution);
+                const badgeClass = getStatusBadgeClass(displayStatus);
+                const assertionSubtitle = getAssertionSubtitle(execution);
+                
+                return (
+                  <tr key={execution.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4">
+                      <button 
+                        className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                        onClick={() => onViewExecution && onViewExecution(execution.id)}
+                      >
+                        {execution.id}
+                      </button>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                        {displayStatus.displayText === 'Passed' ? (
+                          <FaCheck className="mr-1 h-3 w-3" />
+                        ) : displayStatus.displayText === 'Executed' ? (
+                          <FaCheck className="mr-1 h-3 w-3" />
+                        ) : (
+                          <FaTimes className="mr-1 h-3 w-3" />
+                        )}
+                        {displayStatus.displayText}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <FaTimes className="mr-1 h-3 w-3" />
-                        Failed
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center">
-                      <span className="text-green-600 font-medium mr-1">{execution.passedTests || execution.passedFailed?.split('/')[0] || '0'}</span>
-                      <span className="text-gray-500">/</span>
-                      <span className="text-red-600 font-medium ml-1">{execution.failedTests || (execution.totalTests - (execution.passedTests || 0)) || execution.passedFailed?.split('/')[1] || '0'}</span>
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {execution.totalTests || (execution.passedTests || 0) + (execution.failedTests || 0)} total
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    {execution.assertionSummary && execution.assertionSummary.total > 0 ? (
-                      <div>
-                        <div className="flex items-center">
-                          <FaBullseye className="mr-1 h-3 w-3 text-gray-500" />
-                          <span className="text-green-600 font-medium mr-1">{execution.assertionSummary.passed}</span>
-                          <span className="text-gray-500">/</span>
-                          <span className="text-red-600 font-medium ml-1">{execution.assertionSummary.failed}</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {execution.assertionSummary.total} total
-                          {execution.assertionSummary.skipped > 0 && (
-                            <span className="text-gray-400 ml-1">({execution.assertionSummary.skipped} skipped)</span>
-                          )}
-                        </div>
+                      {displayStatus.isExecutedWithoutAssertions && (
+                        <div className="text-xs text-blue-600 mt-1">No assertions created</div>
+                      )}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center">
+                        <span className="text-green-600 font-medium mr-1">{execution.passedTests || execution.passedFailed?.split('/')[0] || '0'}</span>
+                        <span className="text-gray-500">/</span>
+                        <span className="text-red-600 font-medium ml-1">{execution.failedTests || (execution.totalTests - (execution.passedTests || 0)) || execution.passedFailed?.split('/')[1] || '0'}</span>
                       </div>
-                    ) : (
-                      <div className="text-gray-400 text-sm">No assertions</div>
-                    )}
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center text-gray-500">
-                      <FaCalendarAlt className="mr-1 h-3 w-3" />
-                      <span className="text-sm">{execution.executedAt}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center text-gray-500">
-                      <FaUser className="mr-1 h-3 w-3" />
-                      <span className="text-sm">{execution.executedBy}</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                      <div className="text-xs text-gray-500 mt-1">
+                        {execution.totalTests || (execution.passedTests || 0) + (execution.failedTests || 0)} total
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      {execution.assertionSummary && execution.assertionSummary.total > 0 ? (
+                        <div>
+                          <div className="flex items-center">
+                            <FaCheck className="mr-1 h-3 w-3 text-green-600" />
+                            <span className="text-green-600 font-medium mr-1">{execution.assertionSummary.passed}</span>
+                            <span className="text-gray-500">/</span>
+                            <span className="text-red-600 font-medium ml-1">{execution.assertionSummary.failed}</span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {execution.assertionSummary.total} total
+                            {execution.assertionSummary.skipped > 0 && (
+                              <span className="text-gray-400 ml-1">({execution.assertionSummary.skipped} skipped)</span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 text-sm">No assertions</div>
+                      )}
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center text-gray-500">
+                        <FaCalendarAlt className="mr-1 h-3 w-3" />
+                        <span className="text-sm">{execution.executedAt}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center text-gray-500">
+                        <FaUser className="mr-1 h-3 w-3" />
+                        <span className="text-sm">{execution.executedBy}</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

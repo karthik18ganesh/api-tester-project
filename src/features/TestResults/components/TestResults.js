@@ -347,9 +347,9 @@ const ModernTestResults = () => {
             }
 
             // Determine overall status based on execution status when no assertions available
-            const overallStatus = testCase.assertionResults && testCase.assertionSummary
-              ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
-              : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
+                          const overallStatus = testCase.assertionResults && testCase.assertionSummary
+                ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
+                : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
 
             return {
               id: `tc-${testCase.testCaseId}`,

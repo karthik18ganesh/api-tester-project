@@ -23,7 +23,7 @@ export interface AssertionSummary {
   failed: number;
   skipped: number;
   successRate?: number;
-}
+  }
 
 // Test execution with assertion support
 export interface TestExecutionResult {

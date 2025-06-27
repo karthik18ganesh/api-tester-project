@@ -111,9 +111,14 @@ const AssertionResultsView = ({ assertions = [], summary = null, compact = false
         </h4>
         
         {assertions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <FiCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p>No assertions configured for this test case</p>
+          <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+            <h3 className="text-lg font-medium text-blue-900 mb-2">Test Executed Successfully</h3>
+            <p className="text-blue-700 mb-4">
+              This test case executed but had no assertions to validate the response.
+            </p>
+            <div className="text-sm text-blue-800">
+              Consider adding assertions to validate response data, status codes, or performance metrics.
+            </div>
           </div>
         ) : (
           assertions.map((assertion, index) => (

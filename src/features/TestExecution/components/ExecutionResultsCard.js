@@ -1,6 +1,8 @@
 import React from 'react';
-import { FaCheck, FaTimes, FaFileAlt, FaClock, FaUser, FaServer, FaCalendarAlt, FaExternalLinkAlt, FaLayerGroup, FaVial } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaFileAlt, FaClock, FaUser, FaServer, FaCalendarAlt, FaExternalLinkAlt, FaLayerGroup, FaVial, FaPlay, FaEye } from 'react-icons/fa';
 import AssertionSummaryCard from '../../TestResults/components/AssertionSummaryCard';
+import Button from '../../../components/common/Button';
+import { getTestCaseDisplayStatus, getStatusBadgeClass, getAssertionSubtitle } from '../../../utils/testStatusUtils';
 
 const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllResults }) => {
   if (!results && !inProgress) {
@@ -53,11 +55,13 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
           <div className={`px-3 py-1 rounded-md text-white text-sm font-medium shadow-sm ${
             inProgress 
               ? 'bg-yellow-500' 
-              : executionInfo.failedCount > 0 
-                ? 'bg-red-500' 
-                : 'bg-green-500'
+              : executionInfo.executionStatus === 'PASSED'
+                ? 'bg-green-500'
+                : executionInfo.executionStatus === 'EXECUTED'
+                ? 'bg-blue-500'
+                : 'bg-red-500'
           }`}>
-            {inProgress ? 'In Progress' : executionInfo.failedCount > 0 ? 'Failed' : 'Passed'}
+            {inProgress ? 'In Progress' : executionInfo.executionStatus || executionInfo.status}
           </div>
         </div>
         
@@ -205,91 +209,47 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
             </div>
           ) : results?.results.length > 0 ? (
             <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-              {results.results.map((result) => (
-                <div 
-                  key={result.id}
-                  className="p-3 hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-grow">
-                      <div className="font-medium">{result.name}</div>
-                      <div className="flex items-center text-sm text-gray-500 mt-1 space-x-3">
-                        <div className="flex items-center">
-                          <FaClock className="mr-1 h-3 w-3" /> 
-                          {result.duration}
-                        </div>
-                        {result.executedBy && (
-                          <div className="flex items-center">
-                            <FaUser className="mr-1 h-3 w-3" /> 
-                            {result.executedBy}
-                          </div>
-                        )}
-                        {result.request?.method && (
-                          <div className="flex items-center">
-                            <FaVial className="mr-1 h-3 w-3" /> 
-                            {result.request.method}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Assertion indicator */}
-                      {result.assertionSummary && result.assertionSummary.total > 0 && (
-                        <div className="flex items-center gap-2 text-xs mt-1">
-                          <span className="text-gray-500">Assertions:</span>
-                          <span className="text-green-600 font-medium">
-                            {result.assertionSummary.passed}
-                          </span>
-                          {result.assertionSummary.failed > 0 && (
-                            <>
-                              <span className="text-gray-400">/</span>
-                              <span className="text-red-600 font-medium">
-                                {result.assertionSummary.failed}
-                              </span>
-                            </>
+                             {results.results.slice(0, 5).map((result) => {
+                const displayStatus = getTestCaseDisplayStatus(result);
+                const badgeClass = getStatusBadgeClass(displayStatus);
+                const assertionSubtitle = getAssertionSubtitle(result);
+                
+                return (
+                  <div key={result.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-md border border-gray-100">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        displayStatus.displayText === 'Passed' 
+                          ? 'bg-green-500' 
+                          : displayStatus.displayText === 'Executed'
+                          ? 'bg-blue-500'
+                          : 'bg-red-500'
+                      }`}></div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{result.name}</div>
+                        <div className="text-xs text-gray-500 flex items-center space-x-2">
+                          <span>Duration: {result.duration}</span>
+                          {assertionSubtitle && (
+                            <span className="text-blue-600">• {assertionSubtitle}</span>
                           )}
-                          <span className="text-gray-400">
-                            ({result.assertionSummary.total} total)
-                          </span>
                         </div>
-                      )}
-
-                      {/* Show execution details */}
-                      {result.executionDate && (
-                        <div className="text-xs text-gray-400 mt-1">
-                          Executed: {result.executionDate}
-                        </div>
-                      )}
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-3 ${
-                        result.status === 'Passed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {result.status === 'Passed' ? (
-                          <FaCheck className="mr-1 h-3 w-3" />
-                        ) : (
-                          <FaTimes className="mr-1 h-3 w-3" />
-                        )}
-                        {result.status}
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                        {displayStatus.displayText}
                       </span>
                       <button
                         onClick={() => onViewDetails(result.id)}
-                        className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
+                        className="px-2 py-1 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded transition-colors"
+                        title="View Details"
                       >
                         View Details
                       </button>
                     </div>
                   </div>
-                  
-                  {/* Show failed assertions count */}
-                  {result.assertions && result.status === 'Failed' && (
-                    <div className="mt-2 text-xs text-red-600">
-                      {result.assertions.filter(a => a.status === 'Failed').length} assertion(s) failed
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : results?.error ? (
             <div className="p-6 text-center text-red-600">

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import Breadcrumb from '../../../components/common/Breadcrumb';
 import AssertionResultsView from '../../TestResults/components/AssertionResultsView';
 import { testExecution } from '../../../utils/api';
+import { getTestCaseDisplayStatus, getStatusBadgeClass } from '../../../utils/testStatusUtils';
 
 // Collapsible component for sections
 const Collapsible = ({ children, title, defaultOpen = false }) => {
@@ -239,7 +240,11 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
 
   // Calculate progress percentage for assertions
   const calculateProgress = () => {
-    if (!testCase?.assertions || testCase.assertions.length === 0) return 0;
+    if (!testCase?.assertions || testCase.assertions.length === 0) {
+      // For test cases without assertions, check if they executed successfully
+      const displayStatus = getTestCaseDisplayStatus(testCase);
+      return displayStatus.isExecutedWithoutAssertions ? 100 : 0;
+    }
     const passedCount = testCase.assertions.filter(a => a.status === 'Passed').length;
     return Math.round((passedCount / testCase.assertions.length) * 100);
   };
@@ -335,15 +340,26 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
             <p className="text-gray-500 text-sm">Suite: {testCase.testSuiteName}</p>
           )}
         </div>
-        <div className={`px-3 py-1 rounded-md text-white ${testCase.status === 'Passed' ? 'bg-green-500' : 'bg-red-500'} shadow-sm`}>
-          {testCase.status}
-        </div>
+        {(() => {
+          const displayStatus = getTestCaseDisplayStatus(testCase);
+          const badgeClass = getStatusBadgeClass(displayStatus);
+          return (
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${badgeClass}`}>
+              {displayStatus.displayText}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Progress bar */}
       <div className="mb-6 bg-gray-100 rounded-full h-4 overflow-hidden">
         <div 
-          className={`h-full ${testCase.status === 'Passed' ? 'bg-green-500' : 'bg-red-500'} transition-all duration-500 ease-in-out`}
+          className={`h-full ${(() => {
+            const displayStatus = getTestCaseDisplayStatus(testCase);
+            return displayStatus.displayText === 'Passed' ? 'bg-green-500' : 
+                   displayStatus.displayText === 'Executed' ? 'bg-blue-500' : 
+                   'bg-red-500';
+          })()} transition-all duration-500 ease-in-out`}
           style={{ width: `${progressPercentage}%` }}
         ></div>
       </div>
@@ -485,7 +501,15 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8">
-              No assertions found for this test case
+              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
+                <h3 className="text-lg font-medium text-blue-900 mb-2">Test Executed Successfully</h3>
+                <p className="text-blue-700 mb-4">
+                  This test case executed but had no assertions to validate the response.
+                </p>
+                <div className="text-sm text-blue-800">
+                  Consider adding assertions to validate response data, status codes, or performance metrics.
+                </div>
+              </div>
             </div>
           )}
         </div>

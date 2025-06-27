@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlay, FaChevronDown, FaCog, FaExclamationTriangle, FaSync } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { FaPlay, FaChevronDown, FaCog, FaExclamationTriangle, FaSync, FaCheck, FaTimes } from 'react-icons/fa';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
@@ -8,6 +8,9 @@ import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
 import { api, testExecution } from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
+import Button from '../../../components/common/Button';
+import TestCaseDetailsView from './TestCaseDetailsView';
+import { getTestCaseDisplayStatus, getStatusBadgeClass, getAssertionSubtitle } from '../../../utils/testStatusUtils';
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -280,6 +283,7 @@ const ModernTestExecution = () => {
       const newResult = {
         id: executionId,
         status: transformedResults.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+        executionStatus: transformedResults.executionStatus, // Add backend execution status
         instanceId: executionId,
         executedBy: executedBy,
         environment: transformedResults.environmentName || settings.environment,
@@ -316,6 +320,7 @@ const ModernTestExecution = () => {
       const errorResult = {
         id: executionId,
         status: 'Failed',
+        executionStatus: 'FAILED', // Add backend execution status for error cases
         instanceId: executionId,
         executedBy: user?.username || localStorage.getItem('userId') || 'current.user',
         environment: settings.environment,
