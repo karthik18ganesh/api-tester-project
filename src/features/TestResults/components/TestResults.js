@@ -82,18 +82,30 @@ const ModernTestResults = () => {
             successRate: Math.round((passedAssertions / totalAssertions) * 100)
           } : null;
 
+          // Calculate correct test counts excluding test cases with no assertions
+          const testCasesWithAssertions = execution.testCaseResults ? execution.testCaseResults.filter(tc => 
+            tc.assertionSummary && tc.assertionSummary.total > 0
+          ) : [];
+          
+          const correctedTotalTests = totalAssertions > 0 ? testCasesWithAssertions.length : 0;
+          const correctedPassedTests = totalAssertions > 0 ? testCasesWithAssertions.filter(tc => 
+            tc.assertionSummary && tc.assertionSummary.failed === 0 && tc.assertionSummary.passed > 0
+          ).length : 0;
+          const correctedFailedTests = correctedTotalTests - correctedPassedTests;
+
           return {
             id: `exec-${execution.executionId}`,
             executionId: execution.executionId,
-            status: execution.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-            passedFailed: `${execution.executionSummary?.passedTests || 0}/${execution.executionSummary?.totalTests || 0}`,
+            status: execution.executionStatus || 'FAILED', // Use backend executionStatus directly
+            executionStatus: execution.executionStatus, // Store original backend status
+            passedFailed: `${correctedPassedTests}/${correctedTotalTests}`,
             executedAt: formatExecutionDate(execution.executionDate),
             executedBy: execution.executedBy || 'Unknown',
             date: execution.executionDate ? new Date(execution.executionDate.replace(' ', 'T')).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             rawData: execution, // Store raw data for detailed view
-            totalTests: execution.executionSummary?.totalTests || 0,
-            passedTests: execution.executionSummary?.passedTests || 0,
-            failedTests: execution.executionSummary?.failedTests || 0,
+            totalTests: correctedTotalTests,
+            passedTests: correctedPassedTests,
+            failedTests: correctedFailedTests,
             errorTests: execution.executionSummary?.errorTests || 0,
             successRate: execution.executionSummary?.successRate || 0,
             executionTime: execution.executionTimeMs || 0,
@@ -261,10 +273,16 @@ const ModernTestResults = () => {
             assertionSummary.successRate = Math.round((assertionSummary.passed / assertionSummary.total) * 100);
           }
 
-          // Determine overall status based on execution status when no assertions available
-          const overallStatus = testCase.assertionResults && testCase.assertionSummary
-            ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
-            : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
+          // Determine overall status based on assertions or HTTP status when no assertions
+          let overallStatus;
+          if (assertionSummary.total === 0) {
+            // No assertions - check HTTP status code for success
+            const httpStatus = testCase.statusCode;
+            overallStatus = (httpStatus >= 200 && httpStatus < 400) ? 'Executed' : 'Failed';
+          } else {
+            // Has assertions - use assertion results
+            overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+          }
 
           return {
             id: `tc-${testCase.testCaseId}`,
@@ -291,19 +309,28 @@ const ModernTestResults = () => {
           };
         });
 
+        // Recalculate counts based on the updated statuses
+        const passedCount = results.filter(r => r.status === 'Passed').length;
+        const executedCount = results.filter(r => r.status === 'Executed').length;
+        const failedCount = results.filter(r => r.status === 'Failed').length;
+        const successfulCount = passedCount + executedCount;
+        const newSuccessRate = results.length > 0 ? Math.round((successfulCount / results.length) * 100) : 0;
+
         return {
           id: execution.id,
           status: execution.status,
+          executionStatus: execution.executionStatus, // Add backend execution status
           instanceId: execution.id,
           executedBy: execution.executedBy,
           environment: execution.environmentName,
           executedAt: execution.executedAt,
-          passedCount: execution.passedTests,
-          failedCount: execution.failedTests,
+          passedCount: passedCount,
+          failedCount: failedCount,
+          executedCount: executedCount,
           errorCount: execution.errorTests,
-          totalTests: execution.totalTests,
+          totalTests: results.length,
           executionTime: execution.executionTime,
-          successRate: execution.successRate,
+          successRate: newSuccessRate,
           results: results,
           rawExecutionId: execution.executionId
         };
@@ -346,10 +373,16 @@ const ModernTestResults = () => {
               assertionSummary.successRate = Math.round((assertionSummary.passed / assertionSummary.total) * 100);
             }
 
-            // Determine overall status based on execution status when no assertions available
-                          const overallStatus = testCase.assertionResults && testCase.assertionSummary
-                ? (assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed')
-                : (testCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed');
+            // Determine overall status based on assertions or HTTP status when no assertions
+            let overallStatus;
+            if (assertionSummary.total === 0) {
+              // No assertions - check HTTP status code for success
+              const httpStatus = testCase.statusCode;
+              overallStatus = (httpStatus >= 200 && httpStatus < 400) ? 'Executed' : 'Failed';
+            } else {
+              // Has assertions - use assertion results
+              overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+            }
 
             return {
               id: `tc-${testCase.testCaseId}`,
@@ -376,19 +409,28 @@ const ModernTestResults = () => {
             };
           });
 
+          // Recalculate counts based on the updated statuses
+          const passedCount = results.filter(r => r.status === 'Passed').length;
+          const executedCount = results.filter(r => r.status === 'Executed').length;
+          const failedCount = results.filter(r => r.status === 'Failed').length;
+          const successfulCount = passedCount + executedCount;
+          const newSuccessRate = results.length > 0 ? Math.round((successfulCount / results.length) * 100) : 0;
+
           return {
             id: execution.id,
             status: execution.status,
+            executionStatus: execution.executionStatus, // Add backend execution status
             instanceId: execution.id,
             executedBy: execution.executedBy,
             environment: execution.environmentName,
             executedAt: execution.executedAt,
-            passedCount: execution.passedTests,
-            failedCount: execution.failedTests,
+            passedCount: passedCount,
+            failedCount: failedCount,
+            executedCount: executedCount,
             errorCount: execution.errorTests,
-            totalTests: execution.totalTests,
+            totalTests: results.length,
             executionTime: execution.executionTime,
-            successRate: execution.successRate,
+            successRate: newSuccessRate,
             results: results,
             rawExecutionId: execution.executionId
           };

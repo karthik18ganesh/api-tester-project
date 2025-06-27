@@ -30,7 +30,8 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
 
   // Calculate additional statistics
   const totalTests = executionInfo.totalTests || executionInfo.results.length;
-  const successRate = totalTests > 0 ? Math.round((executionInfo.passedCount / totalTests) * 100) : 0;
+  const successfulTests = executionInfo.passedCount + (executionInfo.executedCount || 0);
+  const successRate = totalTests > 0 ? Math.round((successfulTests / totalTests) * 100) : 0;
   const avgDuration = executionInfo.results.length > 0 
     ? Math.round(executionInfo.results.reduce((sum, result) => {
         const duration = parseFloat(result.duration?.replace('ms', '') || '0');
@@ -98,7 +99,7 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
 
         {/* Statistics Grid */}
         <div className="bg-indigo-50 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid gap-4 ${(executionInfo.executedCount || 0) > 0 ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
             <div className="text-center">
               <div className="text-xs text-gray-500 mb-1">Total Tests</div>
               <div className="text-2xl font-bold text-indigo-700">
@@ -110,6 +111,13 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
               <div className="text-xs text-gray-500 mb-1">Passed</div>
               <div className="text-2xl font-bold text-green-600">{executionInfo.passedCount}</div>
             </div>
+            
+            {(executionInfo.executedCount || 0) > 0 && (
+              <div className="text-center">
+                <div className="text-xs text-gray-500 mb-1">Executed</div>
+                <div className="text-2xl font-bold text-blue-600">{executionInfo.executedCount}</div>
+              </div>
+            )}
             
             <div className="text-center">
               <div className="text-xs text-gray-500 mb-1">Failed</div>
@@ -132,13 +140,17 @@ const ExecutionResultsCard = ({ results, inProgress, onViewDetails, onViewAllRes
             <div className="mt-4">
               <div className="flex justify-between text-xs text-gray-600 mb-1">
                 <span>Progress</span>
-                <span>{executionInfo.passedCount + executionInfo.failedCount} / {totalTests}</span>
+                <span>{executionInfo.passedCount + executionInfo.failedCount + (executionInfo.executedCount || 0)} / {totalTests}</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div className="flex h-2 rounded-full overflow-hidden">
                   <div 
                     className="bg-green-500 transition-all duration-500"
                     style={{ width: `${(executionInfo.passedCount / totalTests) * 100}%` }}
+                  ></div>
+                  <div 
+                    className="bg-blue-500 transition-all duration-500"
+                    style={{ width: `${((executionInfo.executedCount || 0) / totalTests) * 100}%` }}
                   ></div>
                   <div 
                     className="bg-red-500 transition-all duration-500"

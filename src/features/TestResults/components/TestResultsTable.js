@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FaCheck, FaTimes, FaCalendarAlt, FaUser, FaClock, FaChevronDown, FaChevronUp, FaEye } from 'react-icons/fa';
 import { FiFilter, FiSearch, FiX, FiMoreHorizontal, FiDownload } from 'react-icons/fi';
-import { getTestCaseDisplayStatus, getStatusBadgeClass, getAssertionSubtitle } from '../../../utils/testStatusUtils';
 
 const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, currentPage, pageSize }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -211,9 +210,26 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredResults.map((execution) => {
-                const displayStatus = getTestCaseDisplayStatus(execution);
-                const badgeClass = getStatusBadgeClass(displayStatus);
-                const assertionSubtitle = getAssertionSubtitle(execution);
+                // Get execution-level status directly from backend
+                const executionStatus = execution.executionStatus || execution.status;
+                const isExecuted = executionStatus === 'EXECUTED';
+                const isPassed = executionStatus === 'PASSED';
+                const isFailed = executionStatus === 'FAILED';
+                
+                // Determine badge styling based on execution status
+                const getExecutionStatusBadge = (status) => {
+                  if (status === 'PASSED') {
+                    return 'bg-green-100 text-green-800 border border-green-200';
+                  } else if (status === 'EXECUTED') {
+                    return 'bg-blue-100 text-blue-800 border border-blue-200';
+                  } else {
+                    return 'bg-red-100 text-red-800 border border-red-200';
+                  }
+                };
+                
+                const badgeClass = getExecutionStatusBadge(executionStatus);
+                const displayText = executionStatus === 'PASSED' ? 'Passed' : 
+                                   executionStatus === 'EXECUTED' ? 'Executed' : 'Failed';
                 
                 return (
                   <tr key={execution.id} className="hover:bg-gray-50 transition-colors">
@@ -227,27 +243,25 @@ const TestResultsTable = ({ results, onViewExecution, onFilter, totalResults, cu
                     </td>
                     <td className="py-4 px-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
-                        {displayStatus.displayText === 'Passed' ? (
-                          <FaCheck className="mr-1 h-3 w-3" />
-                        ) : displayStatus.displayText === 'Executed' ? (
+                        {isPassed || isExecuted ? (
                           <FaCheck className="mr-1 h-3 w-3" />
                         ) : (
                           <FaTimes className="mr-1 h-3 w-3" />
                         )}
-                        {displayStatus.displayText}
+                        {displayText}
                       </span>
-                      {displayStatus.isExecutedWithoutAssertions && (
+                      {isExecuted && (
                         <div className="text-xs text-blue-600 mt-1">No assertions created</div>
                       )}
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center">
-                        <span className="text-green-600 font-medium mr-1">{execution.passedTests || execution.passedFailed?.split('/')[0] || '0'}</span>
+                        <span className="text-green-600 font-medium mr-1">{execution.passedTests || 0}</span>
                         <span className="text-gray-500">/</span>
-                        <span className="text-red-600 font-medium ml-1">{execution.failedTests || (execution.totalTests - (execution.passedTests || 0)) || execution.passedFailed?.split('/')[1] || '0'}</span>
+                        <span className="text-red-600 font-medium ml-1">{execution.failedTests || 0}</span>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {execution.totalTests || (execution.passedTests || 0) + (execution.failedTests || 0)} total
+                        {execution.totalTests || 0} total
                       </div>
                     </td>
                     <td className="py-4 px-4">

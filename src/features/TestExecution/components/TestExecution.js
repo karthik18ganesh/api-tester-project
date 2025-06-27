@@ -116,7 +116,16 @@ const ModernTestExecution = () => {
         : 0;
 
       // Determine overall test case status based on backend assertion summary
-      const overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+      // For test cases with no assertions, check HTTP status code for success
+      let overallStatus;
+      if (assertionSummary.total === 0) {
+        // No assertions - check HTTP status code
+        const httpStatus = testCase.statusCode;
+        overallStatus = (httpStatus >= 200 && httpStatus < 400) ? 'Executed' : 'Failed';
+      } else {
+        // Has assertions - use assertion results
+        overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+      }
 
       return {
         id: `tc-${testCase.testCaseId}`,
@@ -177,10 +186,11 @@ const ModernTestExecution = () => {
       results,
       passedCount: results.filter(r => r.status === 'Passed').length,
       failedCount: results.filter(r => r.status === 'Failed').length,
+      executedCount: results.filter(r => r.status === 'Executed').length,
       errorCount: 0, // Will be calculated based on assertion errors
       totalTests: results.length,
       executionTime: executionResponse.executionTimeMs,
-      successRate: results.length > 0 ? Math.round((results.filter(r => r.status === 'Passed').length / results.length) * 100) : 0,
+      successRate: results.length > 0 ? Math.round((results.filter(r => r.status === 'Passed' || r.status === 'Executed').length / results.length) * 100) : 0,
       environmentName: executionResponse.environmentName,
       executionStatus: executionResponse.executionStatus,
       assertionSummary: {
@@ -290,6 +300,7 @@ const ModernTestExecution = () => {
         executedAt: formatExecutionDate(executionResponse.executionDate),
         passedCount: transformedResults.passedCount,
         failedCount: transformedResults.failedCount,
+        executedCount: transformedResults.executedCount,
         errorCount: transformedResults.errorCount,
         totalTests: transformedResults.totalTests,
         executionTime: transformedResults.executionTime,

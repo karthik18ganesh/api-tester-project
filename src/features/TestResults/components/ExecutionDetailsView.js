@@ -4,23 +4,45 @@ import AssertionSummaryCard from './AssertionSummaryCard';
 import AssertionResultsList from './AssertionResultsList';
 
 // Status Badge component
-const StatusBadge = ({ status }) => (
-  <span 
-    className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium shadow-sm ${
-      status === 'Passed' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-    }`}
-  >
-    {status === 'Passed' ? (
-      <FaCheck className="mr-1" />
-    ) : (
-      <FaTimes className="mr-1" />
-    )}
-    {status}
-  </span>
-);
+const StatusBadge = ({ status }) => {
+  const getStatusStyling = (status) => {
+    if (status === 'PASSED' || status === 'Passed') {
+      return 'bg-green-500 text-white';
+    } else if (status === 'EXECUTED' || status === 'Executed') {
+      return 'bg-blue-500 text-white';
+    } else {
+      return 'bg-red-500 text-white';
+    }
+  };
+
+  const getDisplayText = (status) => {
+    if (status === 'PASSED') return 'Passed';
+    if (status === 'EXECUTED') return 'Executed';
+    if (status === 'FAILED') return 'Failed';
+    return status; // fallback for already processed statuses
+  };
+
+  const displayText = getDisplayText(status);
+  
+  return (
+    <span 
+      className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium shadow-sm ${getStatusStyling(status)}`}
+    >
+      {(status === 'PASSED' || status === 'Passed' || status === 'EXECUTED' || status === 'Executed') ? (
+        <FaCheck className="mr-1" />
+      ) : (
+        <FaTimes className="mr-1" />
+      )}
+      {displayText}
+    </span>
+  );
+};
 
 const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Debug: Log the execution data to see what we're receiving
+  console.log('ExecutionDetailsView received execution data:', execution);
 
   const handleViewTestCase = (testCaseId) => {
     // Navigate to test case details view
@@ -52,11 +74,13 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
     );
   }
 
-  // Calculate summary statistics
+  // Calculate summary statistics including "Executed" status for test cases with no assertions
   const totalTests = execution.results.length;
   const passedTests = execution.results.filter(r => r.status === 'Passed').length;
-  const failedTests = totalTests - passedTests;
-  const successRate = totalTests ? Math.round((passedTests / totalTests) * 100) : 0;
+  const executedTests = execution.results.filter(r => r.status === 'Executed').length;
+  const failedTests = execution.results.filter(r => r.status === 'Failed').length;
+  const successfulTests = passedTests + executedTests; // Both passed and executed are successful
+  const successRate = totalTests ? Math.round((successfulTests / totalTests) * 100) : 0;
 
   // Calculate assertion summary
   const assertionSummary = execution.assertionSummary || 
@@ -102,7 +126,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
             <FaShare className="text-gray-500" size={14} />
             Share
           </button>
-          <StatusBadge status={execution.failedCount > 0 ? 'Failed' : 'Passed'} />
+          <StatusBadge status={execution.executionStatus || execution.status || 'FAILED'} />
         </div>
       </div>
       
@@ -199,7 +223,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h2 className="font-semibold text-gray-700 mb-4">Test Results</h2>
           
-          <div className="flex items-center gap-8">
+          <div className={`flex items-center ${executedTests > 0 ? 'gap-6' : 'gap-8'}`}>
             <div className="text-center">
               <div className="text-3xl font-bold text-indigo-600">{totalTests}</div>
               <div className="text-sm text-gray-500">Total</div>
@@ -209,6 +233,13 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
               <div className="text-3xl font-bold text-green-600">{passedTests}</div>
               <div className="text-sm text-gray-500">Passed</div>
             </div>
+            
+            {executedTests > 0 && (
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">{executedTests}</div>
+                <div className="text-sm text-gray-500">Executed</div>
+              </div>
+            )}
             
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">{failedTests}</div>
@@ -247,6 +278,12 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                 <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
                 Passed: {passedTests} tests
               </div>
+              {executedTests > 0 && (
+                <div className="text-sm text-gray-600 mb-2">
+                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
+                  Executed: {executedTests} tests
+                </div>
+              )}
               <div className="text-sm text-gray-600">
                 <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
                 Failed: {failedTests} tests
@@ -262,8 +299,15 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
               <h2 className="font-semibold text-gray-800">Test Cases</h2>
               
               <div className="text-sm text-gray-500">
-                <span className="text-green-600 font-medium">{passedTests}</span> passed / 
-                <span className="text-red-600 font-medium ml-1">{failedTests}</span> failed
+                <span className="text-green-600 font-medium">{passedTests}</span> passed
+                {executedTests > 0 && (
+                  <>
+                    {' / '}
+                    <span className="text-blue-600 font-medium">{executedTests}</span> executed
+                  </>
+                )}
+                {' / '}
+                <span className="text-red-600 font-medium">{failedTests}</span> failed
               </div>
             </div>
             
@@ -301,11 +345,17 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                     <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       result.status === 'Passed' 
                         ? 'bg-green-100 text-green-800' 
+                        : result.status === 'Executed'
+                        ? 'bg-blue-100 text-blue-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {result.status === 'Passed' ? (
                         <span className="flex items-center">
                           <FaCheck className="mr-1 h-3 w-3" /> Passed
+                        </span>
+                      ) : result.status === 'Executed' ? (
+                        <span className="flex items-center">
+                          <FaCheck className="mr-1 h-3 w-3" /> Executed
                         </span>
                       ) : (
                         <span className="flex items-center">
@@ -338,8 +388,15 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
             <h2 className="font-semibold text-gray-800">Test Cases</h2>
             
             <div className="text-sm text-gray-500">
-              <span className="text-green-600 font-medium">{passedTests}</span> passed / 
-              <span className="text-red-600 font-medium ml-1">{failedTests}</span> failed
+              <span className="text-green-600 font-medium">{passedTests}</span> passed
+              {executedTests > 0 && (
+                <>
+                  {' / '}
+                  <span className="text-blue-600 font-medium">{executedTests}</span> executed
+                </>
+              )}
+              {' / '}
+              <span className="text-red-600 font-medium">{failedTests}</span> failed
             </div>
           </div>
           
@@ -377,11 +434,17 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                   <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     result.status === 'Passed' 
                       ? 'bg-green-100 text-green-800' 
+                      : result.status === 'Executed'
+                      ? 'bg-blue-100 text-blue-800'
                       : 'bg-red-100 text-red-800'
                   }`}>
                     {result.status === 'Passed' ? (
                       <span className="flex items-center">
                         <FaCheck className="mr-1 h-3 w-3" /> Passed
+                      </span>
+                    ) : result.status === 'Executed' ? (
+                      <span className="flex items-center">
+                        <FaCheck className="mr-1 h-3 w-3" /> Executed
                       </span>
                     ) : (
                       <span className="flex items-center">
