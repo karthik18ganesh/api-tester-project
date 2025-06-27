@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiTrash2, FiEdit3, FiPlay, FiCopy, FiRefreshCw, FiCircle, FiCheck, FiX } from 'react-icons/fi';
 import { toast } from 'react-toastify';
+import Button from '../../../../components/UI/Button';
 import { 
   AssertionTypes, 
   AssertionOperators, 
@@ -261,13 +262,14 @@ const AssertionBuilder = ({
             )}
             
             {!readOnly && (
-              <button
+              <Button
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                variant="primary"
+                size="sm"
+                icon={FiPlus}
               >
-                <FiPlus className="w-4 h-4" />
                 Add Assertion
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -288,12 +290,14 @@ const AssertionBuilder = ({
               Add assertions to validate API responses automatically
             </p>
             {!readOnly && (
-              <button
+              <Button
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                variant="primary"
+                size="md"
+                icon={FiPlus}
               >
                 Add Your First Assertion
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -385,7 +389,9 @@ const AssertionItem = ({
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{typeInfo.icon}</span>
+                <span className="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded font-mono font-semibold">
+                  {typeInfo.icon}
+                </span>
                 <h4 className="font-medium text-gray-900">{assertion.name}</h4>
                 <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">
                   {typeInfo.label}
@@ -476,7 +482,5 @@ const AssertionItem = ({
     </div>
   );
 };
-
-
 
 export default AssertionBuilder; 

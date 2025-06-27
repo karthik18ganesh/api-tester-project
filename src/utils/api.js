@@ -558,7 +558,7 @@ export const environments = {
 export const globalSearch = {
   // Search across all entities
   search: async (keyword) => {
-    return api(`/api/global-search?keyword=${encodeURIComponent(keyword)}`, "GET");
+    return api(`/api/v1/global-search?keyword=${encodeURIComponent(keyword)}`, "GET");
   }
 };
 
@@ -611,7 +611,9 @@ export const assertions = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: assertionIds
+      data: {
+        assertionIds: assertionIds
+      }
     };
     return api("/api/v1/assertions/bulk-delete", "DELETE", requestBody);
   },

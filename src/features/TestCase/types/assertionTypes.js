@@ -183,7 +183,7 @@ export const getAssertionTypeInfo = (type) => {
     [AssertionTypes.STATUS_CODE]: {
       label: 'Status Code',
       description: 'Validate HTTP response status code',
-      icon: '🔢',
+      icon: 'SC',
       targetPlaceholder: 'response.status',
       supportedOperators: [
         AssertionOperators.EQUALS,
@@ -195,7 +195,7 @@ export const getAssertionTypeInfo = (type) => {
     [AssertionTypes.RESPONSE_TIME]: {
       label: 'Response Time',
       description: 'Validate API response time',
-      icon: '⏱️',
+      icon: 'RT',
       targetPlaceholder: 'execution.responseTime',
       supportedOperators: [
         AssertionOperators.LESS_THAN,
@@ -207,14 +207,14 @@ export const getAssertionTypeInfo = (type) => {
     [AssertionTypes.JSON_PATH]: {
       label: 'JSON Path',
       description: 'Validate specific JSON response values',
-      icon: '🔍',
+      icon: 'JP',
       targetPlaceholder: 'response.body.data.field',
       supportedOperators: Object.values(AssertionOperators)
     },
     [AssertionTypes.CONTAINS]: {
       label: 'Contains Text',
       description: 'Check if response contains specific text',
-      icon: '📝',
+      icon: 'CT',
       targetPlaceholder: 'response.body',
       supportedOperators: [
         AssertionOperators.CONTAINS,
@@ -224,7 +224,7 @@ export const getAssertionTypeInfo = (type) => {
     [AssertionTypes.HEADER_VALIDATION]: {
       label: 'Header Validation',
       description: 'Validate HTTP response headers',
-      icon: '📋',
+      icon: 'HV',
       targetPlaceholder: 'response.headers.content-type',
       supportedOperators: [
         AssertionOperators.EQUALS,
@@ -236,7 +236,7 @@ export const getAssertionTypeInfo = (type) => {
     [AssertionTypes.REGEX]: {
       label: 'Regular Expression',
       description: 'Validate using regular expressions',
-      icon: '🔤',
+      icon: 'RX',
       targetPlaceholder: 'response.body.field',
       supportedOperators: [
         AssertionOperators.REGEX_MATCH
@@ -247,7 +247,7 @@ export const getAssertionTypeInfo = (type) => {
   return typeInfo[type] || {
     label: type,
     description: 'Custom assertion type',
-    icon: '⚙️',
+    icon: 'CA',
     targetPlaceholder: '',
     supportedOperators: [AssertionOperators.EQUALS]
   };

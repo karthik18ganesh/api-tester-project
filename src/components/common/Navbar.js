@@ -55,7 +55,7 @@ const GlobalSearchModal = ({ isOpen, onClose, onNavigate }) => {
     
     setIsSearching(true);
     try {
-      const response = await api(`/api/global-search?keyword=${encodeURIComponent(keyword)}`);
+      const response = await api(`/api/v1/global-search?keyword=${encodeURIComponent(keyword)}`);
       
       // Handle different possible response structures
       let results = [];

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiInfo, FiPlay, FiCheck, FiX, FiBookOpen } from 'react-icons/fi';
 import Modal from '../../../../components/UI/Modal';
+import Button from '../../../../components/UI/Button';
 import {
   AssertionTypes,
   AssertionOperators,
@@ -209,14 +210,15 @@ const AssertionEditorModal = ({
           </div>
           
           {!isEdit && (
-            <button
+            <Button
               type="button"
               onClick={() => setShowTemplates(!showTemplates)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 flex items-center gap-2"
+              variant="secondary"
+              size="sm"
+              icon={FiBookOpen}
             >
-              <FiBookOpen className="w-4 h-4" />
               Templates
-            </button>
+            </Button>
           )}
         </div>
 
@@ -437,19 +439,17 @@ const AssertionEditorModal = ({
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium text-gray-900">Test Assertion</h4>
-                  <button
+                  <Button
                     type="button"
                     onClick={handleTestAssertion}
                     disabled={isTesting}
-                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                    variant="success"
+                    size="sm"
+                    loading={isTesting}
+                    icon={FiPlay}
                   >
-                    {isTesting ? (
-                      <div className="animate-spin w-3 h-3 border border-white border-t-transparent rounded-full" />
-                    ) : (
-                      <FiPlay className="w-3 h-3" />
-                    )}
                     Test
-                  </button>
+                  </Button>
                 </div>
                 
                 {testResult && (
@@ -489,19 +489,21 @@ const AssertionEditorModal = ({
 
         {/* Footer */}
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-          <button
+          <Button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+            variant="secondary"
+            size="md"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+            variant="primary"
+            size="md"
           >
             {isEdit ? 'Update Assertion' : 'Create Assertion'}
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
