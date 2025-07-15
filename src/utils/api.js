@@ -673,5 +673,78 @@ export const assertions = {
   }
 };
 
+// Dashboard specific endpoints
+export const dashboard = {
+  // Get complete dashboard metrics
+  getMetrics: async () => {
+    return api("/api/v1/dashboard/metrics", "GET");
+  },
+
+  // Get dashboard summary (lightweight)
+  getSummary: async () => {
+    return api("/api/v1/dashboard/summary", "GET");
+  },
+
+  // Get metrics for date range
+  getMetricsForRange: async (fromDate, toDate) => {
+    return api(`/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`, "GET");
+  },
+
+  // Get success rate trend
+  getSuccessRateTrend: async (days = 7) => {
+    return api(`/api/v1/dashboard/trends/success-rate?days=${days}`, "GET");
+  },
+
+  // Get response time trend
+  getResponseTimeTrend: async (days = 7) => {
+    return api(`/api/v1/dashboard/trends/response-time?days=${days}`, "GET");
+  },
+
+  // Get execution volume trend
+  getExecutionVolumeTrend: async (days = 7) => {
+    return api(`/api/v1/dashboard/trends/execution-volume?days=${days}`, "GET");
+  },
+
+  // Get environment metrics
+  getEnvironmentMetrics: async (days = 7) => {
+    return api(`/api/v1/dashboard/environments?days=${days}`, "GET");
+  },
+
+  // Get recent executions
+  getRecentExecutions: async (limit = 10) => {
+    return api(`/api/v1/dashboard/recent-executions?limit=${limit}`, "GET");
+  },
+
+  // Get top performing test suites
+  getTopPerformers: async (days = 7, limit = 5) => {
+    return api(`/api/v1/dashboard/top-performers?days=${days}&limit=${limit}`, "GET");
+  },
+
+  // Get top failing test suites
+  getTopFailures: async (days = 7, limit = 5) => {
+    return api(`/api/v1/dashboard/top-failures?days=${days}&limit=${limit}`, "GET");
+  },
+
+  // Get project metrics
+  getProjectMetrics: async (days = 30) => {
+    return api(`/api/v1/dashboard/projects?days=${days}`, "GET");
+  },
+
+  // Get system health
+  getSystemHealth: async () => {
+    return api("/api/v1/dashboard/system-health", "GET");
+  },
+
+  // Refresh cache
+  refreshCache: async () => {
+    return api("/api/v1/dashboard/refresh-cache", "POST");
+  },
+
+  // Health check
+  healthCheck: async () => {
+    return api("/api/v1/dashboard/health", "GET");
+  }
+};
+
 // Default export for backward compatibility
 export default api;
