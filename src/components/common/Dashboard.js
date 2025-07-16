@@ -70,21 +70,20 @@ const Dashboard = () => {
       ]);
 
       const data = {
-        metrics: metricsResponse.data?.data || {},
-        summary: summaryResponse.data?.data || {},
+        metrics: metricsResponse.result?.data || {},
+        summary: summaryResponse.result?.data || {},
         trends: {
-          successRate: successTrendResponse.data?.data || [],
-          responseTime: responseTrendResponse.data?.data || [],
-          executionVolume: volumeTrendResponse.data?.data || []
+          successRate: successTrendResponse.result?.data || [],
+          responseTime: responseTrendResponse.result?.data || [],
+          executionVolume: volumeTrendResponse.result?.data || []
         },
-        environments: environmentsResponse.data?.data || [],
-        recentExecutions: recentExecutionsResponse.data?.data || [],
-        topPerformers: topPerformersResponse.data?.data || [],
-        topFailures: topFailuresResponse.data?.data || [],
-        projects: projectsResponse.data?.data || [],
-        systemHealth: systemHealthResponse.data?.data || {}
+        environments: environmentsResponse.result?.data || [],
+        recentExecutions: recentExecutionsResponse.result?.data || [],
+        topPerformers: topPerformersResponse.result?.data || [],
+        topFailures: topFailuresResponse.result?.data || [],
+        projects: projectsResponse.result?.data || [],
+        systemHealth: systemHealthResponse.result?.data || {}
       };
-
       setDashboardData(data);
       setLastUpdated(new Date());
     } catch (err) {
@@ -137,7 +136,7 @@ const Dashboard = () => {
   const DashboardHeader = () => (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
       <div>
-        <h1 className="text-4xl font-bold bg-gradient-hero bg-clip-text text-transparent">
+        <h1 className="text-4xl font-bold bg-clip-text">
           API Testing Dashboard
         </h1>
         <p className="text-gray-600 mt-2 text-lg">
@@ -210,38 +209,40 @@ const Dashboard = () => {
           <h3 className="text-lg font-semibold">Environment Performance</h3>
         </div>
         
-        <div className="space-y-4">
-          {environments?.length > 0 ? (
-            environments.map((env, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${getStatusColor('healthy')}`} />
-                  <span className="font-medium">{env.environmentName}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">{env.totalExecutions || 0} tests</span>
-                  <Badge variant="outline" className="text-xs">
-                    {env.successRate >= 90 ? 'healthy' : env.successRate >= 70 ? 'warning' : 'critical'}
-                  </Badge>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="space-y-3">
-              {['Production', 'Staging', 'Development'].map((name) => (
-                <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+        <div className="h-64 flex flex-col">
+          <div className="space-y-4 flex-1 overflow-y-auto">
+            {environments?.length > 0 ? (
+              environments.map((env, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                   <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-dashboard-success" />
-                    <span className="font-medium">{name}</span>
+                    <div className={`w-3 h-3 rounded-full ${getStatusColor('healthy')}`} />
+                    <span className="font-medium">{env.environmentName}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">0 tests</span>
-                    <Badge variant="outline" className="text-xs">healthy</Badge>
+                    <span className="text-sm text-gray-500">{env.totalExecutions || 0} tests</span>
+                    <Badge variant="outline" className="text-xs">
+                      {env.successRate >= 90 ? 'healthy' : env.successRate >= 70 ? 'warning' : 'critical'}
+                    </Badge>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              <div className="space-y-3">
+                {['Production', 'Staging', 'Development'].map((name) => (
+                  <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-dashboard-success" />
+                      <span className="font-medium">{name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">0 tests</span>
+                      <Badge variant="outline" className="text-xs">healthy</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
     );
@@ -390,38 +391,85 @@ const Dashboard = () => {
         </Button>
       </div>
       
-      <div className="text-center py-12 text-gray-500">
+      <div>
         {executions?.length > 0 ? (
           <div className="space-y-4">
             {executions.slice(0, 5).map((execution, index) => (
-              <div key={execution.executionId || index} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                <div className="flex items-center gap-3">
-                  <Badge 
-                    variant={execution.executionStatus?.toLowerCase() === 'passed' ? "success" : 
-                            execution.executionStatus?.toLowerCase() === 'failed' ? "danger" : "warning"}
-                  >
-                    {execution.executionStatus}
-                  </Badge>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {execution.testPackageName || execution.testSuiteName || execution.testCaseName}
-                    </p>
-                    <p className="text-sm text-gray-500">{execution.executionDate}</p>
+              <div key={execution.executionId || index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <Badge 
+                      variant={execution.executionStatus?.toLowerCase() === 'passed' ? "success" : 
+                              execution.executionStatus?.toLowerCase() === 'failed' ? "danger" : "warning"}
+                    >
+                      {execution.executionStatus}
+                    </Badge>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {execution.testPackageName || execution.testSuiteName || execution.testCaseName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {execution.executionType && `${execution.executionType} • `}
+                        {execution.executionDate}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{execution.successRate}%</p>
+                    <p className="text-xs text-gray-500">{Number(execution.executionTimeMs || 0).toFixed(2)}ms</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium">{execution.successRate}%</p>
-                  <p className="text-xs text-gray-500">{execution.executionTimeMs}ms</p>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Environment:</span>
+                    <p className="font-medium">{execution.environmentName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Executed by:</span>
+                    <p className="font-medium">{execution.executedBy || 'System'}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Total Tests:</span>
+                    <p className="font-medium">{execution.totalTestCases || execution.totalTests || 0}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Execution ID:</span>
+                    <p className="font-medium text-xs">{execution.executionId ? String(execution.executionId).substring(0, 8) + '...' : 'N/A'}</p>
+                  </div>
                 </div>
+                
+                {(execution.passed || execution.failed || execution.error) && (
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-200">
+                    {execution.passed > 0 && (
+                      <div className="flex items-center gap-1 text-green-600">
+                        <FiCheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">{execution.passed} passed</span>
+                      </div>
+                    )}
+                    {execution.failed > 0 && (
+                      <div className="flex items-center gap-1 text-red-600">
+                        <FiXCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">{execution.failed} failed</span>
+                      </div>
+                    )}
+                    {execution.error > 0 && (
+                      <div className="flex items-center gap-1 text-yellow-600">
+                        <FiAlertTriangle className="w-4 h-4" />
+                        <span className="text-sm font-medium">{execution.error} error</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         ) : (
-          <>
+          <div className="text-center py-12 text-gray-500">
             <FiClock className="w-16 h-16 mx-auto mb-4 opacity-30" />
             <p className="text-lg font-medium mb-2">No recent executions found</p>
             <p className="text-sm">Start your first test to see execution history</p>
-          </>
+          </div>
         )}
       </div>
     </Card>
@@ -487,7 +535,7 @@ const Dashboard = () => {
         />
         <MetricCard
           title="Avg Response Time"
-          value={`${metrics.averageResponseTime || 0}ms`}
+          value={`${Number(metrics.averageResponseTime || 0).toFixed(4)}ms`}
           icon={FiClock}
           variant="info"
         />

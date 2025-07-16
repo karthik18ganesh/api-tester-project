@@ -41,13 +41,13 @@ const AnalyticsDashboard = () => {
       ]);
 
       setAnalyticsData({
-        metrics: metricsResponse.data,
-        successTrend: successTrendResponse.data,
-        responseTrend: responseTrendResponse.data,
-        volumeTrend: volumeTrendResponse.data,
-        environments: environmentResponse.data,
-        topPerformers: topPerformersResponse.data,
-        topFailures: topFailuresResponse.data
+        metrics: metricsResponse.result?.data,
+        successTrend: successTrendResponse.result?.data,
+        responseTrend: responseTrendResponse.result?.data,
+        volumeTrend: volumeTrendResponse.result?.data,
+        environments: environmentResponse.result?.data,
+        topPerformers: topPerformersResponse.result?.data,
+        topFailures: topFailuresResponse.result?.data
       });
     } catch (error) {
       console.error('Analytics fetch error:', error);
@@ -180,7 +180,7 @@ const AnalyticsDashboard = () => {
         
         <MetricCardWithChart
           title="Response Time"
-          value={`${analyticsData?.metrics?.averageResponseTime || 0}ms`}
+          value={`${Number(analyticsData?.metrics?.averageResponseTime || 0).toFixed(4)}ms`}
           subtitle="Average response time"
           chartData={analyticsData?.responseTrend}
           chartType="line"
@@ -304,7 +304,7 @@ const AnalyticsDashboard = () => {
           <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-lg font-bold text-gray-900">
-                {analyticsData?.metrics?.averageResponseTime || 0}ms
+                {Number(analyticsData?.metrics?.averageResponseTime || 0).toFixed(4)}ms
               </div>
               <div className="text-gray-500">Average</div>
             </div>
