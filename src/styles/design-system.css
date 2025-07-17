@@ -116,6 +116,10 @@
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 
+  /* Enhanced Shadow Variants */
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-elegant: 0 8px 32px rgba(0, 0, 0, 0.12);
+
   /* Z-Index */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -208,6 +212,41 @@
   }
 }
 
+/* --- Chart Specific Animations --- */
+@keyframes drawLine {
+  0% {
+    stroke-dashoffset: 200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes scaleInPoint {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chartFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Animation Classes */
 .animate-fade-in {
   animation: fadeIn var(--transition-normal) ease-out;
@@ -250,7 +289,75 @@
   animation: shimmer 2s infinite;
 }
 
+/* --- Chart Animation Classes --- */
+.chart-line-animated {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: drawLine 1.5s ease-out forwards;
+}
+
+.chart-point-animated {
+  animation: scaleInPoint 0.6s ease-out forwards;
+  transform-origin: center;
+}
+
+.chart-fade-in {
+  animation: chartFadeIn 1s ease-out forwards;
+}
+
+/* Stable Chart Point Styles - Fixed positioning */
+.chart-point-stable {
+  /* Remove any transforms that could cause jumping */
+  transform: none !important;
+  transform-origin: center;
+  will-change: opacity, filter;
+}
+
+.chart-point-stable:hover {
+  /* Only change visual properties, not position */
+  opacity: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.chart-point-stable:hover + .chart-point-hover-ring {
+  opacity: 0.3;
+}
+
+.chart-point-hover-ring {
+  /* Ensure hover rings don't affect positioning */
+  pointer-events: none;
+  transform: none;
+}
+
 /* --- Enhanced Gradient Utilities --- */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--indigo-500), var(--purple-600));
+}
+
+.bg-gradient-success {
+  background: linear-gradient(135deg, var(--success-500), #10b981);
+}
+
+.bg-gradient-warning {
+  background: linear-gradient(135deg, var(--warning-500), #ea580c);
+}
+
+.bg-gradient-info {
+  background: linear-gradient(135deg, var(--info-500), var(--indigo-600));
+}
+
+.bg-gradient-pink {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+}
+
+.bg-gradient-cyan {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
+.bg-gradient-orange {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
 .gradient-primary {
   background: linear-gradient(135deg, var(--indigo-500), var(--purple-600));
 }
@@ -330,6 +437,19 @@
   border-top: 1px solid var(--gray-100);
   background: var(--gray-50);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Enhanced Shadow Classes */
+.shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+.shadow-elegant {
+  box-shadow: var(--shadow-elegant);
+}
+
+.hover:shadow-elegant:hover {
+  box-shadow: var(--shadow-elegant);
 }
 
 /* --- Enhanced Button Styles --- */
@@ -484,6 +604,81 @@
   color: var(--gray-500);
   font-size: var(--text-xs);
   margin-top: var(--space-1);
+}
+
+/* --- Native Select Styling --- */
+.styled-select-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.styled-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding: var(--space-3) var(--space-10) var(--space-3) var(--space-4);
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  background: white;
+  color: var(--gray-900);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right var(--space-3) center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+}
+
+.styled-select:hover {
+  border-color: var(--indigo-300);
+}
+
+.styled-select:focus {
+  outline: none;
+  border-color: var(--indigo-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.styled-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--gray-100);
+}
+
+.styled-select option {
+  background: white;
+  color: var(--gray-900);
+  padding: var(--space-2);
+}
+
+.styled-select option:hover {
+  background: var(--indigo-50);
+}
+
+.styled-select option:checked {
+  background: var(--indigo-100);
+  color: var(--indigo-700);
+}
+
+/* Firefox specific fixes */
+@-moz-document url-prefix() {
+  .styled-select {
+    background-image: none;
+  }
+  
+  .styled-select-wrapper::after {
+    content: '▼';
+    position: absolute;
+    top: 50%;
+    right: var(--space-3);
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--gray-400);
+    font-size: var(--text-xs);
+  }
 }
 
 /* --- Enhanced Badge Styles --- */
@@ -686,6 +881,55 @@
   .modal-content {
     margin: var(--space-4);
   }
+}
+
+/* === DROPDOWN FIXES === */
+
+/* High Z-Index for Dropdowns */
+.z-50 {
+  z-index: 50 !important;
+}
+
+/* Ensure dropdowns appear above everything */
+body {
+  /* Remove any stacking context issues */
+  transform: none;
+  filter: none;
+}
+
+/* Dashboard specific fixes */
+.dashboard-container {
+  /* Ensure no stacking context issues */
+  position: relative;
+  z-index: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Dropdown positioning fixes */
+.relative {
+  position: relative;
+}
+
+/* Force dropdown menus to highest z-index */
+div[class*="dropdown"] {
+  z-index: 50 !important;
+}
+
+/* Chart container shouldn't interfere with dropdowns */
+svg {
+  overflow: visible;
+  z-index: 1;
+}
+
+/* Performance chart dropdown fix */
+.performance-chart {
+  position: relative;
+  z-index: 1;
+}
+
+.performance-chart [class*="dropdown"] {
+  z-index: 50 !important;
 }
 
 /* --- Dark Mode Support --- */

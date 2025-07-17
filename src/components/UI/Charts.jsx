@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiTrendingUp, FiTrendingDown, FiMinus } from 'react-icons/fi';
 
-// Simple Line Chart Component
+// Enhanced Line Chart with Gradients and Animations
 export const LineChart = ({ 
   data, 
   title, 
@@ -9,6 +9,7 @@ export const LineChart = ({
   height = 80, 
   showGrid = true,
   showPoints = true,
+  gradient = true,
   className = ""
 }) => {
   if (!data || data.length === 0) return null;
@@ -28,71 +29,229 @@ export const LineChart = ({
     `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
   ).join(' ');
 
+  const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
+
   return (
     <div className={`p-4 border rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow ${className}`}>
       {title && <h4 className="text-sm font-semibold text-gray-700 mb-4">{title}</h4>}
       
       <div className="relative">
         <svg width="100%" height={height} viewBox="0 0 100 100" className="overflow-visible">
-          {/* Grid Lines */}
+          <defs>
+            {gradient && (
+              <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.4 }} />
+                <stop offset="100%" style={{ stopColor: color, stopOpacity: 0.05 }} />
+              </linearGradient>
+            )}
+          </defs>
+          
+          {/* Enhanced Grid Lines */}
           {showGrid && (
-            <g stroke="#f3f4f6" strokeWidth="0.2">
-              {[0, 25, 50, 75, 100].map(y => (
+            <g stroke="#e5e7eb" strokeWidth="0.5" opacity="0.5">
+              {[25, 50, 75].map(y => (
                 <line key={y} x1="0" y1={y} x2="100" y2={y} />
-              ))}
-              {[0, 25, 50, 75, 100].map(x => (
-                <line key={x} x1={x} y1="0" x2={x} y2="100" />
               ))}
             </g>
           )}
           
-          {/* Area Fill */}
-          <path
-            d={`${pathData} L 100 100 L 0 100 Z`}
-            fill={color}
-            fillOpacity="0.1"
-          />
+          {/* Area Fill with Gradient */}
+          {gradient && (
+            <path
+              d={`${pathData} L 100 100 L 0 100 Z`}
+              fill={`url(#${gradientId})`}
+              className="animate-fade-in"
+            />
+          )}
           
-          {/* Line */}
+          {/* Main Line with Animation */}
           <path
             d={pathData}
             fill="none"
             stroke={color}
-            strokeWidth="2"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="drop-shadow-sm"
+            className="chart-line-animated"
+            style={{
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+              strokeDasharray: '200',
+              strokeDashoffset: '200',
+              animation: 'drawLine 1.5s ease-out forwards'
+            }}
           />
           
-          {/* Points */}
+          {/* Enhanced Data Points with Fixed Hover Effects */}
           {showPoints && points.map((point, index) => (
-            <circle
-              key={index}
-              cx={point.x}
-              cy={point.y}
-              r="2"
-              fill="white"
-              stroke={color}
-              strokeWidth="2"
-              className="hover:r-3 transition-all duration-200"
-            >
-              <title>{`${point.date}: ${point.value}`}</title>
-            </circle>
+            <g key={index}>
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="3"
+                fill="white"
+                stroke={color}
+                strokeWidth="2"
+                className="chart-point-stable transition-all duration-200 cursor-pointer"
+                style={{ 
+                  animationDelay: `${index * 0.1}s`,
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+                }}
+              >
+                <title>{`${point.date}: ${point.value}`}</title>
+              </circle>
+              
+              {/* Hover Ring Effect - Fixed positioning */}
+              <circle
+                cx={point.x}
+                cy={point.y}
+                r="6"
+                fill="none"
+                stroke={color}
+                strokeWidth="1"
+                opacity="0"
+                className="chart-point-hover-ring transition-opacity duration-200"
+                style={{ pointerEvents: 'none' }}
+              />
+            </g>
           ))}
         </svg>
       </div>
       
-      {/* X-axis labels */}
-      <div className="flex justify-between text-xs text-gray-500 mt-3">
-        <span>{data[0]?.date}</span>
-        <span>{data[Math.floor(data.length / 2)]?.date}</span>
-        <span>{data[data.length - 1]?.date}</span>
+      {/* Enhanced X-axis labels */}
+      <div className="flex justify-between text-xs text-gray-500 mt-3 px-1">
+        <span className="font-medium">{data[0]?.date}</span>
+        {data.length > 2 && (
+          <span className="text-gray-400">{data[Math.floor(data.length / 2)]?.date}</span>
+        )}
+        <span className="font-medium">{data[data.length - 1]?.date}</span>
       </div>
       
       {/* Value range */}
       <div className="flex justify-between text-xs text-gray-400 mt-1">
         <span>Min: {min}</span>
         <span>Max: {max}</span>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Line Chart specifically for MetricCard integration
+export const EnhancedLineChart = ({ 
+  data, 
+  color = "#3b82f6",
+  height = 80,
+  showGrid = true,
+  showPoints = true,
+  gradient = true,
+  className = ""
+}) => {
+  if (!data || data.length === 0) return null;
+
+  const maxValue = Math.max(...data.map(item => item.value));
+  const minValue = Math.min(...data.map(item => item.value));
+  const range = maxValue - minValue || 1;
+
+  const points = data.map((item, index) => ({
+    x: (index / (data.length - 1)) * 100,
+    y: 100 - ((item.value - minValue) / range) * 80,
+    value: item.value,
+    date: item.date
+  }));
+
+  const pathData = points.map((point, index) => 
+    `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+  ).join(' ');
+
+  const gradientId = `gradient-${Math.random().toString(36).substr(2, 9)}`;
+
+  return (
+    <div className={`relative w-full ${className}`} style={{ height }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 100" className="overflow-visible">
+        <defs>
+          {gradient && (
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style={{ stopColor: color, stopOpacity: 0.4 }} />
+              <stop offset="100%" style={{ stopColor: color, stopOpacity: 0.05 }} />
+            </linearGradient>
+          )}
+        </defs>
+        
+        {/* Grid Lines */}
+        {showGrid && (
+          <g stroke="#e5e7eb" strokeWidth="0.5" opacity="0.5">
+            {[25, 50, 75].map(y => (
+              <line key={y} x1="0" y1={y} x2="100" y2={y} />
+            ))}
+          </g>
+        )}
+        
+        {/* Area Fill with Gradient */}
+        {gradient && (
+          <path
+            d={`${pathData} L 100 100 L 0 100 Z`}
+            fill={`url(#${gradientId})`}
+          />
+        )}
+        
+        {/* Main Line with Animation */}
+        <path
+          d={pathData}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="chart-line-animated"
+          style={{
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            strokeDasharray: '200',
+            strokeDashoffset: '200',
+            animation: 'drawLine 1.5s ease-out forwards'
+          }}
+        />
+        
+        {/* Data Points with Stabilized Hover Effects */}
+        {showPoints && points.map((point, index) => (
+          <g key={index}>
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="3"
+              fill="white"
+              stroke={color}
+              strokeWidth="2"
+              className="chart-point-stable transition-all duration-200 cursor-pointer"
+              style={{ 
+                animationDelay: `${index * 0.1}s`,
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))'
+              }}
+            >
+              <title>{`${point.date}: ${point.value}`}</title>
+            </circle>
+            
+            {/* Hover Ring Effect - Stable positioning */}
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r="8"
+              fill="none"
+              stroke={color}
+              strokeWidth="1"
+              opacity="0"
+              className="chart-point-hover-ring transition-opacity duration-200"
+              style={{ pointerEvents: 'none' }}
+            />
+          </g>
+        ))}
+      </svg>
+      
+      {/* Enhanced X-axis labels */}
+      <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+        <span className="font-medium">{data[0]?.date}</span>
+        {data.length > 2 && (
+          <span className="text-gray-400">{data[Math.floor(data.length / 2)]?.date}</span>
+        )}
+        <span className="font-medium">{data[data.length - 1]?.date}</span>
       </div>
     </div>
   );
@@ -245,13 +404,14 @@ export const DonutChart = ({
   );
 };
 
-// Bar Chart Component
+// Enhanced Bar Chart Component with Gradients and Animations
 export const BarChart = ({ 
   data, 
   title,
   color = "#4f46e5",
   height = 120,
   showValues = true,
+  gradient = true,
   className = ""
 }) => {
   if (!data || data.length === 0) return null;
@@ -259,31 +419,86 @@ export const BarChart = ({
   const maxValue = Math.max(...data.map(item => item.value));
   
   return (
-    <div className={`p-4 border rounded-xl bg-white shadow-sm ${className}`}>
+    <div className={`p-4 border rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow ${className}`}>
       {title && <h4 className="text-sm font-semibold text-gray-700 mb-4">{title}</h4>}
       
       <div className="flex items-end justify-between gap-2" style={{ height }}>
         {data.map((item, index) => {
           const barHeight = (item.value / maxValue) * height;
+          const barColor = item.color || color;
+          
           return (
             <div key={index} className="flex flex-col items-center gap-2 flex-1">
               {showValues && (
-                <span className="text-xs text-gray-600 font-medium">
+                <span className="text-xs text-gray-600 font-medium animate-fade-in-up" 
+                      style={{ animationDelay: `${index * 0.1}s` }}>
                   {item.value}
                 </span>
               )}
               <div 
-                className="w-full rounded-t-md transition-all duration-500 ease-out"
+                className="w-full rounded-t-lg transition-all duration-700 ease-out hover:scale-105 cursor-pointer"
                 style={{ 
                   height: `${barHeight}px`,
-                  backgroundColor: item.color || color,
-                  minHeight: '4px'
+                  background: gradient 
+                    ? `linear-gradient(to top, ${barColor}, ${barColor}dd)` 
+                    : barColor,
+                  minHeight: '4px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  animationDelay: `${index * 0.15}s`
                 }}
                 title={`${item.label}: ${item.value}`}
               />
-              <span className="text-xs text-gray-500 text-center leading-tight">
+              <span className="text-xs text-gray-500 text-center leading-tight animate-fade-in"
+                    style={{ animationDelay: `${index * 0.05}s` }}>
                 {item.label}
               </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Bar Chart specifically for MetricCard integration
+export const EnhancedBarChart = ({ 
+  data, 
+  color = "#8b5cf6",
+  height = 60,
+  showValues = true,
+  gradient = true,
+  className = ""
+}) => {
+  if (!data || data.length === 0) return null;
+
+  const maxValue = Math.max(...data.map(item => item.value));
+  
+  return (
+    <div className={`relative w-full ${className}`} style={{ height }}>
+      <div className="flex items-end justify-between gap-1 h-full px-2">
+        {data.map((item, index) => {
+          const barHeight = Math.max((item.value / maxValue) * (height - 10), 2);
+          
+          return (
+            <div key={index} className="flex flex-col items-center gap-1 flex-1">
+              <div 
+                className="w-full rounded-t-sm transition-all duration-500 ease-out hover:scale-110 cursor-pointer"
+                style={{ 
+                  height: `${barHeight}px`,
+                  background: gradient 
+                    ? `linear-gradient(to top, ${color}, ${color}cc)` 
+                    : color,
+                  minHeight: '2px',
+                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
+                  animationDelay: `${index * 0.1}s`
+                }}
+                title={`${item.label || item.date}: ${item.value}`}
+              />
+              {showValues && data.length <= 7 && (
+                <span className="text-xs text-gray-400 text-center" style={{ fontSize: '10px' }}>
+                  {item.label || item.date}
+                </span>
+              )}
             </div>
           );
         })}

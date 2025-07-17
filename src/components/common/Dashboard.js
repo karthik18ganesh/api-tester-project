@@ -6,11 +6,13 @@ import {
   FiActivity, FiTarget, FiZap, FiAward, FiUsers, FiServer,
   FiCalendar, FiArrowRight, FiRefreshCw, FiAlertTriangle,
   FiMonitor, FiShield, FiEye, FiChevronDown, FiPlus,
-  FiCpu, FiHeart, FiTrendingDown
+  FiCpu, FiHeart, FiTrendingDown, FiPlay
 } from "react-icons/fi";
 import { 
   Card, Badge, Button, LoadingSpinner, LineChart, 
-  MetricCard, QuickActionCard, TrendIndicator
+  MetricCard, QuickActionCard, TrendIndicator, EnhancedMetricCard,
+  CompactMetricCard, EmptyChartState, EmptyPerformanceState,
+  EmptyEnvironmentState, EnhancedLineChart, EnhancedDropdown, DaysSelector
 } from "../UI";
 import Breadcrumb from "./Breadcrumb";
 import { DashboardErrorBoundary } from "./DashboardErrorBoundary";
@@ -20,7 +22,6 @@ import { useDashboardData } from "../../hooks/useDashboardData";
 const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedTimeRange, setSelectedTimeRange] = useState('7');
-  const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
 
   // Use React Query hook for optimized data fetching
   const {
@@ -32,192 +33,133 @@ const Dashboard = () => {
     lastUpdated
   } = useDashboardData(selectedTimeRange);
 
-  const timeRangeOptions = [
-    { value: '1', label: 'Last 24 hours' },
-    { value: '7', label: 'Last 7 days' },
-    { value: '30', label: 'Last 30 days' },
-    { value: '90', label: 'Last 90 days' }
-  ];
+
 
   // Simple refresh function using React Query
   const handleRefresh = () => refetch();
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showTimeRangeDropdown && !event.target.closest('.relative')) {
-        setShowTimeRangeDropdown(false);
-      }
-    };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTimeRangeDropdown]);
 
-  // Dashboard Header Component
+  // Enhanced Dashboard Header Component
   const DashboardHeader = () => (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-      <div>
-        <h1 className="text-4xl font-bold bg-clip-text">
-          API Testing Dashboard
-        </h1>
-        <p className="text-gray-600 mt-2 text-lg">
-          Comprehensive insights into your testing ecosystem
-        </p>
-      </div>
-      
-      <div className="flex items-center gap-3">
-        <div className="relative">
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2"
-            onClick={() => setShowTimeRangeDropdown(!showTimeRangeDropdown)}
-          >
-            <FiCalendar className="w-4 h-4" />
-            {timeRangeOptions.find(option => option.value === selectedTimeRange)?.label || 'Last 7 days'}
-            <FiChevronDown className={`w-4 h-4 transition-transform ${showTimeRangeDropdown ? 'rotate-180' : ''}`} />
-          </Button>
-          
-          {showTimeRangeDropdown && (
-            <div className="absolute top-full mt-2 right-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[180px]">
-              {timeRangeOptions.map((option) => (
-                <button
-                  key={option.value}
-                  className={`w-full text-left px-4 py-3 hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg transition-colors ${
-                    selectedTimeRange === option.value ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'
-                  }`}
-                  onClick={() => {
-                    setSelectedTimeRange(option.value);
-                    setShowTimeRangeDropdown(false);
-                  }}
-                >
-                  {option.label}
-                </button>
-              ))}
+    <div className="relative bg-white border-b border-gray-200 rounded-2xl mb-8 shadow-card">
+      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5" />
+      <div className="relative px-8 py-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-2 h-8 bg-gradient-primary rounded-full" />
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             </div>
-          )}
+            <p className="text-gray-600 max-w-2xl">
+              Monitor your API testing performance and track key metrics in real-time
+            </p>
+          </div>
+          
+          {/* Enhanced Controls */}
+          <div className="flex items-center gap-3">
+            <DaysSelector 
+              selectedDays={selectedTimeRange}
+              onDaysChange={setSelectedTimeRange}
+              className="w-44"
+            />
+            
+            <Button variant="ghost" onClick={handleRefresh}>
+              <FiRefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+            
+            <Button variant="primary" onClick={() => navigate("/test-execution")}>
+              <FiPlay className="w-4 h-4" />
+              Run Tests
+            </Button>
+          </div>
         </div>
-        
-        <Button 
-          variant="outline" 
-          onClick={handleRefresh}
-          disabled={isLoading}
-          className="flex items-center gap-2"
-        >
-          <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
     </div>
   );
 
-  // Environment Performance Component
-  const EnvironmentPerformance = ({ environments }) => {
-    const getStatusColor = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'healthy': return 'bg-dashboard-success';
-        case 'warning': return 'bg-dashboard-warning';
-        case 'error': return 'bg-red-500';
-        default: return 'bg-gray-400';
-      }
-    };
-
-    return (
-      <Card className="p-6 shadow-card h-full">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-gradient-info rounded-lg flex items-center justify-center">
-            <FiServer className="w-5 h-5 text-white" />
-          </div>
-          <h3 className="text-lg font-semibold">Environment Performance</h3>
-        </div>
-        
-        <div className="h-64 flex flex-col">
-          <div className="space-y-4 flex-1 overflow-y-auto">
-            {environments?.length > 0 ? (
-              environments.map((env, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${getStatusColor('healthy')}`} />
-                    <span className="font-medium">{env.environmentName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">{env.totalExecutions || 0} tests</span>
-                    <Badge variant="outline" className="text-xs">
-                      {env.successRate >= 90 ? 'healthy' : env.successRate >= 70 ? 'warning' : 'critical'}
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="space-y-3">
-                {['Production', 'Staging', 'Development'].map((name) => (
-                  <div key={name} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-dashboard-success" />
-                      <span className="font-medium">{name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">0 tests</span>
-                      <Badge variant="outline" className="text-xs">healthy</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-    );
-  };
-
-  // Performance Chart Component
-  const PerformanceChart = ({ trends }) => {
+  // Enhanced Performance Chart Component with better empty states
+  const EnhancedPerformanceChart = ({ trends }) => {
     const [selectedTrend, setSelectedTrend] = useState('successRate');
     
     const trendOptions = [
-      { key: 'successRate', label: 'Success Rate', data: trends.successRate },
-      { key: 'responseTime', label: 'Response Time', data: trends.responseTime },
-      { key: 'executionVolume', label: 'Execution Volume', data: trends.executionVolume }
+      { key: 'successRate', label: 'Success Rate', data: trends.successRate, icon: FiTrendingUp, color: '#10b981' },
+      { key: 'responseTime', label: 'Response Time', data: trends.responseTime, icon: FiClock, color: '#3b82f6' },
+      { key: 'executionVolume', label: 'Execution Volume', data: trends.executionVolume, icon: FiActivity, color: '#8b5cf6' }
     ];
 
     const currentTrend = trendOptions.find(t => t.key === selectedTrend);
 
     return (
-      <Card className="p-6 shadow-card h-full">
+      <Card className="p-6 shadow-elegant h-full hover-lift transition-all duration-300">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-info rounded-lg flex items-center justify-center">
-              <FiTrendingUp className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-info rounded-xl flex items-center justify-center shadow-sm">
+              <FiTrendingUp className="w-6 h-6 text-white" />
             </div>
-            <h3 className="text-lg font-semibold">Performance Trends</h3>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Performance Trends</h3>
+              <p className="text-sm text-gray-500">Last 30 days overview</p>
+            </div>
           </div>
           
-          <select 
-            value={selectedTrend}
-            onChange={(e) => setSelectedTrend(e.target.value)}
-            className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
+          {/* Enhanced Metric Selector */}
+          <div className="flex bg-gray-100 rounded-xl p-1">
             {trendOptions.map(option => (
-              <option key={option.key} value={option.key}>{option.label}</option>
+              <button
+                key={option.key}
+                onClick={() => setSelectedTrend(option.key)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2
+                  ${selectedTrend === option.key 
+                    ? 'bg-white text-gray-900 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                <option.icon className="w-4 h-4" />
+                {option.label}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
         
-        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-          {currentTrend?.data && currentTrend.data.length > 0 ? (
-            <LineChart 
-              data={currentTrend.data}
-              title=""
-              color="#3b82f6"
-              height={200}
-              showGrid={true}
-              showPoints={true}
-            />
-          ) : (
-            <div className="text-center text-gray-500">
-              <FiTrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">NO CHART DATA AVAILABLE</p>
-              <p className="text-sm">Start running tests to see performance trends</p>
+        {/* Chart Container with Enhanced Styling */}
+        <div className="relative">
+          <div className="h-80 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100 p-4">
+            {currentTrend?.data && currentTrend.data.length > 0 ? (
+              <EnhancedLineChart 
+                data={currentTrend.data}
+                color={currentTrend.color}
+                height={280}
+                showGrid={true}
+                showPoints={true}
+                gradient={true}
+              />
+            ) : (
+              <EmptyChartState 
+                icon={currentTrend?.icon}
+                title="No Performance Data"
+                description="Run some tests to see performance trends here"
+                actionText="Start Testing"
+                onAction={() => navigate("/test-execution")}
+              />
+            )}
+          </div>
+          
+          {/* Chart Statistics */}
+          {currentTrend?.data && currentTrend.data.length > 0 && (
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Average</p>
+                <p className="text-lg font-semibold text-gray-900">92.4%</p>
+              </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Best</p>
+                <p className="text-lg font-semibold text-green-600">98.7%</p>
+              </div>
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">Worst</p>
+                <p className="text-lg font-semibold text-red-600">84.2%</p>
+              </div>
             </div>
           )}
         </div>
@@ -225,173 +167,263 @@ const Dashboard = () => {
     );
   };
 
-  // Performance Leaders Component
-  const PerformanceLeaders = ({ topPerformers, topFailures }) => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <Card className="p-6 shadow-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-success rounded-lg flex items-center justify-center">
-            <FiAward className="w-5 h-5 text-white" />
-          </div>
-          <h3 className="text-lg font-semibold text-dashboard-success">Top Performers</h3>
+  // Enhanced Environment Performance with better design
+  const EnhancedEnvironmentStatus = ({ environments }) => (
+    <Card className="p-6 shadow-elegant h-fit hover-lift transition-all duration-300">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-success rounded-lg flex items-center justify-center">
+          <FiServer className="w-5 h-5 text-white" />
         </div>
-        <div className="text-center py-8 text-gray-500">
-          {topPerformers?.length > 0 ? (
-            <div className="space-y-3">
-              {topPerformers.slice(0, 3).map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-200 text-green-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
-                      {index + 1}
-                    </div>
-                    <span className="font-medium">{item.name}</span>
-                  </div>
-                  <span className="text-green-700 font-semibold">{item.successRate}%</span>
-                </div>
-              ))}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Environment Status</h3>
+          <p className="text-xs text-gray-500">Real-time health monitoring</p>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        {environments?.length > 0 ? (
+          environments.map((env, index) => (
+            <EnvironmentCard key={index} environment={env} />
+          ))
+        ) : (
+          <EmptyEnvironmentState 
+            onAddEnvironment={() => navigate("/admin/environment-setup")}
+          />
+        )}
+      </div>
+    </Card>
+  );
+
+  // Individual Environment Card with enhanced styling
+  const EnvironmentCard = ({ environment }) => {
+    const getStatusColor = (rate) => {
+      if (rate >= 95) return 'success';
+      if (rate >= 80) return 'warning';
+      return 'error';
+    };
+
+    const status = getStatusColor(environment.successRate);
+    const colors = {
+      success: 'bg-green-100 text-green-800 border-green-200',
+      warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      error: 'bg-red-100 text-red-800 border-red-200'
+    };
+
+    return (
+      <div className="p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md transition-all duration-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${
+              status === 'success' ? 'bg-green-500' : 
+              status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+            } animate-pulse`} />
+            <div>
+              <p className="font-semibold text-gray-900">{environment.name}</p>
+              <p className="text-xs text-gray-500">{environment.tests} tests</p>
             </div>
+          </div>
+          
+          <div className="text-right">
+            <p className="text-sm font-semibold text-gray-900">{environment.successRate}%</p>
+            <span className={`text-xs px-2 py-1 rounded-full border ${colors[status]}`}>
+              {status}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced Performance Leaders Component with better design
+  const PerformanceLeaders = ({ topPerformers, topFailures }) => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Top Performers Card */}
+      <Card className="p-6 shadow-elegant hover-lift transition-all duration-300">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 bg-gradient-success rounded-xl flex items-center justify-center shadow-sm">
+            <FiAward className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Top Performers</h3>
+            <p className="text-sm text-gray-500">Highest success rates</p>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          {topPerformers?.length > 0 ? (
+            topPerformers.slice(0, 5).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-gradient-success rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{item.name}</p>
+                    <p className="text-xs text-gray-600">{item.executionCount || 0} executions</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-700">{item.successRate}%</p>
+                  <div className="w-16 h-2 bg-green-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-success rounded-full transition-all duration-700"
+                      style={{ width: `${item.successRate}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
           ) : (
-            <>
-              <FiAward className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">No performance data yet</p>
-              <p className="text-sm">Run tests to see top performers</p>
-            </>
+            <EmptyChartState 
+              icon={FiAward}
+              title="No Performance Data"
+              description="Run tests to see top performing test suites"
+              actionText="Start Testing"
+              onAction={() => navigate("/test-execution")}
+              size="small"
+              variant="success"
+            />
           )}
         </div>
       </Card>
 
-      <Card className="p-6 shadow-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-warning rounded-lg flex items-center justify-center">
-            <FiAlertTriangle className="w-5 h-5 text-white" />
+      {/* Needs Attention Card */}
+      <Card className="p-6 shadow-elegant hover-lift transition-all duration-300">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 bg-gradient-warning rounded-xl flex items-center justify-center shadow-sm">
+            <FiAlertTriangle className="w-6 h-6 text-white" />
           </div>
-          <h3 className="text-lg font-semibold text-dashboard-warning">Needs Attention</h3>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Needs Attention</h3>
+            <p className="text-sm text-gray-500">Tests requiring review</p>
+          </div>
         </div>
-        <div className="text-center py-8 text-gray-500">
+        
+        <div className="space-y-4">
           {topFailures?.length > 0 ? (
-            <div className="space-y-3">
-              {topFailures.slice(0, 3).map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <FiAlertTriangle className="w-4 h-4 text-red-500" />
-                    <span className="font-medium">{item.name}</span>
+            topFailures.slice(0, 5).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 bg-gradient-warning rounded-full flex items-center justify-center shadow-sm">
+                    <FiAlertTriangle className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-red-700 font-semibold">{item.successRate}%</span>
+                  <div>
+                    <p className="font-semibold text-gray-900">{item.name}</p>
+                    <p className="text-xs text-gray-600">{item.executionCount || 0} executions</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-red-700">{item.successRate}%</p>
+                  <div className="w-16 h-2 bg-red-100 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-warning rounded-full transition-all duration-700"
+                      style={{ width: `${item.successRate}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))
           ) : (
-            <>
-              <FiAlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="font-medium">All systems performing well</p>
-              <p className="text-sm">No issues detected</p>
-            </>
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                <FiShield className="w-8 h-8 text-green-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">All Systems Healthy</h4>
+              <p className="text-sm text-gray-600 mb-4">No critical issues detected in your test suites</p>
+              <div className="flex items-center justify-center gap-2 text-xs text-green-600">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span>Monitoring active</span>
+              </div>
+            </div>
           )}
         </div>
       </Card>
     </div>
   );
 
-  // Recent Executions Component
+  // Enhanced Recent Executions Component with better styling
   const RecentExecutions = ({ executions }) => (
-    <Card className="p-6 shadow-card">
+    <Card className="p-6 shadow-elegant hover-lift transition-all duration-300">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <FiClock className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-sm">
+            <FiActivity className="w-6 h-6 text-white" />
           </div>
-          <h3 className="text-lg font-semibold">Recent Executions</h3>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Recent Executions</h3>
+            <p className="text-sm text-gray-500">Latest test results</p>
+          </div>
         </div>
         
         <Button 
           variant="ghost" 
           size="sm" 
-          className="text-indigo-600"
+          className="text-indigo-600 hover:bg-indigo-50"
           onClick={() => navigate("/test-results")}
         >
+          <FiArrowRight className="w-4 h-4 mr-2" />
           View All
         </Button>
       </div>
       
-      <div>
+      <div className="space-y-4">
         {executions?.length > 0 ? (
-          <div className="space-y-4">
-            {executions.slice(0, 5).map((execution, index) => (
-              <div key={execution.executionId || index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Badge 
-                      variant={execution.executionStatus?.toLowerCase() === 'passed' ? "success" : 
-                              execution.executionStatus?.toLowerCase() === 'failed' ? "danger" : "warning"}
-                    >
-                      {execution.executionStatus}
-                    </Badge>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {execution.testPackageName || execution.testSuiteName || execution.testCaseName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {execution.executionType && `${execution.executionType} • `}
-                        {execution.executionDate}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{execution.successRate}%</p>
-                    <p className="text-xs text-gray-500">{Number(execution.executionTimeMs || 0).toFixed(2)}ms</p>
+          executions.slice(0, 5).map((execution, index) => (
+            <div key={execution.executionId || index} className="p-4 border border-gray-200 rounded-xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-indigo-50 hover:border-indigo-200 transition-all duration-200 cursor-pointer">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Badge 
+                    variant={execution.executionStatus?.toLowerCase() === 'passed' ? "success" : 
+                            execution.executionStatus?.toLowerCase() === 'failed' ? "danger" : "warning"}
+                    className="shadow-sm"
+                  >
+                    {execution.executionStatus}
+                  </Badge>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {execution.testPackageName || execution.testSuiteName || execution.testCaseName}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {execution.executionType && `${execution.executionType} • `}
+                      {execution.executionDate}
+                    </p>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-500">Environment:</span>
-                    <p className="font-medium">{execution.environmentName || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Executed by:</span>
-                    <p className="font-medium">{execution.executedBy || 'System'}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Total Tests:</span>
-                    <p className="font-medium">{execution.totalTestCases || execution.totalTests || 0}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Execution ID:</span>
-                    <p className="font-medium text-xs">{execution.executionId ? String(execution.executionId).substring(0, 8) + '...' : 'N/A'}</p>
-                  </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-gray-900">{execution.successRate}%</p>
+                  <p className="text-xs text-gray-500">{Number(execution.executionTimeMs || 0).toFixed(0)}ms</p>
                 </div>
-                
-                {(execution.passed || execution.failed || execution.error) && (
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-200">
-                    {execution.passed > 0 && (
-                      <div className="flex items-center gap-1 text-green-600">
-                        <FiCheckCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">{execution.passed} passed</span>
-                      </div>
-                    )}
-                    {execution.failed > 0 && (
-                      <div className="flex items-center gap-1 text-red-600">
-                        <FiXCircle className="w-4 h-4" />
-                        <span className="text-sm font-medium">{execution.failed} failed</span>
-                      </div>
-                    )}
-                    {execution.error > 0 && (
-                      <div className="flex items-center gap-1 text-yellow-600">
-                        <FiAlertTriangle className="w-4 h-4" />
-                        <span className="text-sm font-medium">{execution.error} error</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex flex-col">
+                  <span className="text-gray-500 text-xs font-medium">Environment</span>
+                  <p className="font-semibold text-gray-900">{execution.environmentName || 'N/A'}</p>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gray-500 text-xs font-medium">Tests</span>
+                  <p className="font-semibold text-gray-900">{execution.totalTests || 0}</p>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gray-500 text-xs font-medium">Passed</span>
+                  <p className="font-semibold text-green-600">{execution.passedTests || 0}</p>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-gray-500 text-xs font-medium">Failed</span>
+                  <p className="font-semibold text-red-600">{execution.failedTests || 0}</p>
+                </div>
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="text-center py-12 text-gray-500">
-            <FiClock className="w-16 h-16 mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium mb-2">No recent executions found</p>
-            <p className="text-sm">Start your first test to see execution history</p>
-          </div>
+          <EmptyChartState 
+            icon={FiActivity}
+            title="No Recent Executions"
+            description="Test execution history will appear here"
+            actionText="Run Your First Test"
+            onAction={() => navigate("/test-execution")}
+            variant="info"
+          />
         )}
       </div>
     </Card>
@@ -432,159 +464,186 @@ const Dashboard = () => {
   const metrics = dashboardData?.metrics || {};
 
   return (
-    <div className="p-6 min-h-screen bg-gray-50">
+    <div className="dashboard-container min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50">
       {/* Breadcrumb */}
-      <Breadcrumb />
+      <div className="p-6 pb-0">
+        <Breadcrumb />
+      </div>
       
-      {/* Header */}
-      <DashboardHeader />
-
-      {/* Main Metrics Grid - Top Row */}
-      <DashboardErrorBoundary>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Total Test Cases"
-            value={metrics.totalTestCases?.toLocaleString() || '0'}
-            icon={FiTarget}
-            variant="purple"
-            onClick={() => navigate("/test-design/test-case")}
-          />
-          <MetricCard
-            title="Success Rate"
-            value={`${metrics.successRate || 0}%`}
-            icon={FiCheckCircle}
-            variant="success"
-          />
-          <MetricCard
-            title="Avg Response Time"
-            value={`${Number(metrics.averageResponseTime || 0).toFixed(4)}ms`}
-            icon={FiClock}
-            variant="info"
-          />
-          <MetricCard
-            title="Active Projects"
-            value={metrics.activeProjects || 0}
-            icon={FiUsers}
-            variant="orange"
-            onClick={() => navigate("/project-setup")}
-          />
-        </div>
-
-        {/* Secondary Metrics Grid - Bottom Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <MetricCard
-            title="Total Executions"
-            value={metrics.totalExecutions?.toLocaleString() || '0'}
-            icon={FiPlayCircle}
-            variant="pink"
-            onClick={() => navigate("/test-execution")}
-          />
-          <MetricCard
-            title="Passed Tests"
-            value={metrics.passedExecutions?.toLocaleString() || '0'}
-            icon={FiCheckCircle}
-            variant="success"
-          />
-          <MetricCard
-            title="Failed Tests"
-            value={metrics.failedExecutions?.toLocaleString() || '0'}
-            icon={FiXCircle}
-            variant="warning"
-          />
-          <MetricCard
-            title="Error Tests"
-            value={metrics.errorExecutions?.toLocaleString() || '0'}
-            icon={FiAlertTriangle}
-            variant="warning"
-          />
-          <MetricCard
-            title="Concurrent"
-            value={metrics.concurrentExecutions || 0}
-            icon={FiCpu}
-            variant="cyan"
-          />
-        </div>
-      </DashboardErrorBoundary>
-
-      {/* Performance Trends and Environment Performance */}
-      <DashboardErrorBoundary>
-        {isLoadingTrends ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <DashboardSkeleton.Charts />
-            <DashboardSkeleton.Charts />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <PerformanceChart trends={dashboardData?.trends || {}} />
-            <EnvironmentPerformance environments={dashboardData?.environments} />
-          </div>
-        )}
-      </DashboardErrorBoundary>
-
-      {/* Performance Leaders */}
-      <DashboardErrorBoundary>
-        <div className="mb-8">
-          <PerformanceLeaders 
-            topPerformers={dashboardData?.topPerformers} 
-            topFailures={dashboardData?.topFailures} 
-          />
-        </div>
-      </DashboardErrorBoundary>
-
-      {/* Recent Executions */}
-      <DashboardErrorBoundary>
-        <div className="mb-8">
-          <RecentExecutions executions={dashboardData?.recentExecutions} />
-        </div>
-      </DashboardErrorBoundary>
-
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Quick Actions</h2>
-          <p className="text-gray-600">Start testing with our most common workflows</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <QuickActionCard
-            title="Create API Test"
-            subtitle="Add new endpoints"
-            icon={FiPlus}
-            variant="purple"
-            onClick={() => navigate("/test-design/api-repository/create")}
-          />
-          <QuickActionCard
-            title="Run Tests"
-            subtitle="Execute test suites"
-            icon={FiPlayCircle}
-            variant="success"
-            onClick={() => navigate("/test-execution")}
-          />
-          <QuickActionCard
-            title="Create Suite"
-            subtitle="Organize tests"
-            icon={FiLayers}
-            variant="info"
-            onClick={() => navigate("/test-design/test-suite/create")}
-          />
-          <QuickActionCard
-            title="View Results"
-            subtitle="Analyze performance"
-            icon={FiBarChart2}
-            variant="orange"
-            onClick={() => navigate("/test-results")}
-          />
-        </div>
+      {/* Enhanced Header */}
+      <div className="px-6">
+        <DashboardHeader />
       </div>
 
-      {error && (
-        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center gap-2 text-yellow-800">
-            <FiAlertTriangle className="h-4 w-4" />
-            <span className="text-sm">Some data may not be current due to API issues: {error?.message || error}</span>
+      <div className="px-6 pb-8">
+        {/* Primary Metrics Grid with Enhanced Visual Hierarchy */}
+        <DashboardErrorBoundary>
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Key Metrics</h2>
+              <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent" />
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Primary Metric - Success Rate gets high priority */}
+              <div className="lg:col-span-2">
+                              <EnhancedMetricCard
+                title="Overall Success Rate"
+                value={`${metrics.successRate || 0}%`}
+                subtitle="Last 7 days"
+                trend={5.2}
+                showChart={false}
+                icon={FiCheckCircle}
+                priority="high"
+                status="success"
+                onClick={() => navigate("/test-results")}
+              />
+              </div>
+              
+              {/* Secondary Metrics */}
+              <EnhancedMetricCard
+                title="Avg Response Time"
+                value={`${Number(metrics.averageResponseTime || 0).toFixed(0)}ms`}
+                subtitle="↓ 23ms from yesterday"
+                trend={-8.5}
+                showChart={false}
+                icon={FiClock}
+                priority="normal"
+                status="info"
+              />
+              
+              <EnhancedMetricCard
+                title="Tests Executed"
+                value={metrics.totalExecutions?.toLocaleString() || '0'}
+                subtitle="Today"
+                trend={12.3}
+                showChart={false}
+                icon={FiActivity}
+                priority="normal"
+                status="info"
+                onClick={() => navigate("/test-execution")}
+              />
+            </div>
+          </div>
+
+          {/* Secondary Metrics Row - Compact Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <CompactMetricCard
+              title="Active Projects"
+              value={metrics.activeProjects || 0}
+              icon={FiUsers}
+              status="info"
+              trend={0}
+              onClick={() => navigate("/project-setup")}
+            />
+            <CompactMetricCard
+              title="Failed Tests"
+              value={metrics.failedExecutions?.toLocaleString() || '0'}
+              icon={FiXCircle}
+              status="warning"
+              trend={-25}
+            />
+            <CompactMetricCard
+              title="Total Test Cases"
+              value={metrics.totalTestCases?.toLocaleString() || '0'}
+              icon={FiTarget}
+              status="success"
+              trend={5.5}
+              onClick={() => navigate("/test-design/test-case")}
+            />
+            <CompactMetricCard
+              title="Environments"
+              value={(dashboardData?.environments?.length || 0).toString()}
+              icon={FiServer}
+              status="success"
+              trend={3.2}
+              onClick={() => navigate("/admin/environment-setup")}
+            />
+          </div>
+        </DashboardErrorBoundary>
+
+        {/* Charts Section with Better Layout */}
+        <DashboardErrorBoundary>
+          {isLoadingTrends ? (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+              <div className="xl:col-span-2">
+                <DashboardSkeleton.Charts />
+              </div>
+              <div>
+                <DashboardSkeleton.Charts />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+              {/* Performance Trends - Takes more space */}
+              <div className="xl:col-span-2">
+                <EnhancedPerformanceChart trends={dashboardData?.trends || {}} />
+              </div>
+              
+              {/* Environment Status - Compact sidebar */}
+              <div>
+                <EnhancedEnvironmentStatus environments={dashboardData?.environments} />
+              </div>
+            </div>
+          )}
+        </DashboardErrorBoundary>
+
+        {/* Performance Leaders */}
+        <DashboardErrorBoundary>
+          <div className="mb-8">
+            <PerformanceLeaders 
+              topPerformers={dashboardData?.topPerformers} 
+              topFailures={dashboardData?.topFailures} 
+            />
+          </div>
+        </DashboardErrorBoundary>
+
+        {/* Recent Executions */}
+        <DashboardErrorBoundary>
+          <div className="mb-8">
+            <RecentExecutions executions={dashboardData?.recentExecutions} />
+          </div>
+        </DashboardErrorBoundary>
+
+        {/* Quick Actions with Enhanced Design */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
+            <div className="flex-1 h-px bg-gradient-to-r from-gray-300 to-transparent" />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <QuickActionCard
+              title="Create API Test"
+              subtitle="Add new endpoints"
+              icon={FiPlus}
+              variant="purple"
+              onClick={() => navigate("/test-design/api-repository/create")}
+            />
+            <QuickActionCard
+              title="Run Tests"
+              subtitle="Execute test suites"
+              icon={FiPlayCircle}
+              variant="success"
+              onClick={() => navigate("/test-execution")}
+            />
+            <QuickActionCard
+              title="Create Suite"
+              subtitle="Organize tests"
+              icon={FiLayers}
+              variant="info"
+              onClick={() => navigate("/test-design/test-suite/create")}
+            />
+            <QuickActionCard
+              title="View Results"
+              subtitle="Analyze performance"
+              icon={FiBarChart2}
+              variant="orange"
+              onClick={() => navigate("/test-results")}
+            />
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

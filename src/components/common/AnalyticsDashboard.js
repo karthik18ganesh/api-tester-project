@@ -6,7 +6,7 @@ import {
 } from "react-icons/fi";
 import { 
   Card, Button, LineChart, BarChart, DonutChart, StatusRing, 
-  ProgressBar, MetricCardWithChart, TrendIndicator 
+  ProgressBar, MetricCardWithChart, TrendIndicator, EnhancedDropdown, DaysSelector
 } from "../UI";
 import { dashboard } from "../../utils/api";
 
@@ -142,16 +142,11 @@ const AnalyticsDashboard = () => {
         
         <div className="flex items-center gap-4">
           {/* Time Range Selector */}
-          <select 
-            value={selectedTimeRange}
-            onChange={(e) => setSelectedTimeRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            <option value="7">Last 7 days</option>
-            <option value="14">Last 14 days</option>
-            <option value="30">Last 30 days</option>
-            <option value="90">Last 90 days</option>
-          </select>
+          <DaysSelector 
+            selectedDays={selectedTimeRange}
+            onDaysChange={setSelectedTimeRange}
+            className="w-44"
+          />
           
           <Button variant="ghost" size="sm" onClick={fetchAnalyticsData}>
             <FiRefreshCw className="h-4 w-4 mr-2" />
@@ -381,15 +376,17 @@ const AnalyticsDashboard = () => {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Trend Analysis</h3>
           <div className="flex items-center gap-2">
-            <select 
+            <EnhancedDropdown
+              options={[
+                { value: 'success-rate', label: 'Success Rate' },
+                { value: 'response-time', label: 'Response Time' },
+                { value: 'execution-volume', label: 'Execution Volume' }
+              ]}
               value={selectedMetric}
-              onChange={(e) => setSelectedMetric(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="success-rate">Success Rate</option>
-              <option value="response-time">Response Time</option>
-              <option value="execution-volume">Execution Volume</option>
-            </select>
+              onChange={setSelectedMetric}
+              position="right"
+              className="w-48"
+            />
           </div>
         </div>
         
