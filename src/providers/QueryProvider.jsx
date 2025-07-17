@@ -23,6 +23,8 @@ const createQueryClient = () => {
         refetchOnWindowFocus: false,
         refetchOnReconnect: true,
         refetchOnMount: true,
+        // Structural sharing for better performance
+        structuralSharing: true
       },
       mutations: {
         // Global mutation configuration

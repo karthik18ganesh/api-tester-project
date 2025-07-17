@@ -13,17 +13,24 @@ import {
   MetricCard, QuickActionCard, TrendIndicator
 } from "../UI";
 import Breadcrumb from "./Breadcrumb";
-import { dashboard } from "../../utils/api";
+import { DashboardErrorBoundary } from "./DashboardErrorBoundary";
+import { DashboardSkeleton } from "./DashboardSkeleton";
+import { useDashboardData } from "../../hooks/useDashboardData";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState(null);
-  const [dashboardData, setDashboardData] = useState(null);
   const [selectedTimeRange, setSelectedTimeRange] = useState('7');
   const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Use React Query hook for optimized data fetching
+  const {
+    dashboardData,
+    isLoading,
+    isLoadingTrends,
+    error,
+    refetch,
+    lastUpdated
+  } = useDashboardData(selectedTimeRange);
 
   const timeRangeOptions = [
     { value: '1', label: 'Last 24 hours' },
@@ -32,93 +39,8 @@ const Dashboard = () => {
     { value: '90', label: 'Last 90 days' }
   ];
 
-  // Fetch all dashboard data
-  const fetchDashboardData = useCallback(async (showRefreshIndicator = false) => {
-    try {
-      if (showRefreshIndicator) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setError(null);
-
-      // Fetch all dashboard data in parallel
-      const [
-        metricsResponse,
-        summaryResponse,
-        successTrendResponse,
-        responseTrendResponse,
-        volumeTrendResponse,
-        environmentsResponse,
-        recentExecutionsResponse,
-        topPerformersResponse,
-        topFailuresResponse,
-        projectsResponse,
-        systemHealthResponse
-      ] = await Promise.all([
-        dashboard.getMetrics(),
-        dashboard.getSummary(),
-        dashboard.getSuccessRateTrend(parseInt(selectedTimeRange)),
-        dashboard.getResponseTimeTrend(parseInt(selectedTimeRange)),
-        dashboard.getExecutionVolumeTrend(parseInt(selectedTimeRange)),
-        dashboard.getEnvironmentMetrics(parseInt(selectedTimeRange)),
-        dashboard.getRecentExecutions(15),
-        dashboard.getTopPerformers(parseInt(selectedTimeRange), 10),
-        dashboard.getTopFailures(parseInt(selectedTimeRange), 10),
-        dashboard.getProjectMetrics(parseInt(selectedTimeRange)),
-        dashboard.getSystemHealth()
-      ]);
-
-      const data = {
-        metrics: metricsResponse.result?.data || {},
-        summary: summaryResponse.result?.data || {},
-        trends: {
-          successRate: successTrendResponse.result?.data || [],
-          responseTime: responseTrendResponse.result?.data || [],
-          executionVolume: volumeTrendResponse.result?.data || []
-        },
-        environments: environmentsResponse.result?.data || [],
-        recentExecutions: recentExecutionsResponse.result?.data || [],
-        topPerformers: topPerformersResponse.result?.data || [],
-        topFailures: topFailuresResponse.result?.data || [],
-        projects: projectsResponse.result?.data || [],
-        systemHealth: systemHealthResponse.result?.data || {}
-      };
-      setDashboardData(data);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError(err.message || 'Failed to load dashboard data');
-      
-      // Set fallback data structure on error
-      setDashboardData({
-        metrics: {},
-        summary: {},
-        trends: { successRate: [], responseTime: [], executionVolume: [] },
-        environments: [],
-        recentExecutions: [],
-        topPerformers: [],
-        topFailures: [],
-        projects: [],
-        systemHealth: {}
-      });
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [selectedTimeRange]);
-
-  // Auto-refresh dashboard data
-  useEffect(() => {
-    fetchDashboardData();
-    
-    // Set up auto-refresh every 5 minutes
-    const interval = setInterval(() => {
-      fetchDashboardData(true);
-    }, 300000);
-
-    return () => clearInterval(interval);
-  }, [fetchDashboardData]);
+  // Simple refresh function using React Query
+  const handleRefresh = () => refetch();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -178,11 +100,11 @@ const Dashboard = () => {
         
         <Button 
           variant="outline" 
-          onClick={() => fetchDashboardData(true)}
-          disabled={isRefreshing}
+          onClick={handleRefresh}
+          disabled={isLoading}
           className="flex items-center gap-2"
         >
-          <FiRefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <FiRefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>
@@ -475,35 +397,34 @@ const Dashboard = () => {
     </Card>
   );
 
-  if (isLoading) {
+  // Show skeleton during initial load
+  if (isLoading && !dashboardData?.metrics) {
     return (
-      <div className="p-6">
+      <div>
         <Breadcrumb />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <LoadingSpinner size="lg" />
-            <p className="text-gray-600 mt-4">Loading comprehensive dashboard...</p>
-          </div>
-        </div>
+        <DashboardSkeleton />
       </div>
     );
   }
 
-  if (error && !dashboardData) {
+  // Show error if complete failure and no cached data
+  if (error && !dashboardData?.metrics) {
     return (
       <div className="p-6">
         <Breadcrumb />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <FiAlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Dashboard</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => fetchDashboardData()} variant="primary">
-              <FiRefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
+        <DashboardErrorBoundary>
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <FiAlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to Load Dashboard</h3>
+              <p className="text-gray-600 mb-4">{error?.message || error}</p>
+              <Button onClick={handleRefresh} variant="primary">
+                <FiRefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
           </div>
-        </div>
+        </DashboardErrorBoundary>
       </div>
     );
   }
@@ -519,88 +440,103 @@ const Dashboard = () => {
       <DashboardHeader />
 
       {/* Main Metrics Grid - Top Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricCard
-          title="Total Test Cases"
-          value={metrics.totalTestCases?.toLocaleString() || '0'}
-          icon={FiTarget}
-          variant="purple"
-          onClick={() => navigate("/test-design/test-case")}
-        />
-        <MetricCard
-          title="Success Rate"
-          value={`${metrics.successRate || 0}%`}
-          icon={FiCheckCircle}
-          variant="success"
-        />
-        <MetricCard
-          title="Avg Response Time"
-          value={`${Number(metrics.averageResponseTime || 0).toFixed(4)}ms`}
-          icon={FiClock}
-          variant="info"
-        />
-        <MetricCard
-          title="Active Projects"
-          value={metrics.activeProjects || 0}
-          icon={FiUsers}
-          variant="orange"
-          onClick={() => navigate("/project-setup")}
-        />
-      </div>
+      <DashboardErrorBoundary>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            title="Total Test Cases"
+            value={metrics.totalTestCases?.toLocaleString() || '0'}
+            icon={FiTarget}
+            variant="purple"
+            onClick={() => navigate("/test-design/test-case")}
+          />
+          <MetricCard
+            title="Success Rate"
+            value={`${metrics.successRate || 0}%`}
+            icon={FiCheckCircle}
+            variant="success"
+          />
+          <MetricCard
+            title="Avg Response Time"
+            value={`${Number(metrics.averageResponseTime || 0).toFixed(4)}ms`}
+            icon={FiClock}
+            variant="info"
+          />
+          <MetricCard
+            title="Active Projects"
+            value={metrics.activeProjects || 0}
+            icon={FiUsers}
+            variant="orange"
+            onClick={() => navigate("/project-setup")}
+          />
+        </div>
 
-      {/* Secondary Metrics Grid - Bottom Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <MetricCard
-          title="Total Executions"
-          value={metrics.totalExecutions?.toLocaleString() || '0'}
-          icon={FiPlayCircle}
-          variant="pink"
-          onClick={() => navigate("/test-execution")}
-        />
-        <MetricCard
-          title="Passed Tests"
-          value={metrics.passedExecutions?.toLocaleString() || '0'}
-          icon={FiCheckCircle}
-          variant="success"
-        />
-        <MetricCard
-          title="Failed Tests"
-          value={metrics.failedExecutions?.toLocaleString() || '0'}
-          icon={FiXCircle}
-          variant="warning"
-        />
-        <MetricCard
-          title="Error Tests"
-          value={metrics.errorExecutions?.toLocaleString() || '0'}
-          icon={FiAlertTriangle}
-          variant="warning"
-        />
-        <MetricCard
-          title="Concurrent"
-          value={metrics.concurrentExecutions || 0}
-          icon={FiCpu}
-          variant="cyan"
-        />
-      </div>
+        {/* Secondary Metrics Grid - Bottom Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <MetricCard
+            title="Total Executions"
+            value={metrics.totalExecutions?.toLocaleString() || '0'}
+            icon={FiPlayCircle}
+            variant="pink"
+            onClick={() => navigate("/test-execution")}
+          />
+          <MetricCard
+            title="Passed Tests"
+            value={metrics.passedExecutions?.toLocaleString() || '0'}
+            icon={FiCheckCircle}
+            variant="success"
+          />
+          <MetricCard
+            title="Failed Tests"
+            value={metrics.failedExecutions?.toLocaleString() || '0'}
+            icon={FiXCircle}
+            variant="warning"
+          />
+          <MetricCard
+            title="Error Tests"
+            value={metrics.errorExecutions?.toLocaleString() || '0'}
+            icon={FiAlertTriangle}
+            variant="warning"
+          />
+          <MetricCard
+            title="Concurrent"
+            value={metrics.concurrentExecutions || 0}
+            icon={FiCpu}
+            variant="cyan"
+          />
+        </div>
+      </DashboardErrorBoundary>
 
       {/* Performance Trends and Environment Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <PerformanceChart trends={dashboardData?.trends || {}} />
-        <EnvironmentPerformance environments={dashboardData?.environments} />
-      </div>
+      <DashboardErrorBoundary>
+        {isLoadingTrends ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <DashboardSkeleton.Charts />
+            <DashboardSkeleton.Charts />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <PerformanceChart trends={dashboardData?.trends || {}} />
+            <EnvironmentPerformance environments={dashboardData?.environments} />
+          </div>
+        )}
+      </DashboardErrorBoundary>
 
       {/* Performance Leaders */}
-      <div className="mb-8">
-        <PerformanceLeaders 
-          topPerformers={dashboardData?.topPerformers} 
-          topFailures={dashboardData?.topFailures} 
-        />
-      </div>
+      <DashboardErrorBoundary>
+        <div className="mb-8">
+          <PerformanceLeaders 
+            topPerformers={dashboardData?.topPerformers} 
+            topFailures={dashboardData?.topFailures} 
+          />
+        </div>
+      </DashboardErrorBoundary>
 
       {/* Recent Executions */}
-      <div className="mb-8">
-        <RecentExecutions executions={dashboardData?.recentExecutions} />
-      </div>
+      <DashboardErrorBoundary>
+        <div className="mb-8">
+          <RecentExecutions executions={dashboardData?.recentExecutions} />
+        </div>
+      </DashboardErrorBoundary>
 
       {/* Quick Actions */}
       <div className="mb-8">
@@ -645,7 +581,7 @@ const Dashboard = () => {
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-center gap-2 text-yellow-800">
             <FiAlertTriangle className="h-4 w-4" />
-            <span className="text-sm">Some data may not be current due to API issues: {error}</span>
+            <span className="text-sm">Some data may not be current due to API issues: {error?.message || error}</span>
           </div>
         </div>
       )}
@@ -653,4 +589,11 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+// Export Dashboard wrapped with error boundary for complete protection
+const DashboardWithErrorBoundary = () => (
+  <DashboardErrorBoundary>
+    <Dashboard />
+  </DashboardErrorBoundary>
+);
+
+export default DashboardWithErrorBoundary;
