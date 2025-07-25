@@ -11,4 +11,5 @@ export { default as MetricCard, EnhancedMetricCard, CompactMetricCard } from './
 export { default as QuickActionCard } from './QuickActionCard';
 export * from './Charts';
 export * from './EmptyState';
-export * from './EnhancedDropdown'; 
+export * from './EnhancedDropdown';
+export { ModernPerformanceChart } from './ModernChart'; 

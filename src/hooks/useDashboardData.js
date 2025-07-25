@@ -12,16 +12,95 @@ const getTrendPercentage = (trends, metricName) => {
   return deltaMatch ? parseFloat(deltaMatch[1]) : 0;
 };
 
-// Transform trend data for chart components
-const transformTrendData = (trends) => {
+// Enhanced helper function to extract full trend information including color and direction
+const getTrendInfo = (trends, metricName) => {
+  const trend = trends?.find(t => t.metricName === metricName);
+  if (!trend) return { percentage: 0, direction: 'STABLE', color: 'gray', icon: '→' };
+  
+  // Extract percentage from delta string (e.g., "+5.2%" -> 5.2)
+  const deltaMatch = trend.delta.match(/([+-]?\d+\.?\d*)%/);
+  const percentage = deltaMatch ? parseFloat(deltaMatch[1]) : 0;
+  
+  return {
+    percentage,
+    direction: trend.trendDirection,
+    color: trend.trendColor,
+    icon: trend.trendIcon,
+    delta: trend.delta
+  };
+};
+
+// Helper function to fill missing dates with 0 values
+const fillMissingDates = (data, fromDate, toDate) => {
+  if (!data || data.length === 0) return [];
+  
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  const filledData = [];
+  const dataMap = new Map(data.map(item => [item.label, item.value]));
+  
+  // Generate all dates in range
+  const currentDate = new Date(start);
+  while (currentDate <= end) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    filledData.push({
+      label: dateStr,
+      value: dataMap.get(dateStr) || 0.0
+    });
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return filledData;
+};
+
+// Helper function to calculate statistics from data
+const calculateStats = (data) => {
+  if (!data || data.length === 0) {
+    return { average: 0, best: 0, worst: 0 };
+  }
+  
+  const values = data.map(item => item.value).filter(val => val != null && !isNaN(val));
+  if (values.length === 0) {
+    return { average: 0, best: 0, worst: 0 };
+  }
+  
+  const sum = values.reduce((acc, val) => acc + val, 0);
+  const average = sum / values.length;
+  const best = Math.max(...values);
+  const worst = Math.min(...values);
+  
+  return { average, best, worst };
+};
+
+// Transform trend data for chart components with date filling
+const transformTrendData = (trends, timeRange = '1') => {
   const successRateTrend = trends.find(t => t.metricName === 'Overall Success Rate');
   const responseTimeTrend = trends.find(t => t.metricName === 'Avg Response Time');
   const volumeTrend = trends.find(t => t.metricName === 'Tests Executed');
 
+  // Calculate date range for filling missing dates
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setDate(toDate.getDate() - parseInt(timeRange));
+  
+  const fromDateStr = fromDate.toISOString().split('T')[0];
+  const toDateStr = toDate.toISOString().split('T')[0];
+
+  // Fill missing dates and calculate stats
+  const successRateData = fillMissingDates(successRateTrend?.currentWindowData || [], fromDateStr, toDateStr);
+  const responseTimeData = fillMissingDates(responseTimeTrend?.currentWindowData || [], fromDateStr, toDateStr);
+  const executionVolumeData = fillMissingDates(volumeTrend?.currentWindowData || [], fromDateStr, toDateStr);
+
   return {
-    successRate: successRateTrend?.currentWindowData || [],
-    responseTime: responseTimeTrend?.currentWindowData || [],
-    executionVolume: volumeTrend?.currentWindowData || []
+    successRate: successRateData,
+    responseTime: responseTimeData,
+    executionVolume: executionVolumeData,
+    // Add statistics for each metric
+    stats: {
+      successRate: calculateStats(successRateData),
+      responseTime: calculateStats(responseTimeData),
+      executionVolume: calculateStats(executionVolumeData)
+    }
   };
 };
 
@@ -139,16 +218,16 @@ export const useDashboardData = (timeRange = '1') => {
       successRate: dashboardQuery.data.metrics.successRate,
       averageResponseTime: dashboardQuery.data.metrics.averageResponseTime,
       totalProjects: dashboardQuery.data.metrics.totalProjects,
-      totalExecutions: dashboardQuery.data.metrics.totalExecutions,
-      passedExecutions: dashboardQuery.data.metrics.passedExecutions,
-      failedExecutions: dashboardQuery.data.metrics.failedExecutions,
-      errorExecutions: dashboardQuery.data.metrics.errorExecutions,
+      totalExecutions: dashboardQuery.data.metrics.totalExecutedTests, // Updated field name
+      passedExecutions: (dashboardQuery.data.metrics.totalExecutedTests || 0) - (dashboardQuery.data.metrics.failedTests || 0), // Calculated
+      failedExecutions: dashboardQuery.data.metrics.failedTests,
+      errorExecutions: 0, // Not provided in new API, set to 0
       activeProjects: dashboardQuery.data.metrics.totalProjects,
-      throughputPerHour: Math.round(dashboardQuery.data.metrics.totalExecutions / 24) // Approximate
+      throughputPerHour: Math.round((dashboardQuery.data.metrics.totalExecutedTests || 0) / 24) // Approximate, using new field name
     },
 
-    // Transform trends data for chart components
-    trends: transformTrendData(dashboardQuery.data.metrics.trends || []),
+    // Transform trends data for chart components with timeRange
+    trends: transformTrendData(dashboardQuery.data.metrics.trends || [], timeRange),
 
     // Use real environment data from API
     environments: transformEnvironmentData(dashboardQuery.data.environments),
@@ -166,13 +245,22 @@ export const useDashboardData = (timeRange = '1') => {
     // Additional metadata
     metricsGeneratedAt: dashboardQuery.data.metrics.metricsGeneratedAt,
     
-    // Trend percentages for UI indicators
+    // Trend percentages for UI indicators (backward compatibility)
     trendPercentages: {
       successRate: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Overall Success Rate'),
       responseTime: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Avg Response Time'),
       executionVolume: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Tests Executed'),
       failedTests: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Failed Tests'),
       totalTestCases: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Total Test Cases')
+    },
+
+    // Enhanced trend information with direction, color, and icons
+    trendInfo: {
+      successRate: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Overall Success Rate'),
+      responseTime: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Avg Response Time'),
+      executionVolume: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Tests Executed'),
+      failedTests: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Failed Tests'),
+      totalTestCases: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Total Test Cases')
     }
   } : null;
 

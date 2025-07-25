@@ -6,7 +6,8 @@ export const EnhancedMetricCard = ({
   title,
   value,
   subtitle,
-  trend,
+  trend, // Can be number (backward compatibility) or trend object
+  trendInfo, // Enhanced trend information with direction, color, icon
   chartData,
   chartType = "line",
   showChart = false, // Add explicit control for chart display
@@ -61,12 +62,32 @@ export const EnhancedMetricCard = ({
             <p className="text-sm text-gray-600 font-medium mb-1">{title}</p>
             <div className="flex items-baseline gap-2">
               <p className="text-3xl font-bold text-gray-900">{value}</p>
-              {trend && (
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold
-                  ${trend > 0 ? 'bg-green-100 text-green-700' : trend < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {trend > 0 ? '↗' : trend < 0 ? '↘' : '→'} {Math.abs(trend)}%
-                </div>
-              )}
+              {(trend || trendInfo) && (() => {
+                // Use enhanced trend info if available, otherwise fallback to simple trend
+                const info = trendInfo || {
+                  percentage: trend,
+                  direction: trend > 0 ? 'UP' : trend < 0 ? 'DOWN' : 'STABLE',
+                  color: trend > 0 ? 'green' : trend < 0 ? 'red' : 'gray',
+                  icon: trend > 0 ? '↗' : trend < 0 ? '↘' : '→'
+                };
+                
+                const colorClasses = {
+                  'green': 'bg-green-100 text-green-700',
+                  'red': 'bg-red-100 text-red-700',
+                  'gray': 'bg-gray-100 text-gray-600',
+                  'yellow': 'bg-yellow-100 text-yellow-700',
+                  'blue': 'bg-blue-100 text-blue-700'
+                };
+                
+                const bgClass = colorClasses[info.color] || 'bg-gray-100 text-gray-600';
+                
+                return (
+                  <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${bgClass}`}>
+                    <span>{info.icon}</span>
+                    <span>{Math.abs(info.percentage)}%</span>
+                  </div>
+                );
+              })()}
             </div>
             {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
           </div>
@@ -132,6 +153,7 @@ export const CompactMetricCard = ({
   icon: Icon, 
   status = "info",
   trend = 0,
+  trendInfo, // Enhanced trend information
   className = "",
   onClick
 }) => {
@@ -164,12 +186,31 @@ export const CompactMetricCard = ({
         </div>
       </div>
       
-      {trend !== 0 && (
-        <div className={`text-xs font-semibold px-2 py-1 rounded-full
-          ${trend > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-          {trend > 0 ? '+' : ''}{trend}%
-        </div>
-      )}
+      {(trend !== 0 || trendInfo) && (() => {
+        // Use enhanced trend info if available, otherwise fallback to simple trend
+        const info = trendInfo || {
+          percentage: trend,
+          direction: trend > 0 ? 'UP' : trend < 0 ? 'DOWN' : 'STABLE',
+          color: trend > 0 ? 'green' : trend < 0 ? 'red' : 'gray',
+          icon: trend > 0 ? '+' : trend < 0 ? '' : ''
+        };
+        
+        const colorClasses = {
+          'green': 'bg-green-100 text-green-700',
+          'red': 'bg-red-100 text-red-700',
+          'gray': 'bg-gray-100 text-gray-600',
+          'yellow': 'bg-yellow-100 text-yellow-700',
+          'blue': 'bg-blue-100 text-blue-700'
+        };
+        
+        const bgClass = colorClasses[info.color] || 'bg-gray-100 text-gray-600';
+        
+        return (
+          <div className={`text-xs font-semibold px-2 py-1 rounded-full ${bgClass}`}>
+            {info.percentage > 0 && !info.icon.includes('→') ? '+' : ''}{info.percentage}%
+          </div>
+        );
+      })()}
     </div>
   );
 

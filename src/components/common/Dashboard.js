@@ -9,10 +9,11 @@ import {
   FiCpu, FiHeart, FiTrendingDown, FiPlay
 } from "react-icons/fi";
 import { 
-  Card, Badge, Button, LoadingSpinner, LineChart, 
+  Card, Badge, Button, LoadingSpinner,
   MetricCard, QuickActionCard, TrendIndicator, EnhancedMetricCard,
   CompactMetricCard, EmptyChartState, EmptyPerformanceState,
-  EmptyEnvironmentState, EnhancedLineChart, EnhancedDropdown, DaysSelector
+  EmptyEnvironmentState, EnhancedDropdown, DaysSelector,
+  ModernPerformanceChart
 } from "../UI";
 import Breadcrumb from "./Breadcrumb";
 import { DashboardErrorBoundary } from "./DashboardErrorBoundary";
@@ -79,86 +80,147 @@ const Dashboard = () => {
     </div>
   );
 
-  // Enhanced Performance Chart Component with better empty states
-  const EnhancedPerformanceChart = ({ trends }) => {
+  // Modern Performance Chart Component with ApexCharts
+  const ModernPerformanceTrends = ({ trends }) => {
     const [selectedTrend, setSelectedTrend] = useState('successRate');
     
     const trendOptions = [
-      { key: 'successRate', label: 'Success Rate', data: trends.successRate, icon: FiTrendingUp, color: '#10b981' },
-      { key: 'responseTime', label: 'Response Time', data: trends.responseTime, icon: FiClock, color: '#3b82f6' },
-      { key: 'executionVolume', label: 'Execution Volume', data: trends.executionVolume, icon: FiActivity, color: '#8b5cf6' }
+      { 
+        key: 'successRate', 
+        label: 'Success Rate', 
+        data: trends.successRate || [], 
+        icon: FiTrendingUp, 
+        color: '#10b981',
+        yAxisLabel: 'Success Rate (%)',
+        unit: '%'
+      },
+      { 
+        key: 'responseTime', 
+        label: 'Response Time', 
+        data: trends.responseTime || [], 
+        icon: FiClock, 
+        color: '#3b82f6',
+        yAxisLabel: 'Response Time (ms)',
+        unit: 'ms'
+      },
+      { 
+        key: 'executionVolume', 
+        label: 'Execution Volume', 
+        data: trends.executionVolume || [], 
+        icon: FiActivity, 
+        color: '#8b5cf6',
+        yAxisLabel: 'Tests Executed',
+        unit: ''
+      }
     ];
 
     const currentTrend = trendOptions.find(t => t.key === selectedTrend);
+    const currentStats = trends.stats?.[selectedTrend];
+
+    // Format stat values based on the metric type
+    const formatStatValue = (value, unit) => {
+      if (!value && value !== 0) return 'N/A';
+      
+      if (unit === '%') {
+        return `${value.toFixed(1)}%`;
+      } else if (unit === 'ms') {
+        return `${Math.round(value)}ms`;
+      } else {
+        return Math.round(value).toLocaleString();
+      }
+    };
 
     return (
       <Card className="p-6 shadow-elegant h-full hover-lift transition-all duration-300">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-info rounded-xl flex items-center justify-center shadow-sm">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
               <FiTrendingUp className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-xl font-semibold text-gray-900">Performance Trends</h3>
-              <p className="text-sm text-gray-500">Last 30 days overview</p>
+              <p className="text-sm text-gray-500">Interactive performance analytics</p>
             </div>
           </div>
           
-          {/* Enhanced Metric Selector */}
-          <div className="flex bg-gray-100 rounded-xl p-1">
+          {/* Modern Metric Selector */}
+          <div className="flex bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-1 shadow-inner">
             {trendOptions.map(option => (
               <button
                 key={option.key}
                 onClick={() => setSelectedTrend(option.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2 relative
                   ${selectedTrend === option.key 
-                    ? 'bg-white text-gray-900 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'}`}
+                    ? 'bg-white text-gray-900 shadow-md transform scale-105' 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'}`}
               >
                 <option.icon className="w-4 h-4" />
                 {option.label}
+                {selectedTrend === option.key && (
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full"></div>
+                )}
               </button>
             ))}
           </div>
         </div>
         
-        {/* Chart Container with Enhanced Styling */}
+        {/* Chart Container with Modern Styling */}
         <div className="relative">
-          <div className="h-80 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-100 p-4">
-            {currentTrend?.data && currentTrend.data.length > 0 ? (
-              <EnhancedLineChart 
-                data={currentTrend.data}
-                color={currentTrend.color}
-                height={280}
-                showGrid={true}
-                showPoints={true}
-                gradient={true}
-              />
-            ) : (
-              <EmptyChartState 
-                icon={currentTrend?.icon}
-                title="No Performance Data"
-                description="Run some tests to see performance trends here"
-                actionText="Start Testing"
-                onAction={() => navigate("/test-execution")}
-              />
-            )}
+          <div className="h-80 bg-gradient-to-br from-gray-50/50 to-white rounded-2xl border border-gray-100/50 p-1 shadow-inner">
+            <div className="h-full bg-white rounded-xl p-4">
+              {currentTrend?.data && currentTrend.data.length > 0 ? (
+                <ModernPerformanceChart 
+                  data={currentTrend.data}
+                  color={currentTrend.color}
+                  title={currentTrend.label}
+                  yAxisLabel={currentTrend.yAxisLabel}
+                  height={280}
+                  showGrid={true}
+                  showPoints={true}
+                  gradient={true}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                      {currentTrend?.icon && <currentTrend.icon className="w-8 h-8 text-gray-400" />}
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">No Performance Data</h4>
+                    <p className="text-sm text-gray-500 mb-4">Run some tests to see performance trends here</p>
+                    <Button 
+                      variant="primary" 
+                      size="sm"
+                      onClick={() => navigate("/test-execution")}
+                    >
+                      <FiPlay className="w-4 h-4 mr-2" />
+                      Start Testing
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* Chart Statistics */}
-          {currentTrend?.data && currentTrend.data.length > 0 && (
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Average</p>
-                <p className="text-lg font-semibold text-gray-900">92.4%</p>
+          {/* Dynamic Chart Statistics */}
+          {currentTrend?.data && currentTrend.data.length > 0 && currentStats && (
+            <div className="grid grid-cols-3 gap-4 mt-6">
+              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                <p className="text-xs text-blue-600 font-medium mb-2 uppercase tracking-wide">Average</p>
+                <p className="text-xl font-bold text-blue-900">
+                  {formatStatValue(currentStats.average, currentTrend.unit)}
+                </p>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Best</p>
-                <p className="text-lg font-semibold text-green-600">98.7%</p>
+              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                <p className="text-xs text-green-600 font-medium mb-2 uppercase tracking-wide">Best</p>
+                <p className="text-xl font-bold text-green-900">
+                  {formatStatValue(currentStats.best, currentTrend.unit)}
+                </p>
               </div>
-              <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Worst</p>
-                <p className="text-lg font-semibold text-red-600">84.2%</p>
+              <div className="text-center p-4 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl border border-red-100">
+                <p className="text-xs text-red-600 font-medium mb-2 uppercase tracking-wide">Worst</p>
+                <p className="text-xl font-bold text-red-900">
+                  {formatStatValue(currentStats.worst, currentTrend.unit)}
+                </p>
               </div>
             </div>
           )}
@@ -492,6 +554,7 @@ const Dashboard = () => {
                 value={`${metrics.successRate || 0}%`}
                 subtitle="Last 7 days"
                 trend={dashboardData?.trendPercentages?.successRate || 0}
+                trendInfo={dashboardData?.trendInfo?.successRate}
                 showChart={false}
                 icon={FiCheckCircle}
                 priority="high"
@@ -506,6 +569,7 @@ const Dashboard = () => {
                 value={`${metrics.averageResponseTime || 0}ms`}
                 subtitle="Average response time"
                 trend={dashboardData?.trendPercentages?.responseTime || 0}
+                trendInfo={dashboardData?.trendInfo?.responseTime}
                 showChart={false}
                 icon={FiClock}
                 priority="normal"
@@ -517,6 +581,7 @@ const Dashboard = () => {
                 value={metrics.totalExecutions?.toLocaleString() || '0'}
                 subtitle="Total executions"
                 trend={dashboardData?.trendPercentages?.executionVolume || 0}
+                trendInfo={dashboardData?.trendInfo?.executionVolume}
                 showChart={false}
                 icon={FiActivity}
                 priority="normal"
@@ -542,6 +607,7 @@ const Dashboard = () => {
               icon={FiXCircle}
               status="warning"
               trend={dashboardData?.trendPercentages?.failedTests || 0}
+              trendInfo={dashboardData?.trendInfo?.failedTests}
             />
             <CompactMetricCard
               title="Total Test Cases"
@@ -549,6 +615,7 @@ const Dashboard = () => {
               icon={FiTarget}
               status="success"
               trend={dashboardData?.trendPercentages?.totalTestCases || 0}
+              trendInfo={dashboardData?.trendInfo?.totalTestCases}
               onClick={() => navigate("/test-design/test-case")}
             />
             <CompactMetricCard
@@ -577,7 +644,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
               {/* Performance Trends - Takes more space */}
               <div className="xl:col-span-2">
-                <EnhancedPerformanceChart trends={dashboardData?.trends || {}} />
+                <ModernPerformanceTrends trends={dashboardData?.trends || {}} />
               </div>
               
               {/* Environment Status - Compact sidebar */}

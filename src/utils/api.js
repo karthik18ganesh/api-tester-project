@@ -693,7 +693,7 @@ export const dashboard = {
   // Get unified dashboard metrics with date range
   getMetrics: async (timeRange = '7') => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
-    return api(`/api/v1/dashboard/metrics?fromDate=${fromDate}&toDate=${toDate}`, "GET");
+    return api(`/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`, "GET");
   },
 
   // Legacy methods for backward compatibility - all use the unified endpoint
