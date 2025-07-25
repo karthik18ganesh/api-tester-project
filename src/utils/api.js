@@ -760,6 +760,12 @@ export const dashboard = {
   getEnvironmentStatus: async (projectId, timeRange = '7') => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
     return api(`/api/v1/dashboard/environment-status?projectId=${projectId}&fromDate=${fromDate}&toDate=${toDate}`, "GET");
+  },
+
+  // Get suite performers for top performers and needs attention sections
+  getSuitePerformers: async (timeRange = '7') => {
+    const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
+    return api(`/api/v1/dashboard/suite-performers?fromDate=${fromDate}&toDate=${toDate}`, "GET");
   }
 };
 

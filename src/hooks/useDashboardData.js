@@ -154,16 +154,50 @@ const getMockRecentExecutions = () => [
   }
 ];
 
-const getMockTopPerformers = () => [
-  { name: 'User Management API', successRate: 98, executionCount: 145 },
-  { name: 'Payment Gateway Tests', successRate: 96, executionCount: 120 },
-  { name: 'Search API Suite', successRate: 94, executionCount: 98 }
-];
+// Transform suite performers data into top performers and needs attention
+const transformSuitePerformers = (suiteData) => {
+  console.log('🔧 Transforming suite performers data:', suiteData);
+  
+  if (!suiteData || !Array.isArray(suiteData)) {
+    console.log('⚠️ No suite data or not an array');
+    return { topPerformers: [], needsAttention: [] };
+  }
 
-const getMockTopFailures = () => [
-  { name: 'Legacy Integration Tests', successRate: 45, executionCount: 67 },
-  { name: 'Third-party API Tests', successRate: 62, executionCount: 54 }
-];
+  // Sort by success rate descending
+  const sortedSuites = suiteData.sort((a, b) => b.successRate - a.successRate);
+
+  // Categorize based on success rate (>65 = top performers, <=65 = needs attention)
+  const topPerformers = sortedSuites
+    .filter(suite => suite.successRate > 65)
+    .map(suite => ({
+      id: suite.id,
+      name: suite.name,
+      successRate: Math.round(suite.successRate * 100) / 100, // Round to 2 decimal places
+      executionCount: suite.totalExecutions,
+      totalTestCases: suite.totalTestCases,
+      averageResponseTime: suite.averageResponseTime,
+      type: suite.type
+    }));
+
+  const needsAttention = sortedSuites
+    .filter(suite => suite.successRate <= 65)
+    .map(suite => ({
+      id: suite.id,
+      name: suite.name,
+      successRate: Math.round(suite.successRate * 100) / 100, // Round to 2 decimal places
+      executionCount: suite.totalExecutions,
+      totalTestCases: suite.totalTestCases,
+      averageResponseTime: suite.averageResponseTime,
+      type: suite.type
+    }));
+
+  console.log('✅ Transformed suite performers:', { 
+    topPerformers: topPerformers.length, 
+    needsAttention: needsAttention.length 
+  });
+
+  return { topPerformers, needsAttention };
+};
 
 // Custom hook for unified dashboard data
 export const useDashboardData = (timeRange = '1') => {
@@ -184,22 +218,28 @@ export const useDashboardData = (timeRange = '1') => {
       const environmentPromise = activeProject?.id 
         ? dashboard.getEnvironmentStatus(activeProject.id, timeRange)
         : Promise.resolve({ result: { data: [] } });
+
+      // Fetch suite performers data
+      const suitePerformersPromise = dashboard.getSuitePerformers(timeRange);
       
-      console.log('📊 Fetching metrics and environment data...');
+      console.log('📊 Fetching metrics, environment, and suite performers data...');
       
-      const [metricsResponse, environmentResponse] = await Promise.all([
+      const [metricsResponse, environmentResponse, suitePerformersResponse] = await Promise.all([
         metricsPromise,
-        environmentPromise
+        environmentPromise,
+        suitePerformersPromise
       ]);
       
       console.log('✅ API Responses:', { 
         metricsData: metricsResponse.result?.data, 
-        environmentData: environmentResponse.result?.data 
+        environmentData: environmentResponse.result?.data,
+        suitePerformersData: suitePerformersResponse.result?.data
       });
       
       return {
         metrics: metricsResponse.result?.data,
-        environments: environmentResponse.result?.data || []
+        environments: environmentResponse.result?.data || [],
+        suitePerformers: suitePerformersResponse.result?.data || []
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -232,10 +272,17 @@ export const useDashboardData = (timeRange = '1') => {
     // Use real environment data from API
     environments: transformEnvironmentData(dashboardQuery.data.environments),
     
+    // Transform suite performers data
+    ...(() => {
+      const performers = transformSuitePerformers(dashboardQuery.data.suitePerformers);
+      return {
+        topPerformers: performers.topPerformers,
+        topFailures: performers.needsAttention // Rename for UI compatibility
+      };
+    })(),
+    
     // Use mock data for features not yet in unified response
     recentExecutions: getMockRecentExecutions(),
-    topPerformers: getMockTopPerformers(),
-    topFailures: getMockTopFailures(),
 
     // System health can be derived from success rate
     systemHealth: {
