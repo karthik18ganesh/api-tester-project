@@ -9,52 +9,99 @@ import {
   ProgressBar, MetricCardWithChart, TrendIndicator, EnhancedDropdown, DaysSelector
 } from "../UI";
 import { dashboard } from "../../utils/api";
+import { useProjectStore } from "../../stores/projectStore";
 
 const AnalyticsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [selectedTimeRange, setSelectedTimeRange] = useState('7');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1');
   const [selectedMetric, setSelectedMetric] = useState('success-rate');
+  
+  // Get active project from store
+  const { activeProject } = useProjectStore();
 
-  // Fetch analytics data
+  // Helper function to extract trend percentage from delta string
+  const getTrendPercentage = (trends, metricName) => {
+    const trend = trends?.find(t => t.metricName === metricName);
+    if (!trend) return 0;
+    
+    // Extract percentage from delta string (e.g., "+5.2%" -> 5.2)
+    const deltaMatch = trend.delta.match(/([+-]?\d+\.?\d*)%/);
+    return deltaMatch ? parseFloat(deltaMatch[1]) : 0;
+  };
+
+  // Fetch analytics data using unified API
   const fetchAnalyticsData = useCallback(async () => {
     try {
       setIsLoading(true);
       
-      // Fetch multiple data sources in parallel
-      const [
-        metricsResponse,
-        successTrendResponse,
-        responseTrendResponse,
-        volumeTrendResponse,
-        environmentResponse,
-        topPerformersResponse,
-        topFailuresResponse
-      ] = await Promise.all([
-        dashboard.getMetrics(),
-        dashboard.getSuccessRateTrend(parseInt(selectedTimeRange)),
-        dashboard.getResponseTimeTrend(parseInt(selectedTimeRange)),
-        dashboard.getExecutionVolumeTrend(parseInt(selectedTimeRange)),
-        dashboard.getEnvironmentMetrics(parseInt(selectedTimeRange)),
-        dashboard.getTopPerformers(parseInt(selectedTimeRange), 10),
-        dashboard.getTopFailures(parseInt(selectedTimeRange), 10)
+      // Check if we have an active project
+      if (!activeProject?.id) {
+        console.warn('No active project found');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Fetch both metrics and environment status in parallel
+      const [metricsResponse, environmentResponse] = await Promise.all([
+        dashboard.getMetrics(selectedTimeRange),
+        dashboard.getEnvironmentStatus(activeProject.id, selectedTimeRange)
       ]);
+      
+      const data = metricsResponse.result?.data;
+      const environmentData = environmentResponse.result?.data || [];
 
-      setAnalyticsData({
-        metrics: metricsResponse.result?.data,
-        successTrend: successTrendResponse.result?.data,
-        responseTrend: responseTrendResponse.result?.data,
-        volumeTrend: volumeTrendResponse.result?.data,
-        environments: environmentResponse.result?.data,
-        topPerformers: topPerformersResponse.result?.data,
-        topFailures: topFailuresResponse.result?.data
-      });
+      if (data) {
+        // Transform trends data for chart components
+        const trends = data.trends || [];
+        const successTrend = trends.find(t => t.metricName === 'Overall Success Rate');
+        const responseTrend = trends.find(t => t.metricName === 'Avg Response Time');
+        const volumeTrend = trends.find(t => t.metricName === 'Tests Executed');
+
+        // Transform environment data from API response
+        const transformedEnvironments = environmentData.map(env => ({
+          environmentName: env.environment_name,
+          successRate: env.success_rate,
+          totalExecutions: env.total_executions,
+          environmentId: env.environment_id,
+          totalTestCases: env.total_test_cases
+        }));
+
+        setAnalyticsData({
+          metrics: {
+            ...data,
+            // Calculate throughput from total executions
+            throughputPerHour: Math.round(data.totalExecutions / 24),
+            // Add system health score based on success rate
+            systemHealth: {
+              healthScore: Math.round(data.successRate || 0)
+            },
+            // Include trends for metric cards
+            trends: data.trends
+          },
+          successTrend: successTrend?.currentWindowData || [],
+          responseTrend: responseTrend?.currentWindowData || [],
+          volumeTrend: volumeTrend?.currentWindowData || [],
+          // Use real environment data from API
+          environments: transformedEnvironments,
+          // Mock top performers and failures until backend provides them
+          topPerformers: [
+            { name: 'User Management API', successRate: 98 },
+            { name: 'Payment Gateway Tests', successRate: 96 },
+            { name: 'Search API Suite', successRate: 94 }
+          ],
+          topFailures: [
+            { name: 'Legacy Integration Tests', successRate: 45 },
+            { name: 'Third-party API Tests', successRate: 62 }
+          ]
+        });
+      }
     } catch (error) {
       console.error('Analytics fetch error:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTimeRange]);
+  }, [selectedTimeRange, activeProject?.id]);
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -111,6 +158,21 @@ const AnalyticsDashboard = () => {
     }));
   };
 
+  // Show message if no active project
+  if (!activeProject?.id) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen bg-gray-50">
+        <Card className="p-8 text-center max-w-md">
+          <FiTarget className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Project</h3>
+          <p className="text-gray-600">
+            Please select an active project to view analytics dashboard.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -166,7 +228,7 @@ const AnalyticsDashboard = () => {
           title="Success Rate Trend"
           value={`${analyticsData?.metrics?.successRate || 0}%`}
           subtitle="Average success rate"
-          trend={analyticsData?.successTrend?.[0]?.changePercentage}
+          trend={getTrendPercentage(analyticsData?.metrics?.trends, 'Overall Success Rate')}
           chartData={analyticsData?.successTrend}
           chartType="line"
           icon={FiTrendingUp}
@@ -175,8 +237,9 @@ const AnalyticsDashboard = () => {
         
         <MetricCardWithChart
           title="Response Time"
-          value={`${Number(analyticsData?.metrics?.averageResponseTime || 0).toFixed(4)}ms`}
+          value={`${analyticsData?.metrics?.averageResponseTime || 0}ms`}
           subtitle="Average response time"
+          trend={getTrendPercentage(analyticsData?.metrics?.trends, 'Avg Response Time')}
           chartData={analyticsData?.responseTrend}
           chartType="line"
           icon={FiZap}
@@ -187,6 +250,7 @@ const AnalyticsDashboard = () => {
           title="Execution Volume"
           value={analyticsData?.metrics?.totalExecutions?.toLocaleString() || '0'}
           subtitle="Total executions"
+          trend={getTrendPercentage(analyticsData?.metrics?.trends, 'Tests Executed')}
           chartData={analyticsData?.volumeTrend}
           chartType="bar"
           icon={FiActivity}
@@ -259,28 +323,40 @@ const AnalyticsDashboard = () => {
             <FiServer className="h-5 w-5 text-gray-500" />
           </div>
           
-          <BarChart 
-            data={getEnvironmentComparisonData()}
-            height={200}
-            title=""
-          />
-          
-          <div className="mt-6 space-y-3">
-            {analyticsData?.environments?.map((env, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700">{env.environmentName}</span>
-                  <span className="text-gray-500">{env.totalExecutions} executions</span>
-                </div>
-                <ProgressBar 
-                  value={env.successRate}
-                  height="h-2"
-                  label=""
-                  showPercentage={false}
-                />
+          {analyticsData?.environments?.length > 0 ? (
+            <>
+              <BarChart 
+                data={getEnvironmentComparisonData()}
+                height={200}
+                title=""
+              />
+              
+              <div className="mt-6 space-y-3">
+                {analyticsData.environments.map((env, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">{env.environmentName}</span>
+                      <span className="text-gray-500">{env.totalExecutions} executions</span>
+                    </div>
+                    <ProgressBar 
+                      value={env.successRate}
+                      height="h-2"
+                      label=""
+                      showPercentage={false}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center h-48 text-center">
+              <div>
+                <FiServer className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">No environment data available</p>
+                <p className="text-gray-400 text-xs mt-1">Execute some tests to see environment performance</p>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Response Time Distribution */}
@@ -299,7 +375,7 @@ const AnalyticsDashboard = () => {
           <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
               <div className="text-lg font-bold text-gray-900">
-                {Number(analyticsData?.metrics?.averageResponseTime || 0).toFixed(4)}ms
+                {analyticsData?.metrics?.averageResponseTime || 0}ms
               </div>
               <div className="text-gray-500">Average</div>
             </div>

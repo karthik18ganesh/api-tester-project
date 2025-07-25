@@ -673,66 +673,77 @@ export const assertions = {
   }
 };
 
-// Dashboard specific endpoints
+// Dashboard specific endpoints  
 export const dashboard = {
-  // Get complete dashboard metrics
-  getMetrics: async () => {
-    return api("/api/v1/dashboard/metrics", "GET");
+  // Utility method to convert days to date range
+  getDateRangeFromDays: (days) => {
+    const toDate = new Date();
+    const fromDate = new Date();
+    fromDate.setDate(toDate.getDate() - parseInt(days));
+    
+    const dateRange = {
+      fromDate: fromDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      toDate: toDate.toISOString().split('T')[0]
+    };
+    
+    debugLog(`Date range for ${days} days:`, dateRange);
+    return dateRange;
   },
 
-  // Get dashboard summary (lightweight)
-  getSummary: async () => {
-    return api("/api/v1/dashboard/summary", "GET");
+  // Get unified dashboard metrics with date range
+  getMetrics: async (timeRange = '7') => {
+    const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
+    return api(`/api/v1/dashboard/metrics?fromDate=${fromDate}&toDate=${toDate}`, "GET");
   },
 
-  // Get metrics for date range
-  getMetricsForRange: async (fromDate, toDate) => {
-    return api(`/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`, "GET");
+  // Legacy methods for backward compatibility - all use the unified endpoint
+  getSummary: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get success rate trend
-  getSuccessRateTrend: async (days = 7) => {
-    return api(`/api/v1/dashboard/trends/success-rate?days=${days}`, "GET");
+  getMetricsForRange: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get response time trend
-  getResponseTimeTrend: async (days = 7) => {
-    return api(`/api/v1/dashboard/trends/response-time?days=${days}`, "GET");
+  getSuccessRateTrend: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get execution volume trend
-  getExecutionVolumeTrend: async (days = 7) => {
-    return api(`/api/v1/dashboard/trends/execution-volume?days=${days}`, "GET");
+  getResponseTimeTrend: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get environment metrics
-  getEnvironmentMetrics: async (days = 7) => {
-    return api(`/api/v1/dashboard/environments?days=${days}`, "GET");
+  getExecutionVolumeTrend: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get recent executions
-  getRecentExecutions: async (limit = 10) => {
-    return api(`/api/v1/dashboard/recent-executions?limit=${limit}`, "GET");
+  getEnvironmentMetrics: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get top performing test suites
-  getTopPerformers: async (days = 7, limit = 5) => {
-    return api(`/api/v1/dashboard/top-performers?days=${days}&limit=${limit}`, "GET");
+  getRecentExecutions: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get top failing test suites
-  getTopFailures: async (days = 7, limit = 5) => {
-    return api(`/api/v1/dashboard/top-failures?days=${days}&limit=${limit}`, "GET");
+  getTopPerformers: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get project metrics
-  getProjectMetrics: async (days = 30) => {
-    return api(`/api/v1/dashboard/projects?days=${days}`, "GET");
+  getTopFailures: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
   },
 
-  // Get system health
-  getSystemHealth: async () => {
-    return api("/api/v1/dashboard/system-health", "GET");
+  getProjectMetrics: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
+  },
+
+  getSystemHealth: async (timeRange = '7') => {
+    return dashboard.getMetrics(timeRange);
+  },
+
+  // Legacy utility method for backward compatibility - now returns days directly
+  getFilterFromDays: (days) => {
+    return days.toString();
   },
 
   // Refresh cache
@@ -743,6 +754,12 @@ export const dashboard = {
   // Health check
   healthCheck: async () => {
     return api("/api/v1/dashboard/health", "GET");
+  },
+
+  // Get environment status for a specific project
+  getEnvironmentStatus: async (projectId, timeRange = '7') => {
+    const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
+    return api(`/api/v1/dashboard/environment-status?projectId=${projectId}&fromDate=${fromDate}&toDate=${toDate}`, "GET");
   }
 };
 

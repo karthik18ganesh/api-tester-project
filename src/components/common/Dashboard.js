@@ -21,7 +21,7 @@ import { useDashboardData } from "../../hooks/useDashboardData";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [selectedTimeRange, setSelectedTimeRange] = useState('7');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('1');
 
   // Use React Query hook for optimized data fetching
   const {
@@ -491,7 +491,7 @@ const Dashboard = () => {
                 title="Overall Success Rate"
                 value={`${metrics.successRate || 0}%`}
                 subtitle="Last 7 days"
-                trend={5.2}
+                trend={dashboardData?.trendPercentages?.successRate || 0}
                 showChart={false}
                 icon={FiCheckCircle}
                 priority="high"
@@ -503,9 +503,9 @@ const Dashboard = () => {
               {/* Secondary Metrics */}
               <EnhancedMetricCard
                 title="Avg Response Time"
-                value={`${Number(metrics.averageResponseTime || 0).toFixed(0)}ms`}
-                subtitle="↓ 23ms from yesterday"
-                trend={-8.5}
+                value={`${metrics.averageResponseTime || 0}ms`}
+                subtitle="Average response time"
+                trend={dashboardData?.trendPercentages?.responseTime || 0}
                 showChart={false}
                 icon={FiClock}
                 priority="normal"
@@ -515,8 +515,8 @@ const Dashboard = () => {
               <EnhancedMetricCard
                 title="Tests Executed"
                 value={metrics.totalExecutions?.toLocaleString() || '0'}
-                subtitle="Today"
-                trend={12.3}
+                subtitle="Total executions"
+                trend={dashboardData?.trendPercentages?.executionVolume || 0}
                 showChart={false}
                 icon={FiActivity}
                 priority="normal"
@@ -529,7 +529,7 @@ const Dashboard = () => {
           {/* Secondary Metrics Row - Compact Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <CompactMetricCard
-              title="Active Projects"
+              title="Total Projects"
               value={metrics.activeProjects || 0}
               icon={FiUsers}
               status="info"
@@ -541,14 +541,14 @@ const Dashboard = () => {
               value={metrics.failedExecutions?.toLocaleString() || '0'}
               icon={FiXCircle}
               status="warning"
-              trend={-25}
+              trend={dashboardData?.trendPercentages?.failedTests || 0}
             />
             <CompactMetricCard
               title="Total Test Cases"
               value={metrics.totalTestCases?.toLocaleString() || '0'}
               icon={FiTarget}
               status="success"
-              trend={5.5}
+              trend={dashboardData?.trendPercentages?.totalTestCases || 0}
               onClick={() => navigate("/test-design/test-case")}
             />
             <CompactMetricCard
@@ -556,7 +556,7 @@ const Dashboard = () => {
               value={(dashboardData?.environments?.length || 0).toString()}
               icon={FiServer}
               status="success"
-              trend={3.2}
+              trend={0}
               onClick={() => navigate("/admin/environment-setup")}
             />
           </div>

@@ -54,6 +54,7 @@ export const EnhancedDropdown = ({
 // Days selector using native select
 export const DaysSelector = ({ selectedDays, onDaysChange, className = "" }) => {
   const daysOptions = [
+    { value: "1", label: "Last 24 hours" },
     { value: "7", label: "Last 7 days" },
     { value: "14", label: "Last 14 days" },
     { value: "30", label: "Last 30 days" },
