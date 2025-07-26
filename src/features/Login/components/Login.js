@@ -67,6 +67,7 @@ const Login = () => {
           },
           token: data.token,
           userId: data.userId,
+          role: data.role,
         });
 
         toast.success(message);

@@ -75,6 +75,9 @@ const ExecutionDetailsView = lazy(() =>
 const FunctionsVariables = lazy(() => 
   import("./features/FunctionsVariables/FunctionsVariables")
 );
+const UserManagement = lazy(() => 
+  import("./features/UserManagement/components/UserManagement")
+);
 
 // Enhanced loading component with skeleton
 const EnhancedLoadingSpinner = () => (
@@ -287,6 +290,16 @@ const EnhancedApp = () => {
                     <TestResults />
                   </LazyProjectProtectedRoute>
                 } 
+              />
+
+              {/* Admin User Settings - doesn't require active project */}
+              <Route
+                path="/admin/user-settings"
+                element={
+                  <LazyProtectedRoute>
+                    <UserManagement />
+                  </LazyProtectedRoute>
+                }
               />
             </Route>
           </Routes>

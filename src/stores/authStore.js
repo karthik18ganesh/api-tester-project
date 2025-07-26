@@ -8,6 +8,7 @@ export const useAuthStore = create(
       user: null,
       token: null,
       userId: null,
+      role: null,
       isAuthenticated: false,
       isLoading: false,
       rememberMe: false,
@@ -19,6 +20,7 @@ export const useAuthStore = create(
           user: userData.user,
           token: userData.token,
           userId: userData.userId,
+          role: userData.role,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -29,6 +31,7 @@ export const useAuthStore = create(
           user: null,
           token: null,
           userId: null,
+          role: null,
           isAuthenticated: false,
           isLoading: false,
         });
@@ -89,6 +92,7 @@ export const useAuthStore = create(
         token: state.token,
         userId: state.userId,
         user: state.user,
+        role: state.role,
         isAuthenticated: state.isAuthenticated,
         rememberMe: state.rememberMe,
         rememberedUsername: state.rememberedUsername,
