@@ -6,11 +6,11 @@ import { Outlet } from "react-router-dom";
 
 const Layout = () => {
   return (
-    <div className="flex min-h-screen font-inter">
+    <div className="flex h-screen font-inter">
       <Sidebar />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar />
-        <main className="flex-1 bg-gray-50">
+        <main className="flex-1 bg-gray-50 overflow-y-auto">
           <Outlet /> {/* 👈 This is where all routed content will render */}
         </main>
       </div>

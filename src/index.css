@@ -39,6 +39,29 @@ body {
   background: #94a3b8;
 }
 
+/* Tailwind-like scrollbar utilities */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+}
+
 /* Focus styles for better accessibility */
 .focus-ring {
   @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;

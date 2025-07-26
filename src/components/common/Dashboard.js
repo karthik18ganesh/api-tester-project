@@ -231,7 +231,7 @@ const Dashboard = () => {
 
   // Enhanced Environment Performance with better design
   const EnhancedEnvironmentStatus = ({ environments }) => (
-    <Card className="p-6 shadow-elegant h-fit hover-lift transition-all duration-300">
+    <Card className="p-6 shadow-elegant h-full hover-lift transition-all duration-300">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-gradient-success rounded-lg flex items-center justify-center">
           <FiServer className="w-5 h-5 text-white" />
@@ -300,7 +300,7 @@ const Dashboard = () => {
   const PerformanceLeaders = ({ topPerformers, topFailures }) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Top Performers Card */}
-      <Card className="p-6 shadow-elegant hover-lift transition-all duration-300">
+      <Card className="p-6 shadow-elegant h-full hover-lift transition-all duration-300">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-gradient-success rounded-xl flex items-center justify-center shadow-sm">
             <FiAward className="w-6 h-6 text-white" />
@@ -311,7 +311,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 flex flex-col">
           {topPerformers?.length > 0 ? (
             topPerformers.slice(0, 5).map((item, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:shadow-md transition-all duration-200">
@@ -350,7 +350,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Needs Attention Card */}
-      <Card className="p-6 shadow-elegant hover-lift transition-all duration-300">
+      <Card className="p-6 shadow-elegant h-full hover-lift transition-all duration-300">
         <div className="flex items-center gap-4 mb-6">
           <div className="w-12 h-12 bg-gradient-warning rounded-xl flex items-center justify-center shadow-sm">
             <FiAlertTriangle className="w-6 h-6 text-white" />
@@ -361,7 +361,7 @@ const Dashboard = () => {
           </div>
         </div>
         
-        <div className="space-y-4">
+        <div className="space-y-4 flex-1 flex flex-col">
           {topFailures?.length > 0 ? (
             topFailures.slice(0, 5).map((item, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-red-50 to-orange-50 rounded-xl border border-red-100 hover:shadow-md transition-all duration-200">
@@ -386,15 +386,17 @@ const Dashboard = () => {
               </div>
             ))
           ) : (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
-                <FiShield className="w-8 h-8 text-green-600" />
-              </div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-2">All Systems Healthy</h4>
-              <p className="text-sm text-gray-600 mb-4">No critical issues detected in your test suites</p>
-              <div className="flex items-center justify-center gap-2 text-xs text-green-600">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>Monitoring active</span>
+            <div className="flex-1 flex items-center justify-center text-center py-8">
+              <div>
+                <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                  <FiShield className="w-8 h-8 text-green-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">All Systems Healthy</h4>
+                <p className="text-sm text-gray-600 mb-4">No critical issues detected in your test suites</p>
+                <div className="flex items-center justify-center gap-2 text-xs text-green-600">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span>Monitoring active</span>
+                </div>
               </div>
             </div>
           )}

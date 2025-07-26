@@ -196,9 +196,9 @@ const Sidebar = () => {
                   onClick={() => handleNavigation(route, requiresProject)}
                   className={`transition-colors duration-200 ml-2 my-0.5 rounded-lg ${
                     isActiveRoute
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-indigo-600 text-white cursor-pointer"
                       : canAccess 
-                        ? "hover:bg-gray-100 text-gray-700"
+                        ? "hover:bg-gray-100 text-gray-700 cursor-pointer"
                         : "text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -305,7 +305,7 @@ const Sidebar = () => {
       )}
 
       {/* Main Menu */}
-      <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6 text-sm text-gray-700">
+      <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6 text-sm text-gray-700 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {/* Dashboard */}
         <div
           onClick={() => handleNavigation("/dashboard", true)}
