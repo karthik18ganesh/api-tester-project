@@ -115,6 +115,12 @@ const Sidebar = () => {
       icon: <FiCode />,
       requiresProject: true,
     },
+    {
+      label: "Bulk Upload",
+      route: "/test-design/bulk-upload",
+      icon: <FiLayers />,
+      requiresProject: true,
+    },
   ];
 
   const adminSubMenus = [

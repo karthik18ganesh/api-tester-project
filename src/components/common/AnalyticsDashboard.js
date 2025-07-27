@@ -14,7 +14,7 @@ import { useProjectStore } from "../../stores/projectStore";
 const AnalyticsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState(null);
-  const [selectedTimeRange, setSelectedTimeRange] = useState('1');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7');
   const [selectedMetric, setSelectedMetric] = useState('success-rate');
   
   // Get active project from store

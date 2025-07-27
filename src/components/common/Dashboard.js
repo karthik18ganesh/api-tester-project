@@ -22,7 +22,7 @@ import { useDashboardData } from "../../hooks/useDashboardData";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [selectedTimeRange, setSelectedTimeRange] = useState('1');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7');
 
   // Use React Query hook for optimized data fetching
   const {

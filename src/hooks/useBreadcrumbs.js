@@ -60,7 +60,8 @@ export const useBreadcrumbs = () => {
               'edit': { label: 'Edit Test Package' }
             }
           },
-          'functions-variables': { label: 'Functions & Variables', path: '/test-design/functions-variables' }
+          'functions-variables': { label: 'Functions & Variables', path: '/test-design/functions-variables' },
+          'bulk-upload': { label: 'Bulk Upload', path: '/test-design/bulk-upload' }
         }
       },
       'test-execution': {

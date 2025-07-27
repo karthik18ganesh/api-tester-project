@@ -78,6 +78,9 @@ const FunctionsVariables = lazy(() =>
 const UserManagement = lazy(() => 
   import("./features/UserManagement/components/UserManagement")
 );
+const BulkUpload = lazy(() => 
+  import("./features/TestDesign/components/BulkUpload")
+);
 
 // Enhanced loading component with skeleton
 const EnhancedLoadingSpinner = () => (
@@ -251,6 +254,14 @@ const EnhancedApp = () => {
                 element={
                   <LazyProjectProtectedRoute>
                     <FunctionsVariables />
+                  </LazyProjectProtectedRoute>
+                }
+              />
+              <Route
+                path="/test-design/bulk-upload"
+                element={
+                  <LazyProjectProtectedRoute>
+                    <BulkUpload />
                   </LazyProjectProtectedRoute>
                 }
               />

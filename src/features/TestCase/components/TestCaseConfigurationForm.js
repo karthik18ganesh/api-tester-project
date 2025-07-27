@@ -9,7 +9,7 @@ import AssertionBuilder from "./AssertionBuilder/AssertionBuilder";
 
 const ITEMS_PER_PAGE = 6;
 
-// FIXED: Extract VariableModal as a separate component using standardized Modal
+// Enhanced Variable Modal with Source Support
 const VariableModal = ({ 
   isOpen, 
   isEdit, 
@@ -18,16 +18,18 @@ const VariableModal = ({
   onSave, 
   onClose, 
   loading, 
-  detectedParameters 
+  detectedParameters,
+  previousTestCases = []
 }) => {
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={isEdit ? 'Edit Variable' : 'Add New Variable'}
-      size="md"
+      size="lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
+        {/* Variable Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Name <span className="text-red-500">*</span>
@@ -46,17 +48,147 @@ const VariableModal = ({
             </div>
           )}
         </div>
-        
+
+        {/* Variable Source */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
-          <input
-            type="text"
-            value={formData.value}
-            onChange={(e) => onFormChange('value', e.target.value)}
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Source Type <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <input
+                type="radio"
+                name="source"
+                value="STATIC"
+                checked={formData.source === 'STATIC'}
+                onChange={(e) => onFormChange('source', e.target.value)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+              />
+              <div className="ml-3">
+                <div className="text-sm font-medium text-gray-900">Static Value</div>
+                <div className="text-xs text-gray-500">Fixed value provided by test designer</div>
+              </div>
+            </label>
+            <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <input
+                type="radio"
+                name="source"
+                value="RESPONSE"
+                checked={formData.source === 'RESPONSE'}
+                onChange={(e) => onFormChange('source', e.target.value)}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+              />
+              <div className="ml-3">
+                <div className="text-sm font-medium text-gray-900">Dynamic (Response)</div>
+                <div className="text-xs text-gray-500">Value from previous test case response</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Variable Type */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Data Type <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={formData.type || 'STRING'}
+            onChange={(e) => onFormChange('type', e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="variable value"
+          >
+            <option value="STRING">String</option>
+            <option value="INTEGER">Integer</option>
+            <option value="BOOLEAN">Boolean</option>
+            <option value="DECIMAL">Decimal</option>
+            <option value="ARRAY">Array</option>
+            <option value="OBJECT">Object</option>
+          </select>
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <textarea
+            value={formData.description || ''}
+            onChange={(e) => onFormChange('description', e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20 resize-none"
+            placeholder="Brief description of the variable"
           />
         </div>
+
+        {/* Static Value Input */}
+        {formData.source === 'STATIC' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+            <input
+              type="text"
+              value={formData.value || ''}
+              onChange={(e) => onFormChange('value', e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Enter static value"
+            />
+          </div>
+        )}
+
+        {/* Dynamic Value Configuration */}
+        {formData.source === 'RESPONSE' && (
+          <div className="space-y-4">
+            {/* Previous Test Case Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Source Test Case <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.sourceTestCaseId || ''}
+                onChange={(e) => onFormChange('sourceTestCaseId', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select previous test case...</option>
+                {previousTestCases.map((testCase) => (
+                  <option key={testCase.testCaseId} value={testCase.testCaseId}>
+                    {testCase.name} (Order: {testCase.executionOrder})
+                  </option>
+                ))}
+              </select>
+              <div className="text-xs text-gray-500 mt-1">
+                Choose the test case whose response will provide this variable's value
+              </div>
+            </div>
+
+            {/* JSONPath Expression */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                JSONPath Expression <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.value || ''}
+                onChange={(e) => onFormChange('value', e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                placeholder="e.g., $[0].postId or $.data.userId"
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                JSONPath expression to extract value from the response. Examples:
+                <div className="mt-1 space-y-1">
+                  <div><code className="bg-gray-100 px-1 rounded">$[0].id</code> - First array item's id</div>
+                  <div><code className="bg-gray-100 px-1 rounded">$.data.userId</code> - userId from data object</div>
+                  <div><code className="bg-gray-100 px-1 rounded">$.result.token</code> - Token from result</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Response Preview Note */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start">
+                <div className="text-blue-600 mr-2">ℹ️</div>
+                <div className="text-sm text-blue-800">
+                  <strong>Dynamic Variable:</strong> This variable will be populated during test execution 
+                  with the value extracted from the selected test case's response using the JSONPath expression.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-end space-x-2 mt-6">
@@ -101,11 +233,18 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const [deleteVariable, setDeleteVariable] = useState(null);
   const [editingVariable, setEditingVariable] = useState(null);
   
-  // Form states - FIXED: Use separate state object to prevent re-rendering issues
+  // Form states - Enhanced with new variable fields
   const [formData, setFormData] = useState({
     name: "",
-    value: ""
+    value: "",
+    source: "STATIC",
+    type: "STRING",
+    description: "",
+    sourceTestCaseId: ""
   });
+  
+  // State for previous test cases (for dynamic variables)
+  const [previousTestCases, setPreviousTestCases] = useState([]);
   
   const testCaseId = propTestCaseId || location.state?.testCase?.testCaseId;
 
@@ -134,19 +273,37 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   const handleCloseModals = useCallback(() => {
     setIsAddModalOpen(false);
     setIsEditModalOpen(false);
-    setFormData({ name: "", value: "" });
+    setFormData({ 
+      name: "", 
+      value: "", 
+      source: "STATIC", 
+      type: "STRING", 
+      description: "", 
+      sourceTestCaseId: "" 
+    });
     setEditingVariable(null);
   }, []);
 
   const handleOpenAddModal = useCallback(() => {
-    setFormData({ name: "", value: "" });
+    setFormData({ 
+      name: "", 
+      value: "", 
+      source: "STATIC", 
+      type: "STRING", 
+      description: "", 
+      sourceTestCaseId: "" 
+    });
     setIsAddModalOpen(true);
   }, []);
 
   const handleOpenEditModal = useCallback((variable) => {
     setFormData({
       name: variable.name || "",
-      value: variable.value || ""
+      value: variable.value || "",
+      source: variable.source || "STATIC",
+      type: variable.type || "STRING",
+      description: variable.description || "",
+      sourceTestCaseId: variable.sourceTestCaseId || ""
     });
     setEditingVariable(variable);
     setIsEditModalOpen(true);
@@ -194,20 +351,27 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // FIXED: Create a single variable with corrected API format
-  const createVariable = async (name, value = "") => {
+  // Enhanced Create Variable with new fields
+  const createVariable = async (variableData) => {
     try {
       const requestBody = {
         requestMetaData: generateMetadata(),
         data: {
-          name: name.trim(),
-          value: value.trim(),
-          source: "STATIC", // Added required field
+          name: variableData.name.trim(),
+          value: variableData.value.trim(),
+          source: variableData.source,
+          type: variableData.type,
+          description: variableData.description?.trim() || "",
           testCase: {
             testCaseId: testCaseId
           }
         }
       };
+
+      // Add sourceTestCaseId for dynamic variables
+      if (variableData.source === 'RESPONSE' && variableData.sourceTestCaseId) {
+        requestBody.data.sourceTestCaseId = variableData.sourceTestCaseId;
+      }
 
       const response = await api("/api/v1/variables", "POST", requestBody);
       
@@ -221,21 +385,28 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // FIXED: Update existing variable with corrected API format
-  const updateVariable = async (variableId, name, value) => {
+  // Enhanced Update Variable with new fields
+  const updateVariable = async (variableId, variableData) => {
     try {
       const requestBody = {
         requestMetaData: generateMetadata(),
         data: {
           variableId: variableId,
-          name: name.trim(),
-          value: value.trim(),
-          source: "STATIC", // Added required field
+          name: variableData.name.trim(),
+          value: variableData.value.trim(),
+          source: variableData.source,
+          type: variableData.type,
+          description: variableData.description?.trim() || "",
           testCase: {
             testCaseId: testCaseId
           }
         }
       };
+
+      // Add sourceTestCaseId for dynamic variables
+      if (variableData.source === 'RESPONSE' && variableData.sourceTestCaseId) {
+        requestBody.data.sourceTestCaseId = variableData.sourceTestCaseId;
+      }
 
       const response = await api("/api/v1/variables", "PUT", requestBody);
       
@@ -290,7 +461,13 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
       for (const param of unCreatedParams) {
         try {
-          await createVariable(param, ""); // No description field
+          await createVariable({
+            name: param,
+            value: "",
+            source: "STATIC",
+            type: "STRING",
+            description: `Auto-detected parameter from API`
+          });
           successCount++;
         } catch (error) {
           console.error(`Failed to create parameter ${param}:`, error);
@@ -315,13 +492,41 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
-  // FIXED: Save variable (create or update) with corrected API format
+  // Enhanced Save Variable with validation for new fields
   const handleSaveVariable = async () => {
-    const { name, value } = formData;
+    const { name, value, source, type, sourceTestCaseId } = formData;
     
+    // Validation
     if (!name.trim()) {
       toast.error("Variable name is required");
       return;
+    }
+
+    if (!source) {
+      toast.error("Source type is required");
+      return;
+    }
+
+    if (!type) {
+      toast.error("Data type is required");
+      return;
+    }
+
+    // Dynamic variable validation
+    if (source === 'RESPONSE') {
+      if (!sourceTestCaseId) {
+        toast.error("Source test case is required for dynamic variables");
+        return;
+      }
+      if (!value.trim()) {
+        toast.error("JSONPath expression is required for dynamic variables");
+        return;
+      }
+      // Basic JSONPath validation
+      if (!value.trim().startsWith('$')) {
+        toast.error("JSONPath expression must start with '$'");
+        return;
+      }
     }
 
     // Check for duplicate names (excluding current variable when editing)
@@ -340,11 +545,11 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       
       if (editingVariable) {
         // Update existing variable
-        await updateVariable(editingVariable.variableId, name, value);
+        await updateVariable(editingVariable.variableId, formData);
         toast.success("Variable updated successfully");
       } else {
         // Create new variable
-        await createVariable(name, value);
+        await createVariable(formData);
         toast.success("Variable created successfully");
       }
       
@@ -386,9 +591,35 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
   };
 
   // Load variables when component mounts or testCaseId changes
+  // Fetch previous test cases (for dynamic variables)
+  const fetchPreviousTestCases = async () => {
+    if (!testCaseId) return;
+    
+    try {
+      // This would be the actual API call to get test cases in the same suite/package
+      // For now, using mock data - replace with actual API call
+      const mockPreviousTestCases = [
+        { testCaseId: '1', name: 'Login API Test', executionOrder: 1 },
+        { testCaseId: '2', name: 'User Profile Test', executionOrder: 2 },
+        { testCaseId: '3', name: 'Create Post Test', executionOrder: 3 }
+      ];
+      
+      // Filter out current test case and only show previous ones
+      const filteredTestCases = mockPreviousTestCases.filter(tc => 
+        tc.testCaseId !== testCaseId.toString()
+      );
+      
+      setPreviousTestCases(filteredTestCases);
+    } catch (error) {
+      console.error('Error fetching previous test cases:', error);
+      setPreviousTestCases([]);
+    }
+  };
+
   useEffect(() => {
     if (testCaseId) {
       fetchVariables();
+      fetchPreviousTestCases();
     } else {
       setInitialLoadComplete(true);
     }
@@ -598,14 +829,16 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                 <tr>
                   <th className="p-3 font-medium">Name</th>
                   <th className="p-3 font-medium">Value</th>
+                  <th className="p-3 font-medium">Source</th>
                   <th className="p-3 font-medium">Type</th>
+                  <th className="p-3 font-medium">Description</th>
                   <th className="p-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {loading && variables.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="p-4 text-center">
+                    <td colSpan="6" className="p-4 text-center">
                       <div className="flex justify-center items-center">
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#4F46E5] mr-2"></div>
                         Loading variables...
@@ -614,7 +847,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                   </tr>
                 ) : paginatedVariables.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="p-8 text-center text-gray-500">
+                    <td colSpan="6" className="p-8 text-center text-gray-500">
                       <div className="flex flex-col items-center">
                         <FiSettings className="h-8 w-8 text-gray-300 mb-3" />
                         <div className="text-lg font-medium mb-2">No variables created yet</div>
@@ -639,9 +872,12 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                   paginatedVariables.map((variable) => {
                     const isDetectedParam = detectedParameters?.includes(variable.name);
                     const hasValue = variable.value && variable.value.trim() !== '';
+                    const isStaticSource = variable.source === 'STATIC' || !variable.source;
+                    const isDynamicSource = variable.source === 'RESPONSE';
                     
                     return (
                       <tr key={variable.variableId} className="hover:bg-gray-50">
+                        {/* Name Column */}
                         <td className="p-3">
                           <div className="flex items-center">
                             <span className="font-medium">{variable.name}</span>
@@ -652,24 +888,65 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                             )}
                           </div>
                         </td>
+                        
+                        {/* Value Column */}
                         <td className="p-3">
                           <div className="truncate max-w-xs">
                             {hasValue ? (
-                              <span className="text-gray-900">{variable.value}</span>
+                              <span className={`text-gray-900 ${isDynamicSource ? 'font-mono text-sm' : ''}`}>
+                                {variable.value}
+                              </span>
                             ) : (
                               <span className="text-gray-400 italic">Empty</span>
                             )}
                           </div>
+                          {isDynamicSource && variable.sourceTestCaseId && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              From: Test Case ID {variable.sourceTestCaseId}
+                            </div>
+                          )}
                         </td>
+                        
+                        {/* Source Column */}
                         <td className="p-3">
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            isDetectedParam 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'bg-gray-100 text-gray-700'
+                          <span className={`text-xs px-2 py-1 rounded-full flex items-center w-fit ${
+                            isDynamicSource 
+                              ? 'bg-purple-100 text-purple-700' 
+                              : 'bg-green-100 text-green-700'
                           }`}>
-                            {isDetectedParam ? 'Auto-detected' : 'Manual'}
+                            {isDynamicSource ? (
+                              <>
+                                <span className="mr-1">🔗</span>
+                                Dynamic
+                              </>
+                            ) : (
+                              <>
+                                <span className="mr-1">📝</span>
+                                Static
+                              </>
+                            )}
                           </span>
                         </td>
+                        
+                        {/* Type Column */}
+                        <td className="p-3">
+                          <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                            {variable.type || 'STRING'}
+                          </span>
+                        </td>
+                        
+                        {/* Description Column */}
+                        <td className="p-3">
+                          <div className="truncate max-w-xs">
+                            {variable.description ? (
+                              <span className="text-gray-600 text-sm">{variable.description}</span>
+                            ) : (
+                              <span className="text-gray-400 italic text-sm">No description</span>
+                            )}
+                          </div>
+                        </td>
+                        
+                        {/* Actions Column */}
                         <td className="p-3">
                           <div className="flex space-x-2">
                             <button
@@ -725,8 +1002,28 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       )}
 
       {/* Modals */}
-      <VariableModal isOpen={isAddModalOpen} isEdit={false} formData={formData} onFormChange={handleFormChange} onSave={handleSaveVariable} onClose={handleCloseModals} loading={loading} detectedParameters={detectedParameters} />
-      <VariableModal isOpen={isEditModalOpen} isEdit={true} formData={formData} onFormChange={handleFormChange} onSave={handleSaveVariable} onClose={handleCloseModals} loading={loading} detectedParameters={detectedParameters} />
+      <VariableModal 
+        isOpen={isAddModalOpen} 
+        isEdit={false} 
+        formData={formData} 
+        onFormChange={handleFormChange} 
+        onSave={handleSaveVariable} 
+        onClose={handleCloseModals} 
+        loading={loading} 
+        detectedParameters={detectedParameters}
+        previousTestCases={previousTestCases}
+      />
+      <VariableModal 
+        isOpen={isEditModalOpen} 
+        isEdit={true} 
+        formData={formData} 
+        onFormChange={handleFormChange} 
+        onSave={handleSaveVariable} 
+        onClose={handleCloseModals} 
+        loading={loading} 
+        detectedParameters={detectedParameters}
+        previousTestCases={previousTestCases}
+      />
       
       {/* Delete Confirmation Modal */}
       <Modal
