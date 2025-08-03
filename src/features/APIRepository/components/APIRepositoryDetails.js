@@ -4,6 +4,7 @@ import { FaPlus, FaMinus } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import { apiRepository, environments } from "../../../utils/api";
+import { useProjectStore } from "../../../stores/projectStore";
 
 // Breadcrumb component (simplified for the example)
 const Breadcrumb = ({ items = [] }) => {
@@ -74,6 +75,7 @@ const APIRepositoryDetails = () => {
   const responseRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { activeProject } = useProjectStore();
   const apiId = location.state?.apiId;
   const [isLoading, setIsLoading] = useState(apiId ? true : false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
@@ -219,12 +221,20 @@ const APIRepositoryDetails = () => {
 
   // Fetch environments
   const fetchEnvironments = async () => {
+    // Check if there's an active project
+    if (!activeProject?.id) {
+      console.warn('No active project found for environments');
+      setEnvOptions([]);
+      return;
+    }
+
     try {
       setEnvLoading(true);
-      const response = await environments.getAll();
+      const response = await environments.getByProject(activeProject.id);
       
       if (response && response.result && response.result.data) {
-        const envData = response.result.data.content.map(env => ({
+        const envList = response.result.data.content || response.result.data;
+        const envData = envList.map(env => ({
           id: env.environmentId,
           name: env.environmentName
         }));
@@ -274,7 +284,7 @@ const APIRepositoryDetails = () => {
 
   // Fetch API details if editing an existing one
   useEffect(() => {
-    // Fetch environments on component mount
+    // Fetch environments on component mount and when active project changes
     fetchEnvironments();
     
     if (apiId && !initialDataLoaded) {
@@ -408,7 +418,7 @@ const APIRepositoryDetails = () => {
       
       fetchApiDetails();
     }
-  }, [apiId, navigate, initialDataLoaded]);
+  }, [apiId, navigate, initialDataLoaded, activeProject?.id]);
 
   // Method to handle sending the API request
   const handleSend = async () => {

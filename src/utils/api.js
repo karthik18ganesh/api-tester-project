@@ -205,7 +205,7 @@ export const apiRepository = {
 // Enhanced Test Execution specific endpoints with assertion support
 export const testExecution = {
   // Execute test package
-  executePackage: async (packageId, executedBy) => {
+  executePackage: async (packageId, executedBy, executionSettings = {}) => {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
@@ -213,14 +213,16 @@ export const testExecution = {
     }
     
     const requestBody = {
-      executedBy: executedBy
+      executedBy: executedBy,
+      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
+      ...(executionSettings.environment && { environment: executionSettings.environment })
     };
     
     return api(`/api/v1/test-execution/package/${packageId}`, "POST", requestBody);
   },
 
   // Execute test suite
-  executeSuite: async (suiteId, executedBy) => {
+  executeSuite: async (suiteId, executedBy, executionSettings = {}) => {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
@@ -228,14 +230,16 @@ export const testExecution = {
     }
     
     const requestBody = {
-      executedBy: executedBy
+      executedBy: executedBy,
+      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
+      ...(executionSettings.environment && { environment: executionSettings.environment })
     };
     
     return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
   },
 
   // Execute individual test case - FIXED ENDPOINT
-  executeTestCase: async (testCaseId, executedBy) => {
+  executeTestCase: async (testCaseId, executedBy, executionSettings = {}) => {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
@@ -243,7 +247,9 @@ export const testExecution = {
     }
     
     const requestBody = {
-      executedBy: executedBy
+      executedBy: executedBy,
+      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
+      ...(executionSettings.environment && { environment: executionSettings.environment })
     };
     
     return api(`/api/v1/test-execution/case/${testCaseId}`, "POST", requestBody);
@@ -528,9 +534,14 @@ export const projects = {
 
 // Environment specific endpoints
 export const environments = {
-  // Get all environments
+  // Get all environments (legacy - will be deprecated)
   getAll: async () => {
     return api("/api/v1/environments", "GET");
+  },
+
+  // Get environments by project ID (new project-specific endpoint)
+  getByProject: async (projectId) => {
+    return api(`/api/v1/environments/by-project/${projectId}`, "GET");
   },
 
   // Get environment by ID

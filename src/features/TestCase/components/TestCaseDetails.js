@@ -64,16 +64,7 @@ const TestCaseDetails = () => {
         existingParams.push(...urlParams);
       }
       
-      // Check templates for parameters
-      if (testCase.requestTemplate) {
-        const reqParams = extractParameters(JSON.stringify(testCase.requestTemplate));
-        existingParams.push(...reqParams);
-      }
-      
-      if (testCase.responseTemplate) {
-        const resParams = extractParameters(JSON.stringify(testCase.responseTemplate));
-        existingParams.push(...resParams);
-      }
+
       
       // Remove duplicates
       const uniqueParams = [...new Set(existingParams)];

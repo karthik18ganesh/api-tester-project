@@ -62,15 +62,43 @@ const EnvironmentSetup = () => {
   };
 
   const fetchEnvironments = async () => {
+    // Check if there's an active project
+    if (!activeProject?.id) {
+      toast.error("Please select an active project first");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Updated to sort by updatedDate instead of createdDate to show most recently updated environments first
-      const json = await api("/api/v1/environments?pageNo=0&limit=100&sortBy=updatedDate&sortDir=DESC", "GET");
+      // Use the new project-specific endpoint
+      const json = await api(`/api/v1/environments/by-project/${activeProject.id}`, "GET");
       const { code, message, data: responseData } = json.result;
 
       if (code === "200") {
+        // Handle different response structures
+        let envList = [];
+        
+        if (responseData) {
+          // Check if data is in content property (paginated response)
+          if (responseData.content && Array.isArray(responseData.content)) {
+            envList = responseData.content;
+          }
+          // Check if data is directly an array
+          else if (Array.isArray(responseData)) {
+            envList = responseData;
+          }
+          // Check if data is in a data property
+          else if (responseData.data && Array.isArray(responseData.data)) {
+            envList = responseData.data;
+          }
+          else {
+            console.warn('Unexpected response structure:', responseData);
+          }
+        }
+
         // Map the API response to our component state format
-        const mapped = responseData.content.map((env) => ({
+        const mapped = envList.map((env) => ({
           id: env.environmentId,
           environmentName: env.environmentName,
           environmentUrl: env.environmentUrl,
@@ -82,12 +110,18 @@ const EnvironmentSetup = () => {
           // Store project data if needed
           project: env.project,
         }));
+        
         setData(mapped);
+        
+        if (mapped.length === 0) {
+          toast.info("No environments found for this project");
+        }
       } else {
         toast.error(message || "Failed to fetch environments");
       }
     } catch (err) {
-      toast.error("Error fetching environments");
+      console.error("Error fetching environments:", err);
+      toast.error("Error fetching environments: " + (err.message || "Unknown error"));
     } finally {
       setIsLoading(false);
     }

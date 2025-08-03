@@ -7,11 +7,13 @@ import { toast } from "react-toastify";
 import { nanoid } from "nanoid";
 import ConfirmationModal from "../../../components/common/ConfirmationModal";
 import { apiRepository, environments } from "../../../utils/api";
+import { useProjectStore } from "../../../stores/projectStore";
 
 const pageSize = 6;
 
 const APIRepository = () => {
   const navigate = useNavigate();
+  const { activeProject } = useProjectStore();
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +40,21 @@ const APIRepository = () => {
   const currentData = filteredData;
 
   const fetchEnvironments = async () => {
+    // Check if there's an active project
+    if (!activeProject?.id) {
+      console.warn('No active project found for environments');
+      setEnvironmentsMap(new Map());
+      return;
+    }
+
     try {
-      const response = await environments.getAll();
+      const response = await environments.getByProject(activeProject.id);
       
       if (response && response.result && response.result.data) {
+        const envList = response.result.data.content || response.result.data;
         const envMap = new Map();
-        response.result.data.content.forEach(env => {
+        
+        envList.forEach(env => {
           envMap.set(env.environmentId, env.environmentName);
         });
         setEnvironmentsMap(envMap);
@@ -240,7 +251,7 @@ const APIRepository = () => {
     setCurrentPage(page);
   };
 
-  // Load data on component mount
+  // Load data on component mount and when active project changes
   useEffect(() => {
     // Fetch both environments and APIs
     const initializeData = async () => {
@@ -249,7 +260,7 @@ const APIRepository = () => {
     };
     
     initializeData();
-  }, []);
+  }, [activeProject?.id]);
 
   return (
     <div className="p-6 font-inter text-gray-800">

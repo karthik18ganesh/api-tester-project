@@ -145,7 +145,7 @@ export const executionHistory = [
 ];
 
 // Enhanced mock data with comprehensive assertion results
-export const createMockExecutionResult = (selectedItem, environment = 'Staging') => {
+export const createMockExecutionResult = (selectedItem, environment = 'Staging', executionStrategy = 'Sequential') => {
   const executionId = `exec-${Date.now()}`;
   const timestamp = new Date().toISOString();
   
@@ -397,9 +397,7 @@ export const createMockExecutionResult = (selectedItem, environment = 'Staging')
     selectedItem: selectedItem,
     settings: {
       environment: environment,
-      stopOnFailure: false,
-      notifyOnCompletion: true,
-      retryCount: 1
+      executionStrategy: executionStrategy
     }
   };
 };

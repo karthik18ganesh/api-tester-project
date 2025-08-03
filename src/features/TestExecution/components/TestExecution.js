@@ -6,8 +6,9 @@ import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api, testExecution } from '../../../utils/api';
+import { api, testExecution, environments } from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
+import { useProjectStore } from '../../../stores/projectStore';
 import Button from '../../../components/common/Button';
 import TestCaseDetailsView from './TestCaseDetailsView';
 import { getTestCaseDisplayStatus, getStatusBadgeClass, getAssertionSubtitle } from '../../../utils/testStatusUtils';
@@ -20,16 +21,17 @@ const ModernTestExecution = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState({
     environment: 'Staging',
-    stopOnFailure: false,
-    notifyOnCompletion: true,
-    retryCount: 1
+    executionStrategy: 'Sequential'
   });
   const [viewMode, setViewMode] = useState('execution');
   const [selectedTestCaseId, setSelectedTestCaseId] = useState(null);
   const [testHierarchy, setTestHierarchy] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [environments_list, setEnvironmentsList] = useState([]);
+  const [environmentsLoading, setEnvironmentsLoading] = useState(false);
   const { user } = useAuthStore();
+  const { activeProject } = useProjectStore();
 
   // Fetch the hierarchy from the API
   const fetchHierarchy = async () => {
@@ -248,9 +250,49 @@ const ModernTestExecution = () => {
     }
   };
 
+  // Fetch environments for the active project
+  const fetchEnvironments = async () => {
+    if (!activeProject?.id) {
+      console.warn('No active project found');
+      return;
+    }
+
+    setEnvironmentsLoading(true);
+    try {
+      const response = await environments.getByProject(activeProject.id);
+      
+      if (response && response.result && response.result.data) {
+        const envList = response.result.data.content || response.result.data;
+        
+        // Map to a simple format for the dropdown
+        const mappedEnvs = envList.map(env => ({
+          id: env.environmentId,
+          name: env.environmentName,
+          value: env.environmentName // Keep value for backward compatibility
+        }));
+        
+        setEnvironmentsList(mappedEnvs);
+        
+        // Set default environment if none selected and environments are available
+        if (mappedEnvs.length > 0 && (!settings.environment || settings.environment === 'Staging')) {
+          setSettings(prev => ({
+            ...prev,
+            environment: mappedEnvs[0].value
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching environments:', error);
+      toast.error('Failed to load environments for the current project');
+    } finally {
+      setEnvironmentsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchHierarchy();
-  }, []);
+    fetchEnvironments();
+  }, [activeProject?.id]); // Re-fetch when active project changes
 
   const getBreadcrumbItems = () => {
     const items = [{ label: "Test Execution" }];
@@ -282,8 +324,21 @@ const ModernTestExecution = () => {
       const executedBy = user?.username || localStorage.getItem('userId') || 'current.user';
       const execConfig = getExecutionConfig(selectedItem);
       
+      // Prepare execution settings
+      const executionSettings = {
+        executionStrategy: settings.executionStrategy,
+        environment: settings.environment
+      };
+
+      // Log execution details for debugging
+      console.log(`Executing ${execConfig.name} with settings:`, {
+        id: execConfig.id,
+        executedBy,
+        executionSettings
+      });
+
       // Execute using the appropriate method
-      const executionResponse = await execConfig.method(execConfig.id, executedBy);
+      const executionResponse = await execConfig.method(execConfig.id, executedBy, executionSettings);
       
       // Use unified transformation for all execution types
       const transformedResults = transformExecutionResults(executionResponse);
@@ -317,9 +372,9 @@ const ModernTestExecution = () => {
       window.mockExecutionData = window.mockExecutionData || {};
       window.mockExecutionData[executionId] = newResult;
 
-      // Show success toast
+      // Show success toast with execution details
       toast.success(
-        `${execConfig.name} execution completed: ${transformedResults.passedCount} passed, ${transformedResults.failedCount} failed`
+        `${execConfig.name} execution completed (${settings.executionStrategy}, ${settings.environment}): ${transformedResults.passedCount} passed, ${transformedResults.failedCount} failed`
       );
 
     } catch (error) {
@@ -463,60 +518,103 @@ const ModernTestExecution = () => {
             </button>
             
             {showSettings && (
-              <div className="absolute right-0 mt-1 w-64 bg-white rounded-md shadow-lg border border-gray-200 z-10 animate-fade-in">
-                <div className="p-3 border-b">
-                  <h3 className="font-medium text-gray-700">Execution Settings</h3>
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-fade-in">
+                {/* Header */}
+                <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-t-xl">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-indigo-100 rounded-lg">
+                      <FaCog className="text-indigo-600 text-sm" />
+                    </div>
+                    <h3 className="font-semibold text-gray-800">Execution Settings</h3>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">Configure your test execution preferences</p>
                 </div>
-                <div className="p-3">
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Environment</label>
-                    <select
-                      value={settings.environment}
-                      onChange={(e) => handleSettingChange('environment', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+
+                <div className="p-4 space-y-4">
+                  {/* Environment Selection */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
+                      Environment
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={settings.environment}
+                        onChange={(e) => handleSettingChange('environment', e.target.value)}
+                        disabled={environmentsLoading || environments_list.length === 0}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-700 
+                                 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                                 transition-all duration-200 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {environmentsLoading && (
+                          <option value="">Loading environments...</option>
+                        )}
+                        {!environmentsLoading && environments_list.length === 0 && (
+                          <option value="">No environments found for this project</option>
+                        )}
+                        {!environmentsLoading && environments_list.map((env) => (
+                          <option key={env.id} value={env.value}>
+                            🌍 {env.name}
+                          </option>
+                        ))}
+                      </select>
+                      <FaChevronDown className="absolute right-3 top-3 text-gray-400 text-xs pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Execution Strategy */}
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
+                      Execution Strategy
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleSettingChange('executionStrategy', 'Sequential')}
+                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 
+                                  ${settings.executionStrategy === 'Sequential'
+                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                    : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                                  }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="text-lg">📋</div>
+                          <span>Sequential</span>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleSettingChange('executionStrategy', 'Parallel')}
+                        className={`p-3 rounded-lg border-2 text-sm font-medium transition-all duration-200 
+                                  ${settings.executionStrategy === 'Parallel'
+                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                    : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100'
+                                  }`}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="text-lg">⚡</div>
+                          <span>Parallel</span>
+                        </div>
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+                      {settings.executionStrategy === 'Sequential' 
+                        ? '📋 Tests will run one after another in order'
+                        : '⚡ Tests will run simultaneously for faster execution'
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-3 bg-gray-50 rounded-b-xl border-t border-gray-100">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Settings will apply to this execution</span>
+                    <button
+                      onClick={() => setShowSettings(false)}
+                      className="text-indigo-600 hover:text-indigo-700 font-medium"
                     >
-                      <option value="Development">Development</option>
-                      <option value="Staging">Staging</option>
-                      <option value="Production">Production</option>
-                    </select>
-                  </div>
-                  
-                  <div className="flex items-center mb-3">
-                    <input
-                      type="checkbox"
-                      id="stopOnFailure"
-                      checked={settings.stopOnFailure}
-                      onChange={(e) => handleSettingChange('stopOnFailure', e.target.checked)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="stopOnFailure" className="ml-2 block text-sm text-gray-700">
-                      Stop on first failure
-                    </label>
-                  </div>
-                  
-                  <div className="flex items-center mb-3">
-                    <input
-                      type="checkbox"
-                      id="notifyOnCompletion"
-                      checked={settings.notifyOnCompletion}
-                      onChange={(e) => handleSettingChange('notifyOnCompletion', e.target.checked)}
-                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="notifyOnCompletion" className="ml-2 block text-sm text-gray-700">
-                      Notify on completion
-                    </label>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Retry Count</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="5"
-                      value={settings.retryCount}
-                      onChange={(e) => handleSettingChange('retryCount', parseInt(e.target.value))}
-                      className="w-20 border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
+                      Done
+                    </button>
                   </div>
                 </div>
               </div>

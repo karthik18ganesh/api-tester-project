@@ -3,7 +3,7 @@ import { FiTrash2, FiPlus, FiSettings, FiCheckCircle, FiEdit3, FiTarget } from "
 import { FaMagic } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-import { api } from "../../../utils/api";
+import { api, assertions } from "../../../utils/api";
 import Modal from "../../../components/UI/Modal";
 import AssertionBuilder from "./AssertionBuilder/AssertionBuilder";
 
@@ -18,8 +18,7 @@ const VariableModal = ({
   onSave, 
   onClose, 
   loading, 
-  detectedParameters,
-  previousTestCases = []
+  detectedParameters
 }) => {
   return (
     <Modal
@@ -133,28 +132,6 @@ const VariableModal = ({
         {/* Dynamic Value Configuration */}
         {formData.source === 'RESPONSE' && (
           <div className="space-y-4">
-            {/* Previous Test Case Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Source Test Case <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={formData.sourceTestCaseId || ''}
-                onChange={(e) => onFormChange('sourceTestCaseId', e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="">Select previous test case...</option>
-                {previousTestCases.map((testCase) => (
-                  <option key={testCase.testCaseId} value={testCase.testCaseId}>
-                    {testCase.name} (Order: {testCase.executionOrder})
-                  </option>
-                ))}
-              </select>
-              <div className="text-xs text-gray-500 mt-1">
-                Choose the test case whose response will provide this variable's value
-              </div>
-            </div>
-
             {/* JSONPath Expression */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -239,12 +216,10 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     value: "",
     source: "STATIC",
     type: "STRING",
-    description: "",
-    sourceTestCaseId: ""
+    description: ""
   });
   
-  // State for previous test cases (for dynamic variables)
-  const [previousTestCases, setPreviousTestCases] = useState([]);
+
   
   const testCaseId = propTestCaseId || location.state?.testCase?.testCaseId;
 
@@ -278,8 +253,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       value: "", 
       source: "STATIC", 
       type: "STRING", 
-      description: "", 
-      sourceTestCaseId: "" 
+      description: ""
     });
     setEditingVariable(null);
   }, []);
@@ -290,8 +264,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       value: "", 
       source: "STATIC", 
       type: "STRING", 
-      description: "", 
-      sourceTestCaseId: "" 
+      description: ""
     });
     setIsAddModalOpen(true);
   }, []);
@@ -302,8 +275,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
       value: variable.value || "",
       source: variable.source || "STATIC",
       type: variable.type || "STRING",
-      description: variable.description || "",
-      sourceTestCaseId: variable.sourceTestCaseId || ""
+      description: variable.description || ""
     });
     setEditingVariable(variable);
     setIsEditModalOpen(true);
@@ -351,6 +323,27 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     }
   };
 
+  // Fetch assertions for test case to show count in badge
+  const fetchAssertions = async () => {
+    if (!testCaseId) return;
+    
+    try {
+      const response = await assertions.getByTestCase(testCaseId);
+      
+      if (response.result?.code === "200") {
+        const assertionsData = response.result.data || [];
+        setAssertions(Array.isArray(assertionsData) ? assertionsData : []);
+      } else if (response.result?.code === "404") {
+        setAssertions([]);
+      } else {
+        setAssertions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching assertions:', error);
+      setAssertions([]);
+    }
+  };
+
   // Enhanced Create Variable with new fields
   const createVariable = async (variableData) => {
     try {
@@ -367,11 +360,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           }
         }
       };
-
-      // Add sourceTestCaseId for dynamic variables
-      if (variableData.source === 'RESPONSE' && variableData.sourceTestCaseId) {
-        requestBody.data.sourceTestCaseId = variableData.sourceTestCaseId;
-      }
 
       const response = await api("/api/v1/variables", "POST", requestBody);
       
@@ -402,11 +390,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
           }
         }
       };
-
-      // Add sourceTestCaseId for dynamic variables
-      if (variableData.source === 'RESPONSE' && variableData.sourceTestCaseId) {
-        requestBody.data.sourceTestCaseId = variableData.sourceTestCaseId;
-      }
 
       const response = await api("/api/v1/variables", "PUT", requestBody);
       
@@ -494,7 +477,7 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
   // Enhanced Save Variable with validation for new fields
   const handleSaveVariable = async () => {
-    const { name, value, source, type, sourceTestCaseId } = formData;
+    const { name, value, source, type } = formData;
     
     // Validation
     if (!name.trim()) {
@@ -514,10 +497,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
 
     // Dynamic variable validation
     if (source === 'RESPONSE') {
-      if (!sourceTestCaseId) {
-        toast.error("Source test case is required for dynamic variables");
-        return;
-      }
       if (!value.trim()) {
         toast.error("JSONPath expression is required for dynamic variables");
         return;
@@ -590,36 +569,11 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
     setIsDeleteModalOpen(true);
   };
 
-  // Load variables when component mounts or testCaseId changes
-  // Fetch previous test cases (for dynamic variables)
-  const fetchPreviousTestCases = async () => {
-    if (!testCaseId) return;
-    
-    try {
-      // This would be the actual API call to get test cases in the same suite/package
-      // For now, using mock data - replace with actual API call
-      const mockPreviousTestCases = [
-        { testCaseId: '1', name: 'Login API Test', executionOrder: 1 },
-        { testCaseId: '2', name: 'User Profile Test', executionOrder: 2 },
-        { testCaseId: '3', name: 'Create Post Test', executionOrder: 3 }
-      ];
-      
-      // Filter out current test case and only show previous ones
-      const filteredTestCases = mockPreviousTestCases.filter(tc => 
-        tc.testCaseId !== testCaseId.toString()
-      );
-      
-      setPreviousTestCases(filteredTestCases);
-    } catch (error) {
-      console.error('Error fetching previous test cases:', error);
-      setPreviousTestCases([]);
-    }
-  };
-
+  // Load variables and assertions when component mounts or testCaseId changes
   useEffect(() => {
     if (testCaseId) {
       fetchVariables();
-      fetchPreviousTestCases();
+      fetchAssertions();
     } else {
       setInitialLoadComplete(true);
     }
@@ -900,11 +854,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
                               <span className="text-gray-400 italic">Empty</span>
                             )}
                           </div>
-                          {isDynamicSource && variable.sourceTestCaseId && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              From: Test Case ID {variable.sourceTestCaseId}
-                            </div>
-                          )}
                         </td>
                         
                         {/* Source Column */}
@@ -1011,7 +960,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         onClose={handleCloseModals} 
         loading={loading} 
         detectedParameters={detectedParameters}
-        previousTestCases={previousTestCases}
       />
       <VariableModal 
         isOpen={isEditModalOpen} 
@@ -1022,7 +970,6 @@ const TestCaseConfigurationForm = ({ detectedParameters = [], testCaseId: propTe
         onClose={handleCloseModals} 
         loading={loading} 
         detectedParameters={detectedParameters}
-        previousTestCases={previousTestCases}
       />
       
       {/* Delete Confirmation Modal */}
