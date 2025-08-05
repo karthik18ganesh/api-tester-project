@@ -780,5 +780,160 @@ export const dashboard = {
   }
 };
 
+// User Management specific endpoints
+export const userManagement = {
+  // Enhanced authentication endpoints
+  auth: {
+    // Enhanced login with permissions
+    login: async (username, password) => {
+      const requestBody = {
+        data: {
+          username,
+          password
+        }
+      };
+      return api("/api/v1/auth/login", "POST", requestBody);
+    },
+
+    // Enhanced sign up
+    signUp: async (userData) => {
+      const requestBody = {
+        data: {
+          username: userData.username,
+          passwordHash: userData.password,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          role: {
+            roleId: userData.roleId || 1,
+            roleName: userData.role
+          }
+        }
+      };
+      return api("/api/v1/auth/sign-up", "POST", requestBody);
+    },
+
+    // Logout
+    logout: async () => {
+      return api("/api/v1/auth/logout", "POST");
+    }
+  },
+
+  // User management endpoints
+  users: {
+    // Get all users with search and filtering
+    getAll: async (search = '', role = '', status = '', page = 1, limit = 20) => {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      
+      if (search) params.append('search', search);
+      if (role) params.append('role', role);
+      if (status) params.append('status', status);
+      
+      return api(`/api/v1/users?${params}`, "GET");
+    },
+
+    // Get simple user list (legacy compatible)
+    getSimple: async () => {
+      return api("/api/v1/users-simple", "GET");
+    },
+
+    // Get user by ID
+    getById: async (userId) => {
+      return api(`/api/v1/users/${userId}`, "GET");
+    },
+
+    // Create new user
+    create: async (userData) => {
+      const requestBody = {
+        username: userData.username,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        password: userData.password,
+        role: userData.role,
+        status: userData.status,
+        projects: userData.projects || [],
+        permissions: userData.permissions || {}
+      };
+      return api("/api/v1/users", "POST", requestBody);
+    },
+
+    // Update user
+    update: async (userId, userData) => {
+      const requestBody = {
+        username: userData.username,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: userData.role,
+        status: userData.status,
+        projects: userData.projects || [],
+        permissions: userData.permissions || {}
+      };
+      return api(`/api/v1/users/${userId}`, "PUT", requestBody);
+    },
+
+    // Delete user
+    delete: async (userId) => {
+      return api(`/api/v1/users/${userId}`, "DELETE");
+    },
+
+    // Update user permissions
+    updatePermissions: async (userId, permissions) => {
+      const requestBody = {
+        permissions: permissions
+      };
+      return api(`/api/v1/users/${userId}/permissions`, "PATCH", requestBody);
+    },
+
+    // Reset user password
+    resetPassword: async (userId) => {
+      return api(`/api/v1/users/${userId}/reset-password`, "POST");
+    }
+  },
+
+  // Configuration endpoints
+  config: {
+    // Get available projects
+    getProjects: async () => {
+      return api("/api/v1/users/projects", "GET");
+    },
+
+    // Get role configuration
+    getRoles: async () => {
+      return api("/api/v1/users/roles", "GET");
+    }
+  },
+
+  // Legacy endpoints for backward compatibility
+  legacy: {
+    // Get all users (legacy)
+    getUsers: async () => {
+      return api("/api/v1/legacy/users", "GET");
+    },
+
+    // Get user by ID (legacy)
+    getUserById: async (userId) => {
+      return api(`/api/v1/legacy/users/${userId}`, "GET");
+    },
+
+    // Update user (legacy)
+    updateUser: async (userData) => {
+      return api("/api/v1/legacy/users/update", "PATCH", userData);
+    }
+  },
+
+  // Admin endpoints
+  admin: {
+    // Initialize system
+    initialize: async () => {
+      return api("/api/v1/admin/initialize", "POST");
+    }
+  }
+};
+
 // Default export for backward compatibility
 export default api;

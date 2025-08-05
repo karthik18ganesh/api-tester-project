@@ -1,198 +1,80 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { toast } from 'react-toastify';
 import { 
   FiUsers, 
-  FiUserPlus, 
-  FiEdit, 
-  FiTrash2, 
   FiSearch, 
-  FiFilter, 
-  FiMoreVertical,
-  FiShield,
+  FiUserPlus, 
+  FiEdit2, 
+  FiTrash2, 
+  FiShield, 
   FiKey,
-  FiSettings,
   FiEye,
-  FiEyeOff,
-  FiCheck,
-  FiX,
+  FiMoreVertical,
   FiAlertTriangle,
-  FiUserCheck,
-  FiLock
+  FiRefreshCw
 } from 'react-icons/fi';
 import { 
+  FaCrown, 
   FaUserShield, 
-  FaUserTie, 
   FaUserCog, 
   FaUser,
-  FaCrown,
-  FaProjectDiagram
+  FaCheck,
+  FaTimes
 } from 'react-icons/fa';
 import { useAuthStore } from '../../../stores/authStore';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { userManagement } from '../../../utils/api';
 import Modal from '../../../components/UI/Modal';
 import Button from '../../../components/UI/Button';
 import Input from '../../../components/UI/Input';
 import Badge from '../../../components/UI/Badge';
 
-// Mock data for users
-const mockUsers = [
-  {
-    id: 1,
-    username: 'superadmin',
-    email: 'superadmin@apitest.com',
-    firstName: 'Super',
-    lastName: 'Administrator',
-    role: 'SUPER_ADMIN',
-    status: 'active',
-    lastLogin: '2024-01-20T10:30:00Z',
-    createdAt: '2024-01-01T00:00:00Z',
-    projects: ['Project Alpha', 'Project Beta', 'Project Gamma'],
-    permissions: {
-      testDesign: { enabled: true, sections: ['api-repository', 'test-case', 'test-suite', 'test-package', 'functions-variables'] },
-      testExecution: { enabled: true, sections: ['execution', 'results'] },
-      admin: { enabled: true, sections: ['project-setup', 'environment-setup', 'user-settings'] },
-      dashboard: { enabled: true }
-    }
-  },
-  {
-    id: 2,
-    username: 'admin1',
-    email: 'admin@apitest.com',
-    firstName: 'John',
-    lastName: 'Admin',
-    role: 'ADMIN',
-    status: 'active',
-    lastLogin: '2024-01-19T14:20:00Z',
-    createdAt: '2024-01-05T00:00:00Z',
-    projects: ['Project Alpha', 'Project Beta'],
-    permissions: {
-      testDesign: { enabled: true, sections: ['api-repository', 'test-case', 'test-suite', 'test-package'] },
-      testExecution: { enabled: true, sections: ['execution', 'results'] },
-      admin: { enabled: true, sections: ['project-setup', 'environment-setup'] },
-      dashboard: { enabled: true }
-    }
-  },
-  {
-    id: 3,
-    username: 'designer1',
-    email: 'designer@apitest.com',
-    firstName: 'Sarah',
-    lastName: 'Designer',
-    role: 'TEST_DESIGNER',
-    status: 'active',
-    lastLogin: '2024-01-20T09:15:00Z',
-    createdAt: '2024-01-10T00:00:00Z',
-    projects: ['Project Alpha'],
-    permissions: {
-      testDesign: { enabled: true, sections: ['api-repository', 'test-case', 'test-suite'] },
-      testExecution: { enabled: true, sections: ['execution', 'results'] },
-      admin: { enabled: false, sections: [] },
-      dashboard: { enabled: true }
-    }
-  },
-  {
-    id: 4,
-    username: 'executor1',
-    email: 'executor@apitest.com',
-    firstName: 'Mike',
-    lastName: 'Executor',
-    role: 'EXECUTOR',
-    status: 'active',
-    lastLogin: '2024-01-20T11:45:00Z',
-    createdAt: '2024-01-15T00:00:00Z',
-    projects: ['Project Alpha', 'Project Beta'],
-    permissions: {
-      testDesign: { enabled: false, sections: [] },
-      testExecution: { enabled: true, sections: ['execution', 'results'] },
-      admin: { enabled: false, sections: [] },
-      dashboard: { enabled: true }
-    }
-  },
-  {
-    id: 5,
-    username: 'designer2',
-    email: 'designer2@apitest.com',
-    firstName: 'Emma',
-    lastName: 'Wilson',
-    role: 'TEST_DESIGNER',
-    status: 'inactive',
-    lastLogin: '2024-01-15T16:30:00Z',
-    createdAt: '2024-01-08T00:00:00Z',
-    projects: ['Project Beta'],
-    permissions: {
-      testDesign: { enabled: true, sections: ['api-repository', 'test-case'] },
-      testExecution: { enabled: true, sections: ['execution'] },
-      admin: { enabled: false, sections: [] },
-      dashboard: { enabled: true }
-    }
-  }
-];
-
-const roleHierarchy = {
-  'SUPER_ADMIN': 4,
-  'ADMIN': 3,
-  'TEST_DESIGNER': 2,
-  'EXECUTOR': 1
+// Helper function to transform API role data to UI format
+const transformRoleData = (apiRoleData) => {
+  if (!apiRoleData || !apiRoleData.roles) return {};
+  
+  const roleIcons = {
+    'SUPER_ADMIN': <FaCrown className="h-4 w-4" />,
+    'ADMIN': <FaUserShield className="h-4 w-4" />,
+    'TEST_DESIGNER': <FaUserCog className="h-4 w-4" />,
+    'EXECUTOR': <FaUser className="h-4 w-4" />
+  };
+  
+  const roleColors = {
+    'SUPER_ADMIN': 'bg-purple-100 text-purple-800 border-purple-200',
+    'ADMIN': 'bg-blue-100 text-blue-800 border-blue-200',
+    'TEST_DESIGNER': 'bg-green-100 text-green-800 border-green-200',
+    'EXECUTOR': 'bg-gray-100 text-gray-800 border-gray-200'
+  };
+  
+  const transformedRoles = {};
+  Object.entries(apiRoleData.roles).forEach(([roleKey, roleData]) => {
+    transformedRoles[roleKey] = {
+      label: roleData.label,
+      icon: roleIcons[roleKey] || <FaUser className="h-4 w-4" />,
+      color: roleColors[roleKey] || 'bg-gray-100 text-gray-800 border-gray-200',
+      description: roleData.description,
+      hierarchy: roleData.hierarchy
+    };
+  });
+  
+  return transformedRoles;
 };
 
-const roleConfig = {
-  'SUPER_ADMIN': {
-    label: 'Super Admin',
-    icon: <FaCrown className="h-4 w-4" />,
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    description: 'Full system access with all privileges'
-  },
-  'ADMIN': {
-    label: 'Admin',
-    icon: <FaUserShield className="h-4 w-4" />,
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'Administrative access with user management'
-  },
-  'TEST_DESIGNER': {
-    label: 'Test Designer',
-    icon: <FaUserCog className="h-4 w-4" />,
-    color: 'bg-green-100 text-green-800 border-green-200',
-    description: 'Test creation and design capabilities'
-  },
-  'EXECUTOR': {
-    label: 'Executor',
-    icon: <FaUser className="h-4 w-4" />,
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
-    description: 'Test execution and viewing results only'
-  }
-};
-
-const availableProjects = ['Project Alpha', 'Project Beta', 'Project Gamma', 'Project Delta'];
-
-const permissionSections = {
-  testDesign: {
-    label: 'Test Design',
-    sections: {
-      'api-repository': 'API Repository',
-      'test-case': 'Test Case',
-      'test-suite': 'Test Suite',
-      'test-package': 'Test Package',
-      'functions-variables': 'Functions & Variables'
-    }
-  },
-  testExecution: {
-    label: 'Test Execution',
-    sections: {
-      'execution': 'Test Execution',
-      'results': 'Test Results'
-    }
-  },
-  admin: {
-    label: 'Administration',
-    sections: {
-      'project-setup': 'Project Setup',
-      'environment-setup': 'Environment Setup',
-      'user-settings': 'User Management'
-    }
-  }
+// Helper function to transform API permission data to UI format
+const transformPermissionData = (apiRoleData) => {
+  if (!apiRoleData || !apiRoleData.permissionSections) return {};
+  
+  return apiRoleData.permissionSections;
 };
 
 const UserManagement = () => {
   const { role: currentUserRole } = useAuthStore();
-  const [users, setUsers] = useState(mockUsers);
+  const { canManageUsers, canManageRole } = usePermissions();
+  const [users, setUsers] = useState([]);
+  const [availableProjects, setAvailableProjects] = useState([]);
+  const [roleConfiguration, setRoleConfiguration] = useState({});
+  const [permissionSections, setPermissionSections] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -202,40 +84,100 @@ const UserManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0
+  });
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    roleDistribution: {},
+    statusDistribution: {}
+  });
+
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     firstName: '',
     lastName: '',
+    password: '',
     role: 'EXECUTOR',
-    status: 'active',
+    status: 'ACTIVE',
     projects: [],
-    permissions: {
-      testDesign: { enabled: false, sections: [] },
-      testExecution: { enabled: false, sections: [] },
-      admin: { enabled: false, sections: [] },
-      dashboard: { enabled: true }
-    }
+    permissions: {}
   });
 
-  // Check if current user can manage other users
-  const canManageUsers = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
-  
-  // Check if current user can manage a specific role
-  const canManageRole = (targetRole) => {
-    if (currentUserRole === 'SUPER_ADMIN') return true;
-    if (currentUserRole === 'ADMIN') return targetRole !== 'SUPER_ADMIN';
-    return false;
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  // Initialize permissions when permissionSections are loaded
+  useEffect(() => {
+    if (Object.keys(permissionSections).length > 0) {
+      const defaultPermissions = {};
+      Object.keys(permissionSections).forEach(category => {
+        defaultPermissions[category] = {
+          enabled: category === 'dashboard', // Only dashboard is enabled by default
+          sections: []
+        };
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        permissions: defaultPermissions
+      }));
+    }
+  }, [permissionSections]);
+
+  const loadInitialData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load users, projects, and role configuration in parallel
+      const [usersResponse, projectsResponse, rolesResponse] = await Promise.all([
+        userManagement.users.getAll(),
+        userManagement.config.getProjects(),
+        userManagement.config.getRoles()
+      ]);
+
+      if (usersResponse.result) {
+        setUsers(usersResponse.result.users || []);
+        setPagination(usersResponse.result.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
+        setStats(usersResponse.result.stats || { totalUsers: 0, roleDistribution: {}, statusDistribution: {} });
+      }
+
+      if (projectsResponse.result) {
+        setAvailableProjects(projectsResponse.result || []);
+      }
+
+      if (rolesResponse.result) {
+        // Transform the API response to the expected format
+        const transformedRoles = transformRoleData(rolesResponse.result);
+        const transformedPermissions = transformPermissionData(rolesResponse.result);
+        
+        setRoleConfiguration(transformedRoles);
+        setPermissionSections(transformedPermissions);
+      }
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      toast.error('Failed to load user management data');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Filter users based on search and filters
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const matchesSearch = searchTerm === '' || 
-        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchTerm.toLowerCase());
+        user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
       const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
@@ -245,79 +187,183 @@ const UserManagement = () => {
   }, [users, searchTerm, roleFilter, statusFilter]);
 
   const resetForm = () => {
+    // Initialize permissions structure based on available permission sections from API
+    const defaultPermissions = {};
+    Object.keys(permissionSections).forEach(category => {
+      defaultPermissions[category] = {
+        enabled: category === 'dashboard', // Only dashboard is enabled by default
+        sections: []
+      };
+    });
+    
     setFormData({
       username: '',
       email: '',
       firstName: '',
       lastName: '',
+      password: '',
       role: 'EXECUTOR',
-      status: 'active',
+      status: 'ACTIVE',
       projects: [],
-      permissions: {
-        testDesign: { enabled: false, sections: [] },
-        testExecution: { enabled: false, sections: [] },
-        admin: { enabled: false, sections: [] },
-        dashboard: { enabled: true }
-      }
+      permissions: defaultPermissions
     });
   };
 
-  const handleCreateUser = () => {
-    const newUser = {
-      id: Math.max(...users.map(u => u.id)) + 1,
-      ...formData,
-      createdAt: new Date().toISOString(),
-      lastLogin: null
-    };
-    setUsers([...users, newUser]);
-    setShowCreateModal(false);
-    resetForm();
+  const handleCreateUser = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await userManagement.users.create(formData);
+      
+      if (response.result) {
+        toast.success('User created successfully');
+        setShowCreateModal(false);
+        resetForm();
+        loadInitialData(); // Reload users
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error('Failed to create user');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleEditUser = () => {
-    setUsers(users.map(user => 
-      user.id === selectedUser.id 
-        ? { ...selectedUser, ...formData }
-        : user
-    ));
-    setShowEditModal(false);
-    setSelectedUser(null);
-    resetForm();
+  const handleEditUser = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await userManagement.users.update(selectedUser.id, formData);
+      
+      if (response.result) {
+        toast.success('User updated successfully');
+        setShowEditModal(false);
+        setSelectedUser(null);
+        resetForm();
+        loadInitialData(); // Reload users
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDeleteUser = () => {
-    setUsers(users.filter(user => user.id !== selectedUser.id));
-    setShowDeleteModal(false);
-    setSelectedUser(null);
+  const handleDeleteUser = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await userManagement.users.delete(selectedUser.id);
+      
+      if (response.result !== null) {
+        toast.success('User deleted successfully');
+        setShowDeleteModal(false);
+        setSelectedUser(null);
+        loadInitialData(); // Reload users
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handlePasswordReset = () => {
-    // In real implementation, this would call an API
-    console.log('Password reset for user:', selectedUser.username);
-    setShowPasswordResetModal(false);
-    setSelectedUser(null);
+  const handlePasswordReset = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await userManagement.users.resetPassword(selectedUser.id);
+      
+      if (response.result) {
+        toast.success(`Password reset successful. Temporary password: ${response.result.temporaryPassword}`);
+        setShowPasswordResetModal(false);
+        setSelectedUser(null);
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast.error('Failed to reset password');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdatePermissions = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      const response = await userManagement.users.updatePermissions(selectedUser.id, formData.permissions);
+      
+      if (response.result) {
+        toast.success('Permissions updated successfully');
+        setShowPermissionsModal(false);
+        setSelectedUser(null);
+        resetForm();
+        loadInitialData(); // Reload users
+      }
+    } catch (error) {
+      console.error('Error updating permissions:', error);
+      toast.error('Failed to update permissions');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const openEditModal = (user) => {
     setSelectedUser(user);
+    
+    // Initialize permissions structure based on available permission sections from API
+    const userPermissions = user.permissions || {};
+    const mergedPermissions = {};
+    
+    Object.keys(permissionSections).forEach(category => {
+      mergedPermissions[category] = {
+        enabled: userPermissions[category]?.enabled || false,
+        sections: userPermissions[category]?.sections || []
+      };
+    });
+    
     setFormData({
-      username: user.username,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      status: user.status,
-      projects: user.projects,
-      permissions: user.permissions
+      username: user.username || '',
+      email: user.email || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      password: '', // Don't populate password for edit
+      role: user.role || 'EXECUTOR',
+      status: user.status || 'ACTIVE',
+      projects: user.projects || [],
+      permissions: mergedPermissions
     });
     setShowEditModal(true);
   };
 
   const openPermissionsModal = (user) => {
     setSelectedUser(user);
+    
+    // Initialize permissions structure based on available permission sections from API
+    const defaultPermissions = {};
+    Object.keys(permissionSections).forEach(category => {
+      defaultPermissions[category] = {
+        enabled: false,
+        sections: []
+      };
+    });
+    
+    // Merge with user's existing permissions, ensuring all categories are present
+    const userPermissions = user.permissions || {};
+    const mergedPermissions = {};
+    
+    Object.keys(permissionSections).forEach(category => {
+      mergedPermissions[category] = {
+        enabled: userPermissions[category]?.enabled || false,
+        sections: userPermissions[category]?.sections || []
+      };
+    });
+    
     setFormData({
       ...formData,
-      permissions: user.permissions
+      permissions: mergedPermissions
     });
     setShowPermissionsModal(true);
   };
@@ -329,9 +375,10 @@ const UserManagement = () => {
         ...prev.permissions,
         [category]: {
           ...prev.permissions[category],
-          sections: prev.permissions[category].sections.includes(section)
-            ? prev.permissions[category].sections.filter(s => s !== section)
-            : [...prev.permissions[category].sections, section]
+          enabled: prev.permissions[category]?.enabled || false,
+          sections: (prev.permissions[category]?.sections || []).includes(section)
+            ? (prev.permissions[category]?.sections || []).filter(s => s !== section)
+            : [...(prev.permissions[category]?.sections || []), section]
         }
       }
     }));
@@ -344,7 +391,8 @@ const UserManagement = () => {
         ...prev.permissions,
         [category]: {
           ...prev.permissions[category],
-          enabled: !prev.permissions[category].enabled
+          enabled: !(prev.permissions[category]?.enabled || false),
+          sections: prev.permissions[category]?.sections || []
         }
       }
     }));
@@ -357,6 +405,19 @@ const UserManagement = () => {
           <FiAlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-red-800 mb-2">Access Denied</h3>
           <p className="text-red-600">You don't have permission to access user management.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center space-x-2">
+            <FiRefreshCw className="h-6 w-6 animate-spin text-indigo-600" />
+            <span className="text-gray-600">Loading user management data...</span>
+          </div>
         </div>
       </div>
     );
@@ -379,7 +440,7 @@ const UserManagement = () => {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{stats.totalUsers}</div>
             <div className="text-indigo-100 text-sm">Total Users</div>
           </div>
         </div>
@@ -387,8 +448,8 @@ const UserManagement = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {Object.entries(roleConfig).map(([role, config]) => {
-          const count = users.filter(u => u.role === role).length;
+        {Object.entries(roleConfiguration).map(([role, config]) => {
+          const count = stats.roleDistribution[role] || 0;
           return (
             <div key={role} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-center justify-between">
@@ -428,7 +489,7 @@ const UserManagement = () => {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="all">All Roles</option>
-              {Object.entries(roleConfig).map(([role, config]) => (
+              {Object.entries(roleConfiguration).map(([role, config]) => (
                 <option key={role} value={role}>{config.label}</option>
               ))}
             </select>
@@ -440,8 +501,8 @@ const UserManagement = () => {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
             </select>
           </div>
 
@@ -493,7 +554,7 @@ const UserManagement = () => {
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
                           <span className="text-white font-medium">
-                            {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                            {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                           </span>
                         </div>
                       </div>
@@ -508,15 +569,15 @@ const UserManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={roleConfig[user.role].color}>
+                    <Badge className={roleConfiguration[user.role]?.color || 'bg-gray-100 text-gray-800 border-gray-200'}>
                       <span className="flex items-center">
-                        {roleConfig[user.role].icon}
-                        <span className="ml-1">{roleConfig[user.role].label}</span>
+                        {roleConfiguration[user.role]?.icon}
+                        <span className="ml-1">{roleConfiguration[user.role]?.label || user.role}</span>
                       </span>
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={user.status === 'active' 
+                    <Badge className={user.status === 'ACTIVE' 
                       ? 'bg-green-100 text-green-800 border-green-200' 
                       : 'bg-red-100 text-red-800 border-red-200'
                     }>
@@ -525,12 +586,12 @@ const UserManagement = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
-                      {user.projects.slice(0, 2).map((project, index) => (
+                      {user.projects?.slice(0, 2).map((project, index) => (
                         <Badge key={index} className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
                           {project}
                         </Badge>
                       ))}
-                      {user.projects.length > 2 && (
+                      {user.projects?.length > 2 && (
                         <Badge className="bg-gray-100 text-gray-800 border-gray-200 text-xs">
                           +{user.projects.length - 2}
                         </Badge>
@@ -559,7 +620,7 @@ const UserManagement = () => {
                             className="text-gray-600 hover:text-gray-900 p-1"
                             title="Edit User"
                           >
-                            <FiEdit className="h-4 w-4" />
+                            <FiEdit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => {
@@ -632,6 +693,14 @@ const UserManagement = () => {
               placeholder="Enter last name"
               required
             />
+            <Input
+              label="Password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              placeholder="Enter password"
+              required
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -642,7 +711,7 @@ const UserManagement = () => {
                 onChange={(e) => setFormData({...formData, role: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
-                {Object.entries(roleConfig).map(([role, config]) => (
+                {Object.entries(roleConfiguration).map(([role, config]) => (
                   canManageRole(role) && (
                     <option key={role} value={role}>{config.label}</option>
                   )
@@ -656,8 +725,8 @@ const UserManagement = () => {
                 onChange={(e) => setFormData({...formData, status: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
               </select>
             </div>
           </div>
@@ -689,20 +758,21 @@ const UserManagement = () => {
             <Button
               variant="secondary"
               onClick={() => setShowCreateModal(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateUser}
-              disabled={!formData.username || !formData.email || !formData.firstName || !formData.lastName}
+              disabled={!formData.username || !formData.email || !formData.firstName || !formData.lastName || !formData.password || isSubmitting}
             >
-              Create User
+              {isSubmitting ? 'Creating...' : 'Create User'}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Edit User Modal - Similar structure to Create Modal */}
+      {/* Edit User Modal */}
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -751,7 +821,7 @@ const UserManagement = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 disabled={!canManageRole(formData.role)}
               >
-                {Object.entries(roleConfig).map(([role, config]) => (
+                {Object.entries(roleConfiguration).map(([role, config]) => (
                   canManageRole(role) && (
                     <option key={role} value={role}>{config.label}</option>
                   )
@@ -765,8 +835,8 @@ const UserManagement = () => {
                 onChange={(e) => setFormData({...formData, status: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
               </select>
             </div>
           </div>
@@ -798,11 +868,15 @@ const UserManagement = () => {
             <Button
               variant="secondary"
               onClick={() => setShowEditModal(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button onClick={handleEditUser}>
-              Update User
+            <Button 
+              onClick={handleEditUser}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Updating...' : 'Update User'}
             </Button>
           </div>
         </div>
@@ -818,12 +892,12 @@ const UserManagement = () => {
         <div className="space-y-6">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${roleConfig[selectedUser?.role]?.color || 'bg-gray-100'}`}>
-                {roleConfig[selectedUser?.role]?.icon}
+              <div className={`p-2 rounded-lg ${roleConfiguration[selectedUser?.role]?.color || 'bg-gray-100'}`}>
+                {roleConfiguration[selectedUser?.role]?.icon}
               </div>
               <div>
-                <div className="font-medium text-gray-900">{roleConfig[selectedUser?.role]?.label}</div>
-                <div className="text-sm text-gray-600">{roleConfig[selectedUser?.role]?.description}</div>
+                <div className="font-medium text-gray-900">{roleConfiguration[selectedUser?.role]?.label}</div>
+                <div className="text-sm text-gray-600">{roleConfiguration[selectedUser?.role]?.description}</div>
               </div>
             </div>
           </div>
@@ -864,20 +938,15 @@ const UserManagement = () => {
             <Button
               variant="secondary"
               onClick={() => setShowPermissionsModal(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                setUsers(users.map(user => 
-                  user.id === selectedUser.id 
-                    ? { ...user, permissions: formData.permissions }
-                    : user
-                ));
-                setShowPermissionsModal(false);
-              }}
+              onClick={handleUpdatePermissions}
+              disabled={isSubmitting}
             >
-              Save Permissions
+              {isSubmitting ? 'Saving...' : 'Save Permissions'}
             </Button>
           </div>
         </div>
@@ -902,14 +971,16 @@ const UserManagement = () => {
             <Button
               variant="secondary"
               onClick={() => setShowDeleteModal(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               variant="danger"
               onClick={handleDeleteUser}
+              disabled={isSubmitting}
             >
-              Delete User
+              {isSubmitting ? 'Deleting...' : 'Delete User'}
             </Button>
           </div>
         </div>
@@ -934,14 +1005,16 @@ const UserManagement = () => {
             <Button
               variant="secondary"
               onClick={() => setShowPasswordResetModal(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               onClick={handlePasswordReset}
               className="bg-orange-600 hover:bg-orange-700"
+              disabled={isSubmitting}
             >
-              Reset Password
+              {isSubmitting ? 'Resetting...' : 'Reset Password'}
             </Button>
           </div>
         </div>

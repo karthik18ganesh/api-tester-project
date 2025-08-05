@@ -13,6 +13,8 @@ export const useAuthStore = create(
       isLoading: false,
       rememberMe: false,
       rememberedUsername: '',
+      permissions: {}, // Enhanced permissions
+      assignedProjects: [], // User's assigned projects
 
       // Actions
       login: (userData) => {
@@ -23,6 +25,8 @@ export const useAuthStore = create(
           role: userData.role,
           isAuthenticated: true,
           isLoading: false,
+          permissions: userData.user?.permissions || {},
+          assignedProjects: userData.user?.assignedProjects || []
         });
       },
 
@@ -34,12 +38,15 @@ export const useAuthStore = create(
           role: null,
           isAuthenticated: false,
           isLoading: false,
+          permissions: {},
+          assignedProjects: []
         });
         
         // Clear localStorage for backward compatibility
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('activeProject');
+        localStorage.removeItem('permissions');
         
         // Trigger storage event for backward compatibility
         window.dispatchEvent(new Event('storage'));
@@ -56,6 +63,33 @@ export const useAuthStore = create(
         });
       },
 
+      // Enhanced permission checking
+      hasPermission: (category, section = null) => {
+        const { permissions } = get();
+        const categoryPermissions = permissions[category];
+        
+        if (!categoryPermissions || !categoryPermissions.enabled) {
+          return false;
+        }
+        
+        if (!section) {
+          return categoryPermissions.enabled;
+        }
+        
+        return categoryPermissions.sections.includes('*') || 
+               categoryPermissions.sections.includes(section);
+      },
+
+      // Get user permissions
+      getPermissions: () => {
+        return get().permissions;
+      },
+
+      // Get assigned projects
+      getAssignedProjects: () => {
+        return get().assignedProjects;
+      },
+
       // Computed getters
       getAuthHeaders: () => {
         const { token } = get();
@@ -67,6 +101,7 @@ export const useAuthStore = create(
         const token = localStorage.getItem('token');
         const userId = localStorage.getItem('userId');
         const rememberedUsername = localStorage.getItem('rememberedUsername');
+        const permissions = JSON.parse(localStorage.getItem('permissions') || '{}');
         
         if (token && userId) {
           set({
@@ -74,6 +109,7 @@ export const useAuthStore = create(
             userId,
             isAuthenticated: true,
             user: { id: userId }, // Basic user object
+            permissions
           });
         }
         
@@ -96,6 +132,8 @@ export const useAuthStore = create(
         isAuthenticated: state.isAuthenticated,
         rememberMe: state.rememberMe,
         rememberedUsername: state.rememberedUsername,
+        permissions: state.permissions,
+        assignedProjects: state.assignedProjects,
       }),
     }
   )

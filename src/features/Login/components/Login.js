@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { FiActivity, FiZap } from "react-icons/fi";
 import { nanoid } from "nanoid";
 import BgImage from "../../../assets/lp-bg.jpg";
-import { api } from "../../../utils/api";
+import { userManagement } from "../../../utils/api";
 import { useAuthStore } from "../../../stores/authStore";
 import { useProjectStore } from "../../../stores/projectStore";
 
@@ -39,36 +39,49 @@ const Login = () => {
     setError("");
     setLoading(true);
 
-    const payload = {
-      requestMetaData: {
-        userId: "",
-        transactionId: nanoid(),
-        timestamp: new Date().toISOString()
-      },
-      data: {
-        username,
-        password
-      }
-    };
-
     try {
-      const json = await api("/users/login", "POST", payload);
+      const response = await userManagement.auth.login(username, password);
 
-      const { code, message, data } = json.result;
+      const { code, message, data } = response.result;
       if (code === "200") {
         // Update remember me preference
         setRememberMe(rememberMe, rememberMe ? username : '');
 
-        // Login through Zustand store
-        login({
-          user: { 
-            id: data.userId, 
-            username: username 
-          },
-          token: data.token,
-          userId: data.userId,
-          role: data.role,
-        });
+        // Store token immediately
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userId', data.userId);
+
+        // Make a follow-up API call to get complete user details including permissions and projects
+        try {
+          const userDetailsResponse = await userManagement.users.getById(data.userId);
+          const userDetails = userDetailsResponse.result.data;
+          
+          // Store enhanced user data with permissions and assigned projects
+          if (userDetails.permissions) {
+            localStorage.setItem('permissions', JSON.stringify(userDetails.permissions));
+          }
+          if (userDetails.assignedProjects) {
+            localStorage.setItem('assignedProjects', JSON.stringify(userDetails.assignedProjects));
+          }
+
+          // Login through Zustand store with complete user data
+          login({
+            user: userDetails,
+            token: data.token,
+            userId: data.userId,
+            role: data.role,
+          });
+        } catch (userDetailsError) {
+          console.warn('Failed to fetch complete user details:', userDetailsError);
+          
+          // Fallback: login with basic data from login response
+          login({
+            user: { userId: data.userId, role: data.role },
+            token: data.token,
+            userId: data.userId,
+            role: data.role,
+          });
+        }
 
         toast.success(message);
         
@@ -85,6 +98,7 @@ const Login = () => {
         toast.error(message);
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError("Login failed. Please try again.");
       toast.error("Login failed");
     } finally {
