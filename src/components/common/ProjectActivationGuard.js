@@ -5,6 +5,7 @@ import { FiSettings, FiRefreshCw } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import { api } from '../../utils/api';
 import { useProjectStore } from '../../stores/projectStore';
+import { useAuthStore } from '../../stores/authStore';
 
 // Custom hook for project activation - Updated to use Zustand store
 export const useProjectActivation = () => {
@@ -26,8 +27,9 @@ export const useProjectActivation = () => {
 };
 
 // Project Selection Modal Component
-const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading = false, onRefresh }) => {
+const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading = false, onRefresh, userRole }) => {
   const [selectedProject, setSelectedProject] = useState(null);
+  const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
   if (!isOpen) return null;
 
@@ -49,7 +51,9 @@ const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading
               </div>
               <div>
                 <h2 className="text-xl font-bold text-white">Select Active Project</h2>
-                <p className="text-indigo-100 text-sm">Choose a project to continue</p>
+                <p className="text-indigo-100 text-sm">
+                  {isAdminUser ? 'Choose a project to continue' : 'Select your assigned project'}
+                </p>
               </div>
             </div>
             <button
@@ -66,20 +70,36 @@ const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading
         {/* Content */}
         <div className="p-6">
           {/* Warning Message */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start">
-            <FaExclamationTriangle className="h-5 w-5 text-amber-500 mr-3 mt-0.5 flex-shrink-0" />
+          <div className={`border rounded-lg p-4 mb-6 flex items-start ${
+            isAdminUser 
+              ? 'bg-blue-50 border-blue-200' 
+              : 'bg-amber-50 border-amber-200'
+          }`}>
+            <FaExclamationTriangle className={`h-5 w-5 mr-3 mt-0.5 flex-shrink-0 ${
+              isAdminUser ? 'text-blue-500' : 'text-amber-500'
+            }`} />
             <div>
-              <h3 className="font-medium text-amber-800 mb-1">Project Selection Required</h3>
-              <p className="text-amber-700 text-sm">
-                You must select an active project to access the application features. 
-                All your work will be associated with the selected project.
+              <h3 className={`font-medium mb-1 ${
+                isAdminUser ? 'text-blue-800' : 'text-amber-800'
+              }`}>
+                {isAdminUser ? 'Project Selection Required' : 'No Projects Assigned'}
+              </h3>
+              <p className={`text-sm ${
+                isAdminUser ? 'text-blue-700' : 'text-amber-700'
+              }`}>
+                {isAdminUser 
+                  ? 'You must select an active project to access the application features. All your work will be associated with the selected project.'
+                  : 'You need to be assigned to a project by your administrator to access application features. Please contact your administrator.'
+                }
               </p>
             </div>
           </div>
 
           {/* Project List */}
           <div className="mb-6">
-            <h3 className="font-medium text-gray-900 mb-3">Available Projects</h3>
+            <h3 className="font-medium text-gray-900 mb-3">
+              {isAdminUser ? 'Available Projects' : 'Your Assigned Projects'}
+            </h3>
             
             {loading ? (
               <div className="space-y-3">
@@ -94,17 +114,30 @@ const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading
                 <div className="bg-gray-100 rounded-full p-4 inline-flex mb-4">
                   <FaProjectDiagram className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects Found</h3>
-                <p className="text-gray-500 mb-4">You need to create a project first before proceeding.</p>
-                <button
-                  onClick={() => {
-                    window.location.href = '/admin/project-setup';
-                  }}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <FiSettings className="inline mr-2" />
-                  Go to Project Setup
-                </button>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {isAdminUser ? 'No Projects Found' : 'No Projects Assigned'}
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {isAdminUser 
+                    ? 'You need to create a project first before proceeding.'
+                    : 'You need to be assigned to a project by your administrator.'
+                  }
+                </p>
+                {isAdminUser ? (
+                  <button
+                    onClick={() => {
+                      window.location.href = '/admin/project-setup';
+                    }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    <FiSettings className="inline mr-2" />
+                    Go to Project Setup
+                  </button>
+                ) : (
+                  <div className="text-sm text-gray-600">
+                    Contact your administrator to get assigned to a project.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="grid gap-3 max-h-64 overflow-y-auto">
@@ -188,9 +221,12 @@ const ProjectSelectionModal = ({ isOpen, onSelectProject, projects = [], loading
 // Main Project Activation Guard Component
 const ProjectActivationGuard = ({ children }) => {
   const { setProjectAsActive, isLoading, hasActiveProject } = useProjectActivation();
+  const { role: userRole } = useAuthStore();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [showModal, setShowModal] = useState(false);
+
+  const isAdminUser = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
   // Fetch projects from API
   const fetchProjects = async () => {
@@ -221,13 +257,15 @@ const ProjectActivationGuard = ({ children }) => {
   };
 
   useEffect(() => {
-    if (!isLoading && !hasActiveProject) {
+    // For admin users, don't block the UI - they can access without active project
+    // For regular users, show modal if no active project (they need projects)
+    if (!isLoading && !hasActiveProject && !isAdminUser) {
       setShowModal(true);
       fetchProjects();
     } else {
       setShowModal(false);
     }
-  }, [isLoading, hasActiveProject]);
+  }, [isLoading, hasActiveProject, isAdminUser]);
 
   const handleProjectSelect = (project) => {
     setProjectAsActive(project);
@@ -254,6 +292,7 @@ const ProjectActivationGuard = ({ children }) => {
         projects={projects}
         loading={loadingProjects}
         onRefresh={fetchProjects}
+        userRole={userRole}
       />
     </>
   );

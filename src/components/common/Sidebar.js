@@ -19,11 +19,13 @@ import {
   FiTrello,
   FiAlertTriangle,
   FiStar,
+  FiInfo,
 } from "react-icons/fi";
 import { FaBars, FaChevronDown, FaChevronUp, FaProjectDiagram } from "react-icons/fa";
 import Logo from "../../assets/Logo.svg";
 import { useProjectActivation } from "./ProjectActivationGuard";
 import { useUIStore } from "../../stores/uiStore";
+import { usePermissions } from "../../hooks/usePermissions";
 
 const Sidebar = () => {
   const [adminOpen, setAdminOpen] = useState(false);
@@ -33,6 +35,35 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const { activeProject, hasActiveProject } = useProjectActivation();
   const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
+  const { 
+    canAccess, 
+    canManageUsers, 
+    canAccessProjectSetup, 
+    canAccessEnvironmentSetup,
+    canAccessDashboard,
+    hasProjectAccess,
+    getUserPermissions,
+    currentUserRole 
+  } = usePermissions();
+
+  // Check if user is admin/super admin
+  const isAdminUser = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+
+  // Debug: Log current permissions (temporary for troubleshooting)
+  useEffect(() => {
+    const permissions = getUserPermissions();
+    console.log('=== PERMISSION DEBUG ===');
+    console.log('Current user permissions:', permissions);
+    console.log('Dashboard access:', canAccessDashboard());
+    console.log('Test Design access:', canAccess('testDesign'));
+    console.log('Test Execution access:', canAccess('testExecution'));
+    console.log('Admin access:', canAccess('admin'));
+    console.log('User role:', currentUserRole);
+    console.log('Is admin user:', isAdminUser);
+    console.log('=== END DEBUG ===');
+  }, [getUserPermissions, canAccessDashboard, canAccess, currentUserRole, isAdminUser]);
+
+
 
   useEffect(() => {
     // Auto-expand sections based on current route
@@ -52,8 +83,12 @@ const Sidebar = () => {
 
   const isActive = (route) => location.pathname === route;
 
-  // Check if navigation should be allowed
+  // Check if navigation should be allowed based on user role and project requirements
   const canNavigate = (requiresProject = true) => {
+    // Admin users can always navigate (they can access any project)
+    if (isAdminUser) return true;
+    
+    // For regular users, check if project is required and available
     if (!requiresProject) return true;
     return hasActiveProject;
   };
@@ -63,26 +98,33 @@ const Sidebar = () => {
     if (canNavigate(requiresProject)) {
       navigate(route);
     } else {
-      // Show warning or redirect to project setup
-      navigate('/admin/project-setup');
+      // For regular users without projects, show project selection
+      if (!isAdminUser) {
+        navigate('/admin/project-setup');
+      } else {
+        // For admin users, allow navigation but show warning
+        navigate(route);
+      }
     }
   };
 
-  // Test Execution submenu items
+  // Test Execution submenu items with permission checks
   const testExecutionSubMenus = [
     {
       label: "Test Execution",
       icon: <FiPlayCircle />,
       route: "/test-execution",
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     { 
       label: "Results", 
       icon: <FiBarChart2 />, 
       route: "/test-results",
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
-  ];
+  ].filter(item => item.permission && (canAccess('testExecution') || isAdminUser)); // Show for admin users or if user has testExecution permission
 
   const testDesignSubMenus = [
     {
@@ -90,38 +132,44 @@ const Sidebar = () => {
       route: "/test-design/api-repository",
       icon: <FiDatabase />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Test Case",
       route: "/test-design/test-case",
       icon: <FiFileText />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Test Suite",
       route: "/test-design/test-suite",
       icon: <FiFolder />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Test Package",
       route: "/test-design/test-package",
       icon: <FiArchive />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Functions & Variables",
       route: "/test-design/functions-variables",
       icon: <FiCode />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Bulk Upload",
       route: "/test-design/bulk-upload",
       icon: <FiLayers />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
-  ];
+  ].filter(item => item.permission && (canAccess('testDesign') || isAdminUser)); // Show for admin users or if user has testDesign permission
 
   const adminSubMenus = [
     {
@@ -129,22 +177,30 @@ const Sidebar = () => {
       route: "/admin/environment-setup",
       icon: <FiGlobe />,
       requiresProject: true,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     {
       label: "Project Setup",
       route: "/admin/project-setup",
       icon: <FiFolder />,
       requiresProject: false, // Project setup doesn't require active project
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
     { 
       label: "User Settings", 
       route: "/admin/user-settings", 
       icon: <FiUser />,
       requiresProject: false,
+      permission: true // Always show for admin users, will be filtered by canAccess
     },
-  ];
+  ].filter(item => item.permission && (canAccess('admin') || isAdminUser)); // Show for admin users or if user has admin permission
 
-  const MenuSection = ({ title, open, setOpen, items, icon }) => {
+  const MenuSection = ({ title, open, setOpen, items, icon, permission }) => {
+    // Don't render section if user has no permission for any items
+    if (items.length === 0) {
+      return null;
+    }
+
     const hasActiveItems = items.some(item => isActive(item.route));
     
     return (
@@ -192,7 +248,7 @@ const Sidebar = () => {
           }`}
         >
           {!collapsed &&
-            items.map(({ label, route, icon, requiresProject = true }) => {
+            items.map(({ label, route, icon, requiresProject = true, permission }) => {
               const canAccess = canNavigate(requiresProject);
               const isActiveRoute = isActive(route);
               
@@ -216,7 +272,7 @@ const Sidebar = () => {
                       {label}
                     </span>
                     <div className="flex items-center gap-1">
-                      {!canAccess && requiresProject && (
+                      {!canAccess && requiresProject && !isAdminUser && (
                         <FiAlertTriangle className="text-amber-500 h-3 w-3" title="Requires active project" />
                       )}
                       {isActiveRoute && canAccess && (
@@ -231,6 +287,24 @@ const Sidebar = () => {
       </div>
     );
   };
+
+  // Show warning message for regular users without projects
+  const showNoProjectWarning = !isAdminUser && !hasActiveProject && (
+    <div className="px-3 py-2 mb-4">
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+        <div className="flex items-start">
+          <FiInfo className="h-4 w-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
+          <div className="text-xs">
+            <div className="font-medium text-amber-800 mb-1">No Project Assigned</div>
+            <div className="text-amber-700">
+              You need to be assigned to a project to access features. 
+              Contact your administrator.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -296,13 +370,15 @@ const Sidebar = () => {
               <div className="p-3 bg-white rounded-lg border border-amber-200 shadow-sm">
                 <div className="flex items-center text-amber-700 mb-2">
                   <FiAlertTriangle className="mr-2 h-4 w-4" />
-                  <span className="text-sm font-semibold">No Active Project</span>
+                  <span className="text-sm font-semibold">
+                    {isAdminUser ? 'No Active Project' : 'No Project Assigned'}
+                  </span>
                 </div>
                 <button
                   onClick={() => navigate('/admin/project-setup')}
                   className="w-full text-sm bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
                 >
-                  Select Project
+                  {isAdminUser ? 'Select Project' : 'Contact Admin'}
                 </button>
               </div>
             )}
@@ -310,40 +386,45 @@ const Sidebar = () => {
         </div>
       )}
 
+      {/* No Project Warning for Regular Users */}
+      {!collapsed && showNoProjectWarning}
+
       {/* Main Menu */}
       <div className="flex-1 overflow-y-auto px-3 pt-4 pb-6 text-sm text-gray-700 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-        {/* Dashboard */}
-        <div
-          onClick={() => handleNavigation("/dashboard", true)}
-          className={`flex ${
-            collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
-          } gap-3 px-3 py-2.5 my-1 rounded-lg cursor-pointer transition-all duration-200 ease-in-out ${
-            isActive("/dashboard")
-              ? "bg-indigo-600 text-white"
-              : canNavigate(true)
-                ? "text-gray-700 hover:bg-gray-100"
-                : "text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          <div className={`text-lg ${isActive("/dashboard") ? 'text-white' : ''}`}>
-            <FiGrid />
-          </div>
-          {!collapsed && (
-            <div className="flex justify-between items-center flex-1">
-              <span className={`font-medium ${isActive("/dashboard") ? 'text-white' : ''}`}>
-                Dashboard
-              </span>
-              <div className="flex items-center">
-                {!canNavigate(true) && (
-                  <FiAlertTriangle className="text-amber-500 h-3 w-3 mr-2" title="Requires active project" />
-                )}
-                {isActive("/dashboard") && canNavigate(true) && (
-                  <FiChevronRight className="text-white h-4 w-4" />
-                )}
-              </div>
+        {/* Dashboard - Only show if user has dashboard permission */}
+        {(canAccessDashboard() || isAdminUser) && (
+          <div
+            onClick={() => handleNavigation("/dashboard", true)}
+            className={`flex ${
+              collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
+            } gap-3 px-3 py-2.5 my-1 rounded-lg cursor-pointer transition-all duration-200 ease-in-out ${
+              isActive("/dashboard")
+                ? "bg-indigo-600 text-white"
+                : canNavigate(true)
+                  ? "text-gray-700 hover:bg-gray-100"
+                  : "text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            <div className={`text-lg ${isActive("/dashboard") ? 'text-white' : ''}`}>
+              <FiGrid />
             </div>
-          )}
-        </div>
+            {!collapsed && (
+              <div className="flex justify-between items-center flex-1">
+                <span className={`font-medium ${isActive("/dashboard") ? 'text-white' : ''}`}>
+                  Dashboard
+                </span>
+                <div className="flex items-center">
+                  {!canNavigate(true) && !isAdminUser && (
+                    <FiAlertTriangle className="text-amber-500 h-3 w-3 mr-2" title="Requires active project" />
+                  )}
+                  {isActive("/dashboard") && canNavigate(true) && (
+                    <FiChevronRight className="text-white h-4 w-4" />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Simple Divider */}
         <div className={`border-b border-gray-200 my-4 ${collapsed && "mx-2"}`}></div>
@@ -353,23 +434,27 @@ const Sidebar = () => {
           <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">TEST MANAGEMENT</div>
         )}
         
-        {/* Test Design subsection */}
-        <MenuSection
-          title="Test Design"
-          open={testDesignOpen}
-          setOpen={setTestDesignOpen}
-          items={testDesignSubMenus}
-          icon={<FiBox />}
-        />
+        {/* Test Design subsection - Only show if user has any test design permissions */}
+        {testDesignSubMenus.length > 0 && (
+          <MenuSection
+            title="Test Design"
+            open={testDesignOpen}
+            setOpen={setTestDesignOpen}
+            items={testDesignSubMenus}
+            icon={<FiBox />}
+          />
+        )}
         
-        {/* Test Execution subsection */}
-        <MenuSection
-          title="Test Execution"
-          open={testExecutionOpen}
-          setOpen={setTestExecutionOpen}
-          items={testExecutionSubMenus}
-          icon={<FiTrello />}
-        />
+        {/* Test Execution subsection - Only show if user has any test execution permissions */}
+        {testExecutionSubMenus.length > 0 && (
+          <MenuSection
+            title="Test Execution"
+            open={testExecutionOpen}
+            setOpen={setTestExecutionOpen}
+            items={testExecutionSubMenus}
+            icon={<FiTrello />}
+          />
+        )}
 
         {/* Simple Divider */}
         <div className={`border-b border-gray-200 my-4 ${collapsed && "mx-2"}`}></div>
@@ -379,13 +464,16 @@ const Sidebar = () => {
           <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">ADMINISTRATION</div>
         )}
         
-        <MenuSection
-          title="Admin Settings"
-          open={adminOpen}
-          setOpen={setAdminOpen}
-          items={adminSubMenus}
-          icon={<FiSettings />}
-        />
+        {/* Admin Settings - Only show if user has any admin permissions */}
+        {adminSubMenus.length > 0 && (
+          <MenuSection
+            title="Admin Settings"
+            open={adminOpen}
+            setOpen={setAdminOpen}
+            items={adminSubMenus}
+            icon={<FiSettings />}
+          />
+        )}
       </div>
 
       {/* Sidebar Footer */}

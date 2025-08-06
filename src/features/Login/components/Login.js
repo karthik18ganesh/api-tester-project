@@ -60,8 +60,11 @@ const Login = () => {
           if (userDetails.permissions) {
             localStorage.setItem('permissions', JSON.stringify(userDetails.permissions));
           }
-          if (userDetails.assignedProjects) {
-            localStorage.setItem('assignedProjects', JSON.stringify(userDetails.assignedProjects));
+          if (userDetails.projects) {
+            localStorage.setItem('assignedProjects', JSON.stringify(userDetails.projects));
+          } else {
+            // Handle null projects case
+            localStorage.setItem('assignedProjects', JSON.stringify([]));
           }
 
           // Login through Zustand store with complete user data

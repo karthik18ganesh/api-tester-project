@@ -26,7 +26,7 @@ export const useAuthStore = create(
           isAuthenticated: true,
           isLoading: false,
           permissions: userData.user?.permissions || {},
-          assignedProjects: userData.user?.assignedProjects || []
+          assignedProjects: userData.user?.projects || []
         });
       },
 
@@ -76,8 +76,14 @@ export const useAuthStore = create(
           return categoryPermissions.enabled;
         }
         
-        return categoryPermissions.sections.includes('*') || 
-               categoryPermissions.sections.includes(section);
+        // If sections array is empty or contains "*", user has access to all sections in that category
+        // This is typically for SUPER_ADMIN or users with full category access
+        if (categoryPermissions.sections.length === 0 || categoryPermissions.sections.includes('*')) {
+          return true;
+        }
+        
+        // Check if user has access to specific section
+        return categoryPermissions.sections.includes(section);
       },
 
       // Get user permissions
@@ -102,6 +108,7 @@ export const useAuthStore = create(
         const userId = localStorage.getItem('userId');
         const rememberedUsername = localStorage.getItem('rememberedUsername');
         const permissions = JSON.parse(localStorage.getItem('permissions') || '{}');
+        const assignedProjects = JSON.parse(localStorage.getItem('assignedProjects') || '[]');
         
         if (token && userId) {
           set({
@@ -109,7 +116,8 @@ export const useAuthStore = create(
             userId,
             isAuthenticated: true,
             user: { id: userId }, // Basic user object
-            permissions
+            permissions,
+            assignedProjects
           });
         }
         

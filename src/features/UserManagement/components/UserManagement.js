@@ -734,23 +734,28 @@ const UserManagement = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Project Access</label>
             <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3">
-              {availableProjects.map((project) => (
-                <label key={project} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.projects.includes(project)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({...formData, projects: [...formData.projects, project]});
-                      } else {
-                        setFormData({...formData, projects: formData.projects.filter(p => p !== project)});
-                      }
-                    }}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-gray-700">{project}</span>
-                </label>
-              ))}
+              {availableProjects.map((project) => {
+                const projectId = typeof project === 'string' ? project : project.projectId || project.id;
+                const projectName = typeof project === 'string' ? project : project.projectName || project.name;
+                
+                return (
+                  <label key={projectId} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.projects.includes(projectId)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({...formData, projects: [...formData.projects, projectId]});
+                        } else {
+                          setFormData({...formData, projects: formData.projects.filter(p => p !== projectId)});
+                        }
+                      }}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-gray-700">{projectName}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -844,23 +849,28 @@ const UserManagement = () => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Project Access</label>
             <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3">
-              {availableProjects.map((project) => (
-                <label key={project} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.projects.includes(project)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({...formData, projects: [...formData.projects, project]});
-                      } else {
-                        setFormData({...formData, projects: formData.projects.filter(p => p !== project)});
-                      }
-                    }}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-gray-700">{project}</span>
-                </label>
-              ))}
+              {availableProjects.map((project) => {
+                const projectId = typeof project === 'string' ? project : project.projectId || project.id;
+                const projectName = typeof project === 'string' ? project : project.projectName || project.name;
+                
+                return (
+                  <label key={projectId} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.projects.includes(projectId)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({...formData, projects: [...formData.projects, projectId]});
+                        } else {
+                          setFormData({...formData, projects: formData.projects.filter(p => p !== projectId)});
+                        }
+                      }}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-gray-700">{projectName}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

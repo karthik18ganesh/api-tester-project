@@ -19,6 +19,20 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user has permission
    */
   const canAccess = (category, section = null) => {
+    // Check if the category is enabled first
+    const categoryEnabled = hasPermission(category);
+    
+    // If category is disabled, return false regardless of section
+    if (!categoryEnabled) {
+      return false;
+    }
+    
+    // If no specific section is requested, return category enabled status
+    if (!section) {
+      return categoryEnabled;
+    }
+    
+    // Check specific section permission
     return hasPermission(category, section);
   };
 
@@ -29,41 +43,42 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user can perform the action
    */
   const canPerform = (action, resource) => {
-    // Map actions to permission categories and sections
+    // Map actions to permission categories and sections based on actual API response
     const permissionMap = {
       // Test Design permissions
       'create': {
-        'testCase': hasPermission('testDesign', 'test-case'),
-        'testSuite': hasPermission('testDesign', 'test-suite'),
-        'testPackage': hasPermission('testDesign', 'test-package'),
-        'apiRepository': hasPermission('testDesign', 'api-repository'),
-        'functionVariable': hasPermission('testDesign', 'functions-variables')
+        'testCase': hasPermission('testDesign', 'testCases'),
+        'testSuite': hasPermission('testDesign', 'testSuites'),
+        'testPackage': hasPermission('testDesign', 'testPackages'),
+        'apiRepository': hasPermission('testDesign', 'apiRepository'),
+        'functionVariable': hasPermission('testDesign', 'functionsVariables')
       },
       'edit': {
-        'testCase': hasPermission('testDesign', 'test-case'),
-        'testSuite': hasPermission('testDesign', 'test-suite'),
-        'testPackage': hasPermission('testDesign', 'test-package'),
-        'apiRepository': hasPermission('testDesign', 'api-repository'),
-        'functionVariable': hasPermission('testDesign', 'functions-variables'),
+        'testCase': hasPermission('testDesign', 'testCases'),
+        'testSuite': hasPermission('testDesign', 'testSuites'),
+        'testPackage': hasPermission('testDesign', 'testPackages'),
+        'apiRepository': hasPermission('testDesign', 'apiRepository'),
+        'functionVariable': hasPermission('testDesign', 'functionsVariables'),
         'user': hasPermission('admin', 'userSettings')
       },
       'delete': {
-        'testCase': hasPermission('testDesign', 'test-case'),
-        'testSuite': hasPermission('testDesign', 'test-suite'),
-        'testPackage': hasPermission('testDesign', 'test-package'),
-        'apiRepository': hasPermission('testDesign', 'api-repository'),
-        'functionVariable': hasPermission('testDesign', 'functions-variables'),
+        'testCase': hasPermission('testDesign', 'testCases'),
+        'testSuite': hasPermission('testDesign', 'testSuites'),
+        'testPackage': hasPermission('testDesign', 'testPackages'),
+        'apiRepository': hasPermission('testDesign', 'apiRepository'),
+        'functionVariable': hasPermission('testDesign', 'functionsVariables'),
         'user': hasPermission('admin', 'userSettings')
       },
       'view': {
-        'testCase': hasPermission('testDesign', 'test-case'),
-        'testSuite': hasPermission('testDesign', 'test-suite'),
-        'testPackage': hasPermission('testDesign', 'test-package'),
-        'apiRepository': hasPermission('testDesign', 'api-repository'),
-        'functionVariable': hasPermission('testDesign', 'functions-variables'),
+        'testCase': hasPermission('testDesign', 'testCases'),
+        'testSuite': hasPermission('testDesign', 'testSuites'),
+        'testPackage': hasPermission('testDesign', 'testPackages'),
+        'apiRepository': hasPermission('testDesign', 'apiRepository'),
+        'functionVariable': hasPermission('testDesign', 'functionsVariables'),
         'user': hasPermission('admin', 'userSettings'),
         'execution': hasPermission('testExecution', 'execution'),
-        'results': hasPermission('testExecution', 'results')
+        'results': hasPermission('testExecution', 'results'),
+        'reports': hasPermission('testExecution', 'reports')
       },
       'execute': {
         'testCase': hasPermission('testExecution', 'execution'),
@@ -80,9 +95,7 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user can manage users
    */
   const canManageUsers = () => {
-    return hasPermission('admin', 'userSettings') || 
-           currentUserRole === 'SUPER_ADMIN' || 
-           currentUserRole === 'ADMIN';
+    return canAccess('admin', 'userSettings') || canAccess('admin');
   };
 
   /**
@@ -101,7 +114,7 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user can access project setup
    */
   const canAccessProjectSetup = () => {
-    return hasPermission('admin', 'project-setup');
+    return canAccess('admin', 'systemSettings') || canAccess('admin');
   };
 
   /**
@@ -109,7 +122,7 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user can access environment setup
    */
   const canAccessEnvironmentSetup = () => {
-    return hasPermission('admin', 'environment-setup');
+    return canAccess('admin', 'systemSettings') || canAccess('admin');
   };
 
   /**
@@ -117,7 +130,7 @@ export const usePermissions = () => {
    * @returns {boolean} - True if user can access dashboard
    */
   const canAccessDashboard = () => {
-    return hasPermission('dashboard');
+    return canAccess('dashboard'); // Use the same logic as canAccess
   };
 
   /**

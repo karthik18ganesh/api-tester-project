@@ -19,6 +19,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import ProjectActivationGuard from "./components/common/ProjectActivationGuard";
 import ProjectProtectedRoute from "./components/common/ProjectProtectedRoute";
 import LoadingSpinner from "./components/common/LoadingSpinner";
+import RoutePermissionGuard from "./components/common/RoutePermissionGuard";
 
 // Import Zustand stores
 import { initializeStores } from "./stores";
@@ -80,6 +81,9 @@ const UserManagement = lazy(() =>
 );
 const BulkUpload = lazy(() => 
   import("./features/TestDesign/components/BulkUpload")
+);
+const NoProjectAssigned = lazy(() => 
+  import("./components/common/NoProjectAssigned")
 );
 
 // Enhanced loading component with skeleton
@@ -159,7 +163,9 @@ const EnhancedApp = () => {
                 path="/dashboard" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <Dashboard />
+                    <RoutePermissionGuard category="dashboard" section="overview">
+                      <Dashboard />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -237,7 +243,9 @@ const EnhancedApp = () => {
                 path="/test-design/test-case" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestCase />
+                    <RoutePermissionGuard category="testDesign" section="testCases">
+                      <TestCase />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -271,7 +279,9 @@ const EnhancedApp = () => {
                 path="/test-execution" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestExecution />
+                    <RoutePermissionGuard category="testExecution" section="execution">
+                      <TestExecution />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -298,7 +308,9 @@ const EnhancedApp = () => {
                 path="/test-results" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestResults />
+                    <RoutePermissionGuard category="testExecution" section="results">
+                      <TestResults />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -308,7 +320,9 @@ const EnhancedApp = () => {
                 path="/admin/user-settings"
                 element={
                   <LazyProtectedRoute>
-                    <UserManagement />
+                    <RoutePermissionGuard category="admin" section="userSettings">
+                      <UserManagement />
+                    </RoutePermissionGuard>
                   </LazyProtectedRoute>
                 }
               />
