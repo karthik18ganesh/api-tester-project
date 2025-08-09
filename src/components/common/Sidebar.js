@@ -108,23 +108,23 @@ const Sidebar = () => {
     }
   };
 
-  // Test Execution submenu items with permission checks
+  // Test Execution submenu items with permission checks per section
   const testExecutionSubMenus = [
     {
       label: "Test Execution",
       icon: <FiPlayCircle />,
       route: "/test-execution",
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'execution'
     },
     { 
       label: "Results", 
       icon: <FiBarChart2 />, 
       route: "/test-results",
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'results'
     },
-  ].filter(item => item.permission && (canAccess('testExecution') || isAdminUser)); // Show for admin users or if user has testExecution permission
+  ].filter(item => canAccess('testExecution', item.permissionSection));
 
   const testDesignSubMenus = [
     {
@@ -132,44 +132,44 @@ const Sidebar = () => {
       route: "/test-design/api-repository",
       icon: <FiDatabase />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'apiRepository'
     },
     {
       label: "Test Case",
       route: "/test-design/test-case",
       icon: <FiFileText />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'testCases'
     },
     {
       label: "Test Suite",
       route: "/test-design/test-suite",
       icon: <FiFolder />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'testSuites'
     },
     {
       label: "Test Package",
       route: "/test-design/test-package",
       icon: <FiArchive />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'testPackages'
     },
     {
       label: "Functions & Variables",
       route: "/test-design/functions-variables",
       icon: <FiCode />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'functionsVariables'
     },
     {
       label: "Bulk Upload",
       route: "/test-design/bulk-upload",
       icon: <FiLayers />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'bulkUpload'
     },
-  ].filter(item => item.permission && (canAccess('testDesign') || isAdminUser)); // Show for admin users or if user has testDesign permission
+  ].filter(item => canAccess('testDesign', item.permissionSection));
 
   const adminSubMenus = [
     {
@@ -177,26 +177,26 @@ const Sidebar = () => {
       route: "/admin/environment-setup",
       icon: <FiGlobe />,
       requiresProject: true,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'environmentSetup'
     },
     {
       label: "Project Setup",
       route: "/admin/project-setup",
       icon: <FiFolder />,
       requiresProject: false, // Project setup doesn't require active project
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'projectSetup'
     },
     { 
       label: "User Settings", 
       route: "/admin/user-settings", 
       icon: <FiUser />,
       requiresProject: false,
-      permission: true // Always show for admin users, will be filtered by canAccess
+      permissionSection: 'userSettings'
     },
-  ].filter(item => item.permission && (canAccess('admin') || isAdminUser)); // Show for admin users or if user has admin permission
+  ].filter(item => canAccess('admin', item.permissionSection));
 
   const MenuSection = ({ title, open, setOpen, items, icon, permission }) => {
-    // Don't render section if user has no permission for any items
+    // If no items, don't render
     if (items.length === 0) {
       return null;
     }
@@ -435,7 +435,7 @@ const Sidebar = () => {
         )}
         
         {/* Test Design subsection - Only show if user has any test design permissions */}
-        {testDesignSubMenus.length > 0 && (
+        {(testDesignSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
             title="Test Design"
             open={testDesignOpen}
@@ -446,7 +446,7 @@ const Sidebar = () => {
         )}
         
         {/* Test Execution subsection - Only show if user has any test execution permissions */}
-        {testExecutionSubMenus.length > 0 && (
+        {(testExecutionSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
             title="Test Execution"
             open={testExecutionOpen}
@@ -465,7 +465,7 @@ const Sidebar = () => {
         )}
         
         {/* Admin Settings - Only show if user has any admin permissions */}
-        {adminSubMenus.length > 0 && (
+        {(adminSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
             title="Admin Settings"
             open={adminOpen}

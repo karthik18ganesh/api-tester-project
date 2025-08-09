@@ -54,25 +54,38 @@ const Login = () => {
         // Make a follow-up API call to get complete user details including permissions and projects
         try {
           const userDetailsResponse = await userManagement.users.getById(data.userId);
-          const userDetails = userDetailsResponse.result.data;
-          
-          // Store enhanced user data with permissions and assigned projects
-          if (userDetails.permissions) {
-            localStorage.setItem('permissions', JSON.stringify(userDetails.permissions));
-          }
-          if (userDetails.projects) {
-            localStorage.setItem('assignedProjects', JSON.stringify(userDetails.projects));
-          } else {
-            // Handle null projects case
-            localStorage.setItem('assignedProjects', JSON.stringify([]));
-          }
+          // Some backends return result.data, others return result directly
+          const resultContainer = userDetailsResponse?.result;
+          const userDetails = (resultContainer && (resultContainer.data || resultContainer)) || {};
+
+          // Normalize permissions and projects
+          const permissions = userDetails.permissions || {};
+          const projects = Array.isArray(userDetails.projects) ? userDetails.projects : [];
+
+          // Persist to localStorage for guards and page reloads
+          localStorage.setItem('permissions', JSON.stringify(permissions));
+          localStorage.setItem('assignedProjects', JSON.stringify(projects));
+          localStorage.setItem('auth-storage', JSON.stringify({
+            state: {
+              token: data.token,
+              userId: data.userId,
+              user: userDetails,
+              role: userDetails.role || data.role,
+              isAuthenticated: true,
+              rememberMe,
+              rememberedUsername: rememberMe ? username : '',
+              permissions,
+              assignedProjects: projects
+            },
+            version: 0
+          }));
 
           // Login through Zustand store with complete user data
           login({
             user: userDetails,
             token: data.token,
             userId: data.userId,
-            role: data.role,
+            role: userDetails.role || data.role,
           });
         } catch (userDetailsError) {
           console.warn('Failed to fetch complete user details:', userDetailsError);

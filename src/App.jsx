@@ -163,7 +163,7 @@ const EnhancedApp = () => {
                 path="/dashboard" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <RoutePermissionGuard category="dashboard" section="overview">
+                    <RoutePermissionGuard category="dashboard">
                       <Dashboard />
                     </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
@@ -185,7 +185,9 @@ const EnhancedApp = () => {
                 path="/admin/environment-setup"
                 element={
                   <LazyProjectProtectedRoute>
-                    <EnvironmentSetup />
+                    <RoutePermissionGuard category="admin" section="environmentSetup">
+                      <EnvironmentSetup />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />
@@ -195,7 +197,9 @@ const EnhancedApp = () => {
                 path="/test-design/api-repository" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <APIRepository />
+                    <RoutePermissionGuard category="testDesign" section="apiRepository">
+                      <APIRepository />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -203,7 +207,9 @@ const EnhancedApp = () => {
                 path="/test-design/api-repository/create"
                 element={
                   <LazyProjectProtectedRoute>
-                    <APIRepositoryDetails />
+                    <RoutePermissionGuard category="testDesign" section="apiRepository">
+                      <APIRepositoryDetails />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />
@@ -211,7 +217,9 @@ const EnhancedApp = () => {
                 path="/test-design/test-suite" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestSuite />
+                    <RoutePermissionGuard category="testDesign" section="testSuites">
+                      <TestSuite />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -219,7 +227,9 @@ const EnhancedApp = () => {
                 path="/test-design/test-suite/create"
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestSuiteDetails />
+                    <RoutePermissionGuard category="testDesign" section="testSuites">
+                      <TestSuiteDetails />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />
@@ -227,7 +237,9 @@ const EnhancedApp = () => {
                 path="/test-design/test-package" 
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestPackage />
+                    <RoutePermissionGuard category="testDesign" section="testPackages">
+                      <TestPackage />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 } 
               />
@@ -235,7 +247,9 @@ const EnhancedApp = () => {
                 path="/test-design/test-package/create"
                 element={
                   <LazyProjectProtectedRoute>
-                    <TestPackageDetails />
+                    <RoutePermissionGuard category="testDesign" section="testPackages">
+                      <TestPackageDetails />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />
@@ -261,7 +275,9 @@ const EnhancedApp = () => {
                 path="/test-design/functions-variables"
                 element={
                   <LazyProjectProtectedRoute>
-                    <FunctionsVariables />
+                    <RoutePermissionGuard category="testDesign" section="functionsVariables">
+                      <FunctionsVariables />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />
@@ -269,7 +285,9 @@ const EnhancedApp = () => {
                 path="/test-design/bulk-upload"
                 element={
                   <LazyProjectProtectedRoute>
-                    <BulkUpload />
+                    <RoutePermissionGuard category="testDesign" section="bulkUpload">
+                      <BulkUpload />
+                    </RoutePermissionGuard>
                   </LazyProjectProtectedRoute>
                 }
               />

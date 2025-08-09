@@ -16,7 +16,20 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
   const url = `${BASE_URL}${path}`;
   debugLog(`${method} ${url}`);
   
-  const defaultHeaders = { "Content-Type": "application/json", ...headers };
+  // Inject Authorization header when token is available
+  let authHeader = {};
+  try {
+    const tokenFromStore = useAuthStore.getState()?.token;
+    const tokenFromLocalStorage = localStorage.getItem('token');
+    const token = tokenFromStore || tokenFromLocalStorage;
+    if (token) {
+      authHeader = { Authorization: `Bearer ${token}` };
+    }
+  } catch (_) {
+    // no-op: safe fallback when store is not initialized
+  }
+
+  const defaultHeaders = { "Content-Type": "application/json", ...authHeader, ...headers };
 
   const res = await fetch(url, {
     method,

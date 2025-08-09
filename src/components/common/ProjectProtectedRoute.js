@@ -4,10 +4,13 @@ import { FaExclamationTriangle, FaProjectDiagram } from "react-icons/fa";
 import { FiSettings } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { useProjectActivation } from "./ProjectActivationGuard";
+import { useAuthStore } from "../../stores/authStore";
 
 const ProjectProtectedRoute = ({ children }) => {
   const { hasActiveProject, isLoading } = useProjectActivation();
   const navigate = useNavigate();
+  const { role } = useAuthStore();
+  const isAdminUser = role === 'SUPER_ADMIN' || role === 'ADMIN';
 
   if (isLoading) {
     return (
@@ -20,7 +23,8 @@ const ProjectProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!hasActiveProject) {
+  // Allow SUPER_ADMIN and ADMIN to access routes even without an active project
+  if (!hasActiveProject && !isAdminUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">

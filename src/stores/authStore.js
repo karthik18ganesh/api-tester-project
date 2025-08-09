@@ -18,6 +18,8 @@ export const useAuthStore = create(
 
       // Actions
       login: (userData) => {
+        const permissions = userData.user?.permissions || {};
+        const assignedProjects = Array.isArray(userData.user?.projects) ? userData.user.projects : [];
         set({
           user: userData.user,
           token: userData.token,
@@ -25,9 +27,30 @@ export const useAuthStore = create(
           role: userData.role,
           isAuthenticated: true,
           isLoading: false,
-          permissions: userData.user?.permissions || {},
-          assignedProjects: userData.user?.projects || []
+          permissions,
+          assignedProjects
         });
+        // Keep localStorage in sync so guards work after reloads without re-login
+        try {
+          localStorage.setItem('permissions', JSON.stringify(permissions));
+          localStorage.setItem('assignedProjects', JSON.stringify(assignedProjects));
+          const current = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+          localStorage.setItem('auth-storage', JSON.stringify({
+            state: {
+              ...(current.state || {}),
+              token: userData.token,
+              userId: userData.userId,
+              user: userData.user,
+              role: userData.role,
+              isAuthenticated: true,
+              permissions,
+              assignedProjects
+            },
+            version: 0
+          }));
+        } catch (_) {
+          // ignore persistence errors
+        }
       },
 
       logout: () => {
@@ -66,24 +89,30 @@ export const useAuthStore = create(
       // Enhanced permission checking
       hasPermission: (category, section = null) => {
         const { permissions } = get();
-        const categoryPermissions = permissions[category];
+        const categoryPermissions = permissions?.[category];
         
-        if (!categoryPermissions || !categoryPermissions.enabled) {
+        // If category missing or disabled, deny
+        if (!categoryPermissions || categoryPermissions.enabled !== true) {
           return false;
         }
         
+        // If no section specified, category enabled is enough
         if (!section) {
-          return categoryPermissions.enabled;
-        }
-        
-        // If sections array is empty or contains "*", user has access to all sections in that category
-        // This is typically for SUPER_ADMIN or users with full category access
-        if (categoryPermissions.sections.length === 0 || categoryPermissions.sections.includes('*')) {
           return true;
         }
         
-        // Check if user has access to specific section
-        return categoryPermissions.sections.includes(section);
+        // Normalize sections to a safe array
+        const sections = Array.isArray(categoryPermissions.sections)
+          ? categoryPermissions.sections
+          : [];
+        
+        // Empty sections or wildcard means all sections allowed
+        if (sections.length === 0 || sections.includes('*')) {
+          return true;
+        }
+        
+        // Otherwise, require explicit section permission
+        return sections.includes(section);
       },
 
       // Get user permissions
