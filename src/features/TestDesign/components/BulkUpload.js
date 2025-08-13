@@ -21,83 +21,16 @@ import { FaFileExcel, FaCloudUploadAlt } from 'react-icons/fa';
 import Button from '../../../components/UI/Button';
 import Modal from '../../../components/UI/Modal';
 import Badge from '../../../components/UI/Badge';
+import { useAuthStore } from '../../../stores/authStore';
+import { useProjectStore } from '../../../stores/projectStore';
+import {
+  downloadTemplate as downloadBulkTemplate,
+  validateBulkUpload,
+  processBulkUpload,
+  transformValidationResponse,
+} from '../../../utils/bulkUploadApi';
 
-// Mock Excel processing - In real implementation, use a library like SheetJS
-const mockProcessExcel = (file) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        fileName: file.name,
-        fileSize: file.size,
-        sheets: [
-          {
-            name: 'Test_Packages',
-            type: 'test-package',
-            rows: 5,
-            columns: ['Package Name', 'Description', 'Environment', 'Priority', 'Owner'],
-            data: [
-              { 'Package Name': 'Payment API Tests', 'Description': 'Complete payment flow testing', 'Environment': 'QA', 'Priority': 'High', 'Owner': 'John Doe' },
-              { 'Package Name': 'User Management Tests', 'Description': 'User CRUD operations', 'Environment': 'Staging', 'Priority': 'Medium', 'Owner': 'Sarah Smith' },
-              { 'Package Name': 'Authentication Tests', 'Description': 'Login and security tests', 'Environment': 'QA', 'Priority': 'High', 'Owner': 'Mike Johnson' },
-              { 'Package Name': 'Reporting Tests', 'Description': 'Report generation tests', 'Environment': 'Dev', 'Priority': 'Low', 'Owner': 'Emma Wilson' },
-              { 'Package Name': 'Integration Tests', 'Description': 'Third-party API integration', 'Environment': 'QA', 'Priority': 'High', 'Owner': 'David Lee' }
-            ],
-            validationStatus: 'valid',
-            errors: []
-          },
-          {
-            name: 'Test_Suites',
-            type: 'test-suite',
-            rows: 8,
-            columns: ['Suite Name', 'Package Name', 'Description', 'Priority', 'Tags'],
-            data: [
-              { 'Suite Name': 'Payment Flow', 'Package Name': 'Payment API Tests', 'Description': 'End-to-end payment testing', 'Priority': 'High', 'Tags': 'payment,critical' },
-              { 'Suite Name': 'Refund Process', 'Package Name': 'Payment API Tests', 'Description': 'Refund scenarios', 'Priority': 'Medium', 'Tags': 'payment,refund' },
-              { 'Suite Name': 'User Registration', 'Package Name': 'User Management Tests', 'Description': 'New user signup', 'Priority': 'High', 'Tags': 'user,registration' },
-              { 'Suite Name': 'User Profile', 'Package Name': 'User Management Tests', 'Description': 'Profile management', 'Priority': 'Medium', 'Tags': 'user,profile' },
-              { 'Suite Name': 'Login Security', 'Package Name': 'Authentication Tests', 'Description': 'Security validations', 'Priority': 'Critical', 'Tags': 'security,login' },
-              { 'Suite Name': 'Password Reset', 'Package Name': 'Authentication Tests', 'Description': 'Password recovery', 'Priority': 'High', 'Tags': 'security,password' },
-              { 'Suite Name': 'Sales Reports', 'Package Name': 'Reporting Tests', 'Description': 'Sales data reports', 'Priority': 'Medium', 'Tags': 'reports,sales' },
-              { 'Suite Name': 'API Gateway', 'Package Name': 'Integration Tests', 'Description': 'Gateway testing', 'Priority': 'High', 'Tags': 'integration,gateway' }
-            ],
-            validationStatus: 'valid',
-            errors: []
-          },
-          {
-            name: 'Test_Cases',
-            type: 'test-case',
-            rows: 15,
-            columns: ['Case Name', 'Suite Name', 'API ID', 'Method', 'Description', 'Priority'],
-            data: [
-              { 'Case Name': 'Valid Payment', 'Suite Name': 'Payment Flow', 'API ID': 'PAY_001', 'Method': 'POST', 'Description': 'Process valid payment', 'Priority': 'High' },
-              { 'Case Name': 'Invalid Card', 'Suite Name': 'Payment Flow', 'API ID': 'PAY_001', 'Method': 'POST', 'Description': 'Handle invalid card', 'Priority': 'High' },
-              { 'Case Name': 'Insufficient Funds', 'Suite Name': 'Payment Flow', 'API ID': 'PAY_001', 'Method': 'POST', 'Description': 'Insufficient balance', 'Priority': 'Medium' },
-              { 'Case Name': 'Full Refund', 'Suite Name': 'Refund Process', 'API ID': 'REF_001', 'Method': 'POST', 'Description': 'Complete refund', 'Priority': 'High' },
-              { 'Case Name': 'Partial Refund', 'Suite Name': 'Refund Process', 'API ID': 'REF_001', 'Method': 'POST', 'Description': 'Partial amount refund', 'Priority': 'Medium' },
-              { 'Case Name': 'Valid Signup', 'Suite Name': 'User Registration', 'API ID': 'USER_001', 'Method': 'POST', 'Description': 'New user creation', 'Priority': 'Critical' },
-              { 'Case Name': 'Duplicate Email', 'Suite Name': 'User Registration', 'API ID': 'USER_001', 'Method': 'POST', 'Description': 'Duplicate email validation', 'Priority': 'High' },
-              { 'Case Name': 'Update Profile', 'Suite Name': 'User Profile', 'API ID': 'USER_002', 'Method': 'PUT', 'Description': 'Profile update', 'Priority': 'Medium' },
-              { 'Case Name': 'Valid Login', 'Suite Name': 'Login Security', 'API ID': 'AUTH_001', 'Method': 'POST', 'Description': 'Successful login', 'Priority': 'Critical' },
-              { 'Case Name': 'Invalid Password', 'Suite Name': 'Login Security', 'API ID': 'AUTH_001', 'Method': 'POST', 'Description': 'Wrong password', 'Priority': 'High' },
-              { 'Case Name': 'Brute Force Protection', 'Suite Name': 'Login Security', 'API ID': 'AUTH_001', 'Method': 'POST', 'Description': 'Multiple failed attempts', 'Priority': 'Critical' },
-              { 'Case Name': 'Password Reset Request', 'Suite Name': 'Password Reset', 'API ID': 'AUTH_002', 'Method': 'POST', 'Description': 'Request password reset', 'Priority': 'High' },
-              { 'Case Name': 'Reset Token Validation', 'Suite Name': 'Password Reset', 'API ID': 'AUTH_003', 'Method': 'POST', 'Description': 'Validate reset token', 'Priority': 'High' },
-              { 'Case Name': 'Monthly Sales Report', 'Suite Name': 'Sales Reports', 'API ID': 'RPT_001', 'Method': 'GET', 'Description': 'Generate monthly report', 'Priority': 'Medium' },
-              { 'Case Name': 'Gateway Health Check', 'Suite Name': 'API Gateway', 'API ID': 'GW_001', 'Method': 'GET', 'Description': 'Gateway status', 'Priority': 'High' }
-            ],
-            validationStatus: 'warning',
-            errors: [
-              { row: 3, column: 'API ID', message: 'API ID PAY_001 not found in repository' },
-              { row: 8, column: 'Method', message: 'Invalid HTTP method' }
-            ]
-          }
-        ],
-        totalRows: 28,
-        processingTime: 1.2
-      });
-    }, 2000);
-  });
-};
+// Note: Previously mocked processing is removed in favor of real API integration
 
 const stepConfig = [
   { id: 'upload', title: 'Upload File', description: 'Select and upload your Excel file', icon: <FiUpload /> },
@@ -107,13 +40,14 @@ const stepConfig = [
 ];
 
 const sheetTypeConfig = {
-  'test-package': {
+  // Canonical keys
+  'package': {
     label: 'Test Packages',
     icon: <FiArchive className="h-5 w-5" />,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     description: 'Test package definitions and configurations'
   },
-  'test-suite': {
+  'suite': {
     label: 'Test Suites',
     icon: <FiFolder className="h-5 w-5" />,
     color: 'bg-blue-100 text-blue-800 border-blue-200',
@@ -127,16 +61,88 @@ const sheetTypeConfig = {
   }
 };
 
+// Helpers to normalize API variations
+const normalizeSheetType = (rawType) => {
+  if (!rawType) return 'unknown';
+  const type = String(rawType).trim().toLowerCase();
+  if (type === 'package' || type === 'test_package' || type === 'test-package') return 'package';
+  if (type === 'suite' || type === 'test_suite' || type === 'test-suite') return 'suite';
+  if (type === 'test case' || type === 'test_case' || type === 'test-case') return 'test-case';
+  return type;
+};
+
+const normalizeValidationStatus = (status) => {
+  if (!status) return 'unknown';
+  const s = String(status).trim().toLowerCase();
+  if (s === 'success' || s === 'valid' || s === 'ok' || s === 'passed') return 'valid';
+  if (s === 'warning' || s === 'warn') return 'warning';
+  if (s === 'error' || s === 'failed' || s === 'fail') return 'error';
+  return s;
+};
+
+const SPECIAL_COLUMN_ALIASES = {
+  'suite_name': 'suiteName',
+  'suite name': 'suiteName',
+  'package_name': 'packageName',
+  'package name': 'packageName',
+  'testcase name': 'testCaseName',
+  'test case name': 'testCaseName',
+  'test case id': 'testCaseId',
+  'type': 'type',
+  'response type': 'responseType',
+  'report type': 'reportType',
+  'project id': 'projectId',
+};
+
+const toCamelCase = (label) => {
+  const cleaned = String(label).trim().replace(/[^a-zA-Z0-9_\s]/g, '');
+  const parts = cleaned.split(/[\s_]+/g).filter(Boolean);
+  if (parts.length === 0) return cleaned;
+  const [first, ...rest] = parts;
+  return first.toLowerCase() + rest.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join('');
+};
+
+const columnToKey = (columnLabel) => {
+  const trimmed = String(columnLabel).trim();
+  const normalized = trimmed.toLowerCase().replace(/\s+/g, ' ').replace(/_/g, ' ');
+  if (SPECIAL_COLUMN_ALIASES[normalized]) return SPECIAL_COLUMN_ALIASES[normalized];
+  const snakeLike = normalized.replace(/\s+/g, '_');
+  if (SPECIAL_COLUMN_ALIASES[snakeLike]) return SPECIAL_COLUMN_ALIASES[snakeLike];
+  return toCamelCase(trimmed);
+};
+
+const getCellValue = (row, columnLabel) => {
+  if (!row) return '';
+  const direct = row[columnLabel];
+  if (direct !== undefined && direct !== null) return String(direct);
+
+  const trimmed = row[String(columnLabel).trim()];
+  if (trimmed !== undefined && trimmed !== null) return String(trimmed);
+
+  const candidateKey = columnToKey(columnLabel);
+  if (row[candidateKey] !== undefined && row[candidateKey] !== null) return String(row[candidateKey]);
+
+  const normalized = String(columnLabel).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const matchKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === normalized);
+  if (matchKey && row[matchKey] !== undefined && row[matchKey] !== null) return String(row[matchKey]);
+
+  return '';
+};
+
 const BulkUpload = () => {
   const [currentStep, setCurrentStep] = useState('upload');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [processedData, setProcessedData] = useState(null);
+  const [processedData, setProcessedData] = useState(null); // transformed validation response
+  const [uploadId, setUploadId] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, status: 'idle' });
+  const [previewRowLimit, setPreviewRowLimit] = useState(20);
   const fileInputRef = useRef(null);
+  const userId = useAuthStore((s) => s.userId);
+  const activeProject = useProjectStore((s) => s.activeProject);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -159,8 +165,13 @@ const BulkUpload = () => {
   }, []);
 
   const handleFileUpload = async (file) => {
-    if (!file.name.match(/\.(xlsx|xls)$/)) {
-      alert('Please upload a valid Excel file (.xlsx or .xls)');
+    if (!file.name.match(/\.xlsx$/i)) {
+      alert('Please upload a valid Excel .xlsx file');
+      return;
+    }
+
+    if (!activeProject?.id || !userId) {
+      alert('Missing active project or user. Please ensure you are logged in and a project is selected.');
       return;
     }
 
@@ -169,13 +180,17 @@ const BulkUpload = () => {
     setProcessing(true);
 
     try {
-      const processed = await mockProcessExcel(file);
-      setProcessedData(processed);
+      const res = await validateBulkUpload({ file, userId, projectId: activeProject.id });
+      const transformed = transformValidationResponse(res);
+      setProcessedData(transformed);
+      setUploadId(transformed.uploadId || res?.data?.uploadId || null);
+      setCreateProgress({ current: 0, total: transformed.totalRows || 0, status: 'idle' });
       setCurrentStep('preview');
     } catch (error) {
-      console.error('Error processing file:', error);
-      alert('Error processing file. Please try again.');
+      console.error('Error validating file:', error);
+      alert(error?.message || 'Validation failed. Please check your file and try again.');
       setCurrentStep('upload');
+      setUploadedFile(null);
     } finally {
       setProcessing(false);
     }
@@ -190,6 +205,7 @@ const BulkUpload = () => {
   const resetUpload = () => {
     setUploadedFile(null);
     setProcessedData(null);
+    setUploadId(null);
     setCurrentStep('upload');
     setCreateProgress({ current: 0, total: 0, status: 'idle' });
     if (fileInputRef.current) {
@@ -198,29 +214,34 @@ const BulkUpload = () => {
   };
 
   const handleCreateTestComponents = async () => {
+    if (!uploadId || !activeProject?.id || !userId) return;
     setCurrentStep('process');
-    setCreateProgress({ current: 0, total: processedData.totalRows, status: 'processing' });
+    setCreateProgress({ current: 0, total: processedData?.totalRows || 0, status: 'processing' });
 
-    // Simulate creation process
-    for (let i = 0; i <= processedData.totalRows; i++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      setCreateProgress(prev => ({ ...prev, current: i }));
+    try {
+      await processBulkUpload({ uploadId, projectId: activeProject.id, userId, confirmWarnings: false });
+      setCreateProgress(prev => ({ ...prev, current: prev.total, status: 'completed' }));
+      alert('Bulk upload processed successfully.');
+    } catch (err) {
+      console.error('Process failed:', err);
+      alert(err?.message || 'Processing failed.');
+      // Return to preview so user can retry
+      setCurrentStep('preview');
+      setCreateProgress(prev => ({ ...prev, status: 'idle' }));
     }
-
-    setCreateProgress(prev => ({ ...prev, status: 'completed' }));
   };
 
   const openPreviewModal = (sheet) => {
     setSelectedSheet(sheet);
     setShowPreviewModal(true);
+    setPreviewRowLimit(20);
   };
 
   const downloadTemplate = () => {
-    // In real implementation, this would download an actual Excel template
-    const link = document.createElement('a');
-    link.href = '#';
-    link.download = 'bulk_upload_template.xlsx';
-    link.click();
+    downloadBulkTemplate().catch((e) => {
+      console.error('Template download failed', e);
+      alert('Failed to download template.');
+    });
   };
 
   const getStepStatus = (stepId) => {
@@ -360,14 +381,14 @@ const BulkUpload = () => {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx"
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
               </div>
               
               <div className="text-sm text-gray-500">
-                Supported formats: .xlsx, .xls | Maximum size: 10MB
+                Supported format: .xlsx | Maximum size: 10MB
               </div>
             </div>
           </div>
@@ -412,7 +433,8 @@ const BulkUpload = () => {
         </div>
       )}
 
-      {/* Preview & Validation Results */}
+      {/* Preview & Validation Results */
+      }
       {currentStep === 'preview' && processedData && (
         <div className="space-y-6">
           {/* File Summary */}
@@ -431,27 +453,35 @@ const BulkUpload = () => {
                 <div className="text-sm text-gray-600">Sheets Detected</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{processedData.totalRows}</div>
+                <div className="text-2xl font-bold text-gray-900">{processedData.totalRows ?? processedData.sheets.reduce((sum, s) => sum + (s.rows || s.rowCount || 0), 0)}</div>
                 <div className="text-sm text-gray-600">Total Rows</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">
-                  {processedData.sheets.filter(s => s.validationStatus === 'valid').length}
-                </div>
+                <div className="text-2xl font-bold text-emerald-600">{
+                  processedData.sheets.filter(s => normalizeValidationStatus(s.validationStatus) === 'valid').length
+                }</div>
                 <div className="text-sm text-gray-600">Valid Sheets</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-amber-600">
-                  {processedData.sheets.filter(s => s.validationStatus === 'warning').length}
-                </div>
+                <div className="text-2xl font-bold text-amber-600">{
+                  processedData.sheets.filter(s => normalizeValidationStatus(s.validationStatus) === 'warning').length
+                }</div>
                 <div className="text-sm text-gray-600">Warnings</div>
               </div>
             </div>
 
             <div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
               <strong>File:</strong> {processedData.fileName} • 
-              <strong> Processing Time:</strong> {processedData.processingTime}s • 
-              <strong> Ready for import</strong>
+              <strong> Size:</strong> {processedData.fileSize ? `${(processedData.fileSize / 1024).toFixed(0)} KB` : '—'} • 
+              <strong> Processing Time:</strong> {processedData.processingTime ?? processedData.processing_time ?? '—'}s • 
+              <strong> Status:</strong> {
+                (() => {
+                  const statuses = processedData.sheets.map(s => normalizeValidationStatus(s.validationStatus));
+                  if (statuses.includes('error')) return 'Errors Found';
+                  if (statuses.includes('warning')) return 'Warnings';
+                  return 'Validated';
+                })()
+              }
             </div>
           </div>
 
@@ -464,28 +494,34 @@ const BulkUpload = () => {
                 <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className={`p-2 rounded-lg ${sheetTypeConfig[sheet.type]?.color || 'bg-gray-100 text-gray-800'}`}>
-                        {sheetTypeConfig[sheet.type]?.icon || <FiFile className="h-5 w-5" />}
-                      </div>
+                      {(() => { const t = normalizeSheetType(sheet.type); return (
+                        <div className={`p-2 rounded-lg ${sheetTypeConfig[t]?.color || 'bg-gray-100 text-gray-800'}`}>
+                          {sheetTypeConfig[t]?.icon || <FiFile className="h-5 w-5" />}
+                        </div>
+                      ); })()}
                       <div>
                         <div className="flex items-center space-x-3">
                           <h4 className="font-medium text-gray-900">{sheet.name}</h4>
-                          <Badge className={sheetTypeConfig[sheet.type]?.color || 'bg-gray-100 text-gray-800'}>
-                            {sheetTypeConfig[sheet.type]?.label || 'Unknown'}
-                          </Badge>
-                          <Badge className={
-                            sheet.validationStatus === 'valid' ? 'bg-green-100 text-green-800 border-green-200' :
-                            sheet.validationStatus === 'warning' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                            'bg-red-100 text-red-800 border-red-200'
-                          }>
-                            {sheet.validationStatus === 'valid' && <FiCheckCircle className="h-3 w-3 mr-1" />}
-                            {sheet.validationStatus === 'warning' && <FiAlertTriangle className="h-3 w-3 mr-1" />}
-                            {sheet.validationStatus === 'error' && <FiXCircle className="h-3 w-3 mr-1" />}
-                            {sheet.validationStatus}
-                          </Badge>
+                          {(() => { const t = normalizeSheetType(sheet.type); return (
+                            <Badge className={sheetTypeConfig[t]?.color || 'bg-gray-100 text-gray-800'}>
+                              {sheetTypeConfig[t]?.label || 'Unknown'}
+                            </Badge>
+                          ); })()}
+                          {(() => { const vs = normalizeValidationStatus(sheet.validationStatus); return (
+                            <Badge className={
+                              vs === 'valid' ? 'bg-green-100 text-green-800 border-green-200' :
+                              vs === 'warning' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                              'bg-red-100 text-red-800 border-red-200'
+                            }>
+                              {vs === 'valid' && <FiCheckCircle className="h-3 w-3 mr-1" />}
+                              {vs === 'warning' && <FiAlertTriangle className="h-3 w-3 mr-1" />}
+                              {vs === 'error' && <FiXCircle className="h-3 w-3 mr-1" />}
+                              {vs}
+                            </Badge>
+                          ); })()}
                         </div>
                         <p className="text-sm text-gray-600 mt-1">
-                          {sheetTypeConfig[sheet.type]?.description} • {sheet.rows} rows • {sheet.columns.length} columns
+                          {(() => { const t = normalizeSheetType(sheet.type); return sheetTypeConfig[t]?.description || 'Sheet'; })()} • {sheet.rows || sheet.rowCount} rows • {sheet.columns.length} columns
                         </p>
                         {sheet.errors.length > 0 && (
                           <div className="mt-2">
@@ -520,7 +556,7 @@ const BulkUpload = () => {
               <Button
                 onClick={handleCreateTestComponents}
                 className="bg-emerald-600 hover:bg-emerald-700"
-                disabled={processedData.sheets.some(s => s.validationStatus === 'error')}
+                disabled={processedData.sheets.some(s => normalizeValidationStatus(s.validationStatus) === 'error')}
               >
                 <FiPlay className="h-4 w-4 mr-2" />
                 Create Test Components
@@ -612,17 +648,39 @@ const BulkUpload = () => {
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
         title={`Preview: ${selectedSheet?.name}`}
-        size="xl"
+        size="7xl"
       >
         {selectedSheet && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Badge className={sheetTypeConfig[selectedSheet.type]?.color}>
-                {sheetTypeConfig[selectedSheet.type]?.icon}
-                <span className="ml-2">{sheetTypeConfig[selectedSheet.type]?.label}</span>
-              </Badge>
+              {(() => { const t = normalizeSheetType(selectedSheet.type); return (
+                <Badge className={sheetTypeConfig[t]?.color}>
+                  {sheetTypeConfig[t]?.icon}
+                  <span className="ml-2">{sheetTypeConfig[t]?.label}</span>
+                </Badge>
+              ); })()}
               <div className="text-sm text-gray-600">
-                {selectedSheet.rows} rows • {selectedSheet.columns.length} columns
+                {(selectedSheet.rows || selectedSheet.rowCount)} rows • {selectedSheet.columns.length} columns
+              </div>
+            </div>
+
+            {/* Mapping chips removed per request */}
+
+            {/* Controls */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-700">Previewing first {previewRowLimit === 'all' ? (selectedSheet.data?.length || 0) : previewRowLimit} row(s)</div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600">Rows:</label>
+                <select
+                  value={previewRowLimit}
+                  onChange={(e) => setPreviewRowLimit(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={'all'}>All</option>
+                </select>
               </div>
             </div>
 
@@ -639,34 +697,47 @@ const BulkUpload = () => {
               </div>
             )}
 
-            <div className="overflow-x-auto max-h-96">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
+            <div className="overflow-auto max-h-[70vh] rounded-md border border-gray-200">
+              <table className="w-full text-sm table-auto">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr className="divide-x divide-gray-200">
                     {selectedSheet.columns.map((column, index) => (
-                      <th key={index} className="px-3 py-2 text-left font-medium text-gray-700 border-b">
+                      <th
+                        key={index}
+                        className="px-3 py-2 text-left font-semibold text-gray-700 border-b whitespace-normal break-words align-top min-w-[160px] text-xs md:text-sm"
+                        title={column}
+                      >
                         {column}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {selectedSheet.data.slice(0, 10).map((row, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      {selectedSheet.columns.map((column, colIndex) => (
-                        <td key={colIndex} className="px-3 py-2 text-gray-900">
-                          {row[column]}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                  {selectedSheet.data.length > 10 && (
+                <tbody className="divide-y divide-gray-100">
+                  {(() => {
+                    const sampleKeys = Object.keys(selectedSheet.data[0] || {});
+                    const limit = previewRowLimit === 'all' ? selectedSheet.data.length : previewRowLimit;
+                    return selectedSheet.data.slice(0, limit).map((row, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        {selectedSheet.columns.map((column, colIndex) => {
+                          const mappedKey = sampleKeys[colIndex];
+                          const value = mappedKey !== undefined ? row[mappedKey] : getCellValue(row, column);
+                          const display = value === undefined || value === null || value === '' ? '—' : String(value);
+                          return (
+                            <td key={colIndex} className="px-3 py-2 text-gray-900 align-top max-w-[320px] break-words" title={display}>
+                              {display}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ));
+                  })()}
+                  {(() => { const remaining = selectedSheet.data.length - (previewRowLimit === 'all' ? selectedSheet.data.length : previewRowLimit); return remaining > 0 ? (
                     <tr>
                       <td colSpan={selectedSheet.columns.length} className="px-3 py-2 text-center text-gray-500 italic">
-                        ... and {selectedSheet.data.length - 10} more rows
+                        ... and {remaining} more rows
                       </td>
                     </tr>
-                  )}
+                  ) : null; })()}
                 </tbody>
               </table>
             </div>
