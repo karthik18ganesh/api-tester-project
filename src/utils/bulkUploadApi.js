@@ -63,23 +63,25 @@ export const processBulkUpload = async ({ uploadId, projectId, userId, confirmWa
     body: JSON.stringify({ uploadId, projectId: String(projectId), userId: String(userId), confirmWarnings }),
   });
 
-  // Success is text/plain "success"; error is JSON
-  const text = await res.text();
-  if (res.ok && text.trim().toLowerCase() === 'success') {
-    return { ok: true, text };
+  if (!res.ok) {
+    // Handle error response
+    let errorJson = null;
+    try {
+      const text = await res.text();
+      errorJson = JSON.parse(text);
+    } catch {
+      // ignore parse errors
+    }
+    const message = errorJson?.result?.message || 'Processing failed';
+    const details = errorJson?.result?.details;
+    const code = errorJson?.result?.code || res.status;
+    const composed = details ? `${message}: ${details}` : message;
+    throw new Error(`${composed} (code ${code})`);
   }
 
-  let errorJson = null;
-  try {
-    errorJson = JSON.parse(text);
-  } catch {
-    // ignore parse errors
-  }
-  const message = errorJson?.result?.message || 'Processing failed';
-  const details = errorJson?.result?.details;
-  const code = errorJson?.result?.code || res.status;
-  const composed = details ? `${message}: ${details}` : message;
-  throw new Error(`${composed} (code ${code})`);
+  // Success response is now JSON with detailed information
+  const json = await res.json();
+  return json; // Returns the new response format with fileName, fileSize, completedAt, projectId, totalComponents
 };
 
 // Helper: Map backend sheet type to UI type key

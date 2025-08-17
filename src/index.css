@@ -5,6 +5,7 @@
 
 /* Import Design System */
 @import './styles/design-system.css';
+@import './styles/user-management-enhanced.css';
 
 /* Font setup */
 body {

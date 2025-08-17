@@ -15,7 +15,10 @@ import {
   FiDatabase,
   FiFolder,
   FiArchive,
-  FiLayers
+  FiLayers,
+  FiExternalLink,
+  FiClock,
+  FiUsers
 } from 'react-icons/fi';
 import { FaFileExcel, FaCloudUploadAlt } from 'react-icons/fa';
 import Button from '../../../components/UI/Button';
@@ -140,6 +143,8 @@ const BulkUpload = () => {
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [createProgress, setCreateProgress] = useState({ current: 0, total: 0, status: 'idle' });
   const [previewRowLimit, setPreviewRowLimit] = useState(20);
+  const [successDetails, setSuccessDetails] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   const fileInputRef = useRef(null);
   const userId = useAuthStore((s) => s.userId);
   const activeProject = useProjectStore((s) => s.activeProject);
@@ -165,13 +170,19 @@ const BulkUpload = () => {
   }, []);
 
   const handleFileUpload = async (file) => {
+    setUploadError(null); // Clear any previous errors
+    
     if (!file.name.match(/\.xlsx$/i)) {
-      alert('Please upload a valid Excel .xlsx file');
+      setUploadError('Please upload a valid Excel .xlsx file');
+      setCurrentStep('upload');
+      setUploadedFile(null);
       return;
     }
 
     if (!activeProject?.id || !userId) {
-      alert('Missing active project or user. Please ensure you are logged in and a project is selected.');
+      setUploadError('Missing active project or user. Please ensure you are logged in and a project is selected.');
+      setCurrentStep('upload');
+      setUploadedFile(null);
       return;
     }
 
@@ -188,7 +199,7 @@ const BulkUpload = () => {
       setCurrentStep('preview');
     } catch (error) {
       console.error('Error validating file:', error);
-      alert(error?.message || 'Validation failed. Please check your file and try again.');
+      setUploadError(error?.message || 'Validation failed. Please check your file and try again.');
       setCurrentStep('upload');
       setUploadedFile(null);
     } finally {
@@ -206,6 +217,8 @@ const BulkUpload = () => {
     setUploadedFile(null);
     setProcessedData(null);
     setUploadId(null);
+    setUploadError(null);
+    setSuccessDetails(null);
     setCurrentStep('upload');
     setCreateProgress({ current: 0, total: 0, status: 'idle' });
     if (fileInputRef.current) {
@@ -219,15 +232,42 @@ const BulkUpload = () => {
     setCreateProgress({ current: 0, total: processedData?.totalRows || 0, status: 'processing' });
 
     try {
-      await processBulkUpload({ uploadId, projectId: activeProject.id, userId, confirmWarnings: false });
+      const result = await processBulkUpload({ uploadId, projectId: activeProject.id, userId, confirmWarnings: false });
       setCreateProgress(prev => ({ ...prev, current: prev.total, status: 'completed' }));
-      alert('Bulk upload processed successfully.');
+      
+      // Format the completion timestamp
+      const formatTimestamp = (timestamp) => {
+        if (!timestamp) return new Date().toLocaleString();
+        try {
+          // Handle both ISO format and existing format
+          const date = new Date(timestamp);
+          return date.toLocaleString();
+        } catch {
+          return timestamp; // Return as-is if parsing fails
+        }
+      };
+
+      // Set success details using the new API response format
+      setSuccessDetails({
+        timestamp: formatTimestamp(result?.completedAt),
+        fileName: result?.fileName || processedData?.fileName || uploadedFile?.name,
+        fileSize: result?.fileSize || processedData?.fileSize,
+        totalComponents: Object.values(result?.totalComponents || {}).reduce((sum, count) => sum + count, 0),
+        packages: result?.totalComponents?.Package || processedData?.sheets.find(s => s.type === 'package')?.rows || 0,
+        suites: result?.totalComponents?.Suite || processedData?.sheets.find(s => s.type === 'suite')?.rows || 0,
+        testCases: result?.totalComponents?.['Test Case'] || processedData?.sheets.find(s => s.type === 'test-case')?.rows || 0,
+        projectName: activeProject?.name || 'Current Project',
+        projectId: result?.projectId || activeProject?.id
+      });
     } catch (err) {
       console.error('Process failed:', err);
-      alert(err?.message || 'Processing failed.');
+      // Show error in UI instead of alert
+      setCreateProgress(prev => ({ ...prev, status: 'error', errorMessage: err?.message || 'Processing failed.' }));
       // Return to preview so user can retry
-      setCurrentStep('preview');
-      setCreateProgress(prev => ({ ...prev, status: 'idle' }));
+      setTimeout(() => {
+        setCurrentStep('preview');
+        setCreateProgress(prev => ({ ...prev, status: 'idle', errorMessage: null }));
+      }, 3000);
     }
   };
 
@@ -240,7 +280,8 @@ const BulkUpload = () => {
   const downloadTemplate = () => {
     downloadBulkTemplate().catch((e) => {
       console.error('Template download failed', e);
-      alert('Failed to download template.');
+      // You could add a toast notification here instead of alert
+      // For now, we'll just log the error
     });
   };
 
@@ -333,22 +374,37 @@ const BulkUpload = () => {
         </div>
       </div>
 
-      {/* Upload Area */}
-      {currentStep === 'upload' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <div
-            className={`
-              border-2 border-dashed rounded-xl p-12 text-center transition-all
-              ${dragActive 
-                ? 'border-emerald-400 bg-emerald-50' 
-                : 'border-gray-300 hover:border-emerald-400 hover:bg-emerald-50'
-              }
-            `}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
+                {/* Upload Area */}
+          {currentStep === 'upload' && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+              {/* Error Display */}
+              {uploadError && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-3">
+                    <FiXCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-red-900">Upload Error</h4>
+                      <p className="text-sm text-red-700 mt-1">{uploadError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div
+                className={`
+                  border-2 border-dashed rounded-xl p-12 text-center transition-all
+                  ${dragActive 
+                    ? 'border-emerald-400 bg-emerald-50' 
+                    : uploadError 
+                      ? 'border-red-300 bg-red-50' 
+                      : 'border-gray-300 hover:border-emerald-400 hover:bg-emerald-50'
+                  }
+                `}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
             <div className="space-y-4">
               <div className="flex justify-center">
                 <div className={`
@@ -433,8 +489,7 @@ const BulkUpload = () => {
         </div>
       )}
 
-      {/* Preview & Validation Results */
-      }
+      {/* Preview & Validation Results */}
       {currentStep === 'preview' && processedData && (
         <div className="space-y-6">
           {/* File Summary */}
@@ -570,73 +625,175 @@ const BulkUpload = () => {
       {currentStep === 'process' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
           <div className="text-center space-y-6">
-            <div className="flex justify-center">
-              {createProgress.status === 'completed' ? (
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <FiCheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              ) : (
-                <div className="animate-pulse w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <FiLayers className="h-8 w-8 text-emerald-600" />
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {createProgress.status === 'completed' ? 'Test Components Created Successfully!' : 'Creating Test Components'}
-              </h3>
-              <p className="text-gray-600">
-                {createProgress.status === 'completed' 
-                  ? 'All test packages, suites, and cases have been created and are ready for use.'
-                  : 'Please wait while we create your test components in the system...'
-                }
-              </p>
-            </div>
-
-            <div className="w-full max-w-md mx-auto">
-              <div className="flex justify-between text-sm text-gray-600 mb-2">
-                <span>Progress</span>
-                <span>{createProgress.current} / {createProgress.total}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(createProgress.current / createProgress.total) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {createProgress.status === 'completed' && (
+            {/* Error State */}
+            {createProgress.status === 'error' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div className="bg-purple-50 rounded-lg p-3">
-                    <div className="text-lg font-semibold text-purple-600">
-                      {processedData.sheets.find(s => s.type === 'test-package')?.rows || 0}
-                    </div>
-                    <div className="text-sm text-purple-700">Test Packages</div>
+                <div className="flex justify-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <FiXCircle className="h-8 w-8 text-red-600" />
                   </div>
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <div className="text-lg font-semibold text-blue-600">
-                      {processedData.sheets.find(s => s.type === 'test-suite')?.rows || 0}
-                    </div>
-                    <div className="text-sm text-blue-700">Test Suites</div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3">
-                    <div className="text-lg font-semibold text-green-600">
-                      {processedData.sheets.find(s => s.type === 'test-case')?.rows || 0}
-                    </div>
-                    <div className="text-sm text-green-700">Test Cases</div>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-red-900 mb-2">Processing Failed</h3>
+                  <p className="text-red-700 bg-red-50 rounded-lg p-3">
+                    {createProgress.errorMessage}
+                  </p>
+                </div>
+                <div className="text-sm text-gray-600">
+                  Returning to preview in a few seconds...
+                </div>
+              </div>
+            )}
+
+            {/* Processing State */}
+            {createProgress.status === 'processing' && (
+              <>
+                <div className="flex justify-center">
+                  <div className="animate-pulse w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <FiLayers className="h-8 w-8 text-emerald-600" />
                   </div>
                 </div>
                 
-                <Button
-                  onClick={resetUpload}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <FiUpload className="h-4 w-4 mr-2" />
-                  Upload Another File
-                </Button>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Creating Test Components</h3>
+                  <p className="text-gray-600">
+                    Please wait while we create your test components in the system...
+                  </p>
+                </div>
+
+                <div className="w-full max-w-md mx-auto">
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Progress</span>
+                    <span>{createProgress.current} / {createProgress.total}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(createProgress.current / createProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Success State */}
+            {createProgress.status === 'completed' && successDetails && (
+              <div className="space-y-6">
+                {/* Success Icon and Header */}
+                <div className="flex justify-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
+                    <FiCheckCircle className="h-10 w-10 text-white" />
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">🎉 Upload Successful!</h3>
+                  <p className="text-gray-600 text-lg">
+                    All test components have been created successfully and are ready for use.
+                  </p>
+                </div>
+
+                {/* Success Details Card */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 max-w-2xl mx-auto">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* File Information */}
+                    <div className="space-y-4">
+                                             <div className="flex items-center space-x-3">
+                         <FiFileText className="h-5 w-5 text-green-600" />
+                         <div>
+                           <div className="font-medium text-gray-900">File Processed</div>
+                           <div className="text-sm text-gray-600">{successDetails.fileName}</div>
+                           {successDetails.fileSize && (
+                             <div className="text-xs text-gray-500">
+                               Size: {(successDetails.fileSize / 1024).toFixed(1)} KB
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                      
+                      <div className="flex items-center space-x-3">
+                        <FiClock className="h-5 w-5 text-green-600" />
+                        <div>
+                          <div className="font-medium text-gray-900">Completed At</div>
+                          <div className="text-sm text-gray-600">{successDetails.timestamp}</div>
+                        </div>
+                      </div>
+
+                                             <div className="flex items-center space-x-3">
+                         <FiUsers className="h-5 w-5 text-green-600" />
+                         <div>
+                           <div className="font-medium text-gray-900">Project</div>
+                           <div className="text-sm text-gray-600">{successDetails.projectName}</div>
+                           {successDetails.projectId && (
+                             <div className="text-xs text-gray-500">
+                               ID: {successDetails.projectId}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                    </div>
+
+                    {/* Component Summary */}
+                    <div className="space-y-4">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-green-600 mb-1">
+                          {successDetails.totalComponents}
+                        </div>
+                        <div className="text-sm text-gray-600">Total Components Created</div>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center bg-purple-100 rounded-lg p-3">
+                          <div className="text-lg font-semibold text-purple-700">
+                            {successDetails.packages}
+                          </div>
+                          <div className="text-xs text-purple-600">Packages</div>
+                        </div>
+                        <div className="text-center bg-blue-100 rounded-lg p-3">
+                          <div className="text-lg font-semibold text-blue-700">
+                            {successDetails.suites}
+                          </div>
+                          <div className="text-xs text-blue-600">Suites</div>
+                        </div>
+                        <div className="text-center bg-green-100 rounded-lg p-3">
+                          <div className="text-lg font-semibold text-green-700">
+                            {successDetails.testCases}
+                          </div>
+                          <div className="text-xs text-green-600">Test Cases</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button
+                    onClick={resetUpload}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <FiUpload className="h-4 w-4 mr-2" />
+                    Upload Another File
+                  </Button>
+                  
+                  <Button
+                    variant="secondary"
+                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                  >
+                    <FiExternalLink className="h-4 w-4 mr-2" />
+                    View Test Components
+                  </Button>
+                </div>
+
+                {/* Success Message */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 max-w-md mx-auto">
+                  <div className="flex items-center space-x-2 text-green-800">
+                    <FiCheckCircle className="h-5 w-5" />
+                    <span className="text-sm font-medium">
+                      Your test automation components are now available in the system!
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

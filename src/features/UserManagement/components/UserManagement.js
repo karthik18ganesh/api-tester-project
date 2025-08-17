@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { 
   FiUsers, 
@@ -11,7 +11,14 @@ import {
   FiEye,
   FiMoreVertical,
   FiAlertTriangle,
-  FiRefreshCw
+  FiRefreshCw,
+  FiMail,
+  FiUser,
+  FiLock,
+  FiCheckCircle,
+  FiXCircle,
+  FiSettings,
+  FiGrid
 } from 'react-icons/fi';
 import { 
   FaCrown, 
@@ -110,6 +117,36 @@ const UserManagement = () => {
     permissions: {}
   });
 
+  // Enhanced form handlers with useCallback to prevent re-renders
+  const handleInputChange = useCallback((field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleFormReset = useCallback(() => {
+    const defaultPermissions = {};
+    Object.keys(permissionSections).forEach(category => {
+      defaultPermissions[category] = {
+        enabled: category === 'dashboard',
+        sections: []
+      };
+    });
+    
+    setFormData({
+      username: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      password: '',
+      role: 'EXECUTOR',
+      status: 'ACTIVE',
+      projects: [],
+      permissions: defaultPermissions
+    });
+  }, [permissionSections]);
+
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -186,28 +223,9 @@ const UserManagement = () => {
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
 
-  const resetForm = () => {
-    // Initialize permissions structure based on available permission sections from API
-    const defaultPermissions = {};
-    Object.keys(permissionSections).forEach(category => {
-      defaultPermissions[category] = {
-        enabled: category === 'dashboard', // Only dashboard is enabled by default
-        sections: []
-      };
-    });
-    
-    setFormData({
-      username: '',
-      email: '',
-      firstName: '',
-      lastName: '',
-      password: '',
-      role: 'EXECUTOR',
-      status: 'ACTIVE',
-      projects: [],
-      permissions: defaultPermissions
-    });
-  };
+  const resetForm = useCallback(() => {
+    handleFormReset();
+  }, [handleFormReset]);
 
   const handleCreateUser = async () => {
     try {
@@ -655,333 +673,557 @@ const UserManagement = () => {
         </div>
       </div>
 
-      {/* Create User Modal */}
+      {/* Enhanced Create User Modal */}
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New User"
-        size="lg"
+        title={
+          <div className="flex items-center space-x-3">
+            <div className="bg-indigo-100 p-2 rounded-lg">
+              <FiUserPlus className="h-6 w-6 text-indigo-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Create New User</h3>
+              <p className="text-sm text-gray-500">Add a new user to your organization</p>
+            </div>
+          </div>
+        }
+        size="xl"
       >
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Username"
-              value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-              placeholder="Enter username"
-              required
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              placeholder="Enter email"
-              required
-            />
-            <Input
-              label="First Name"
-              value={formData.firstName}
-              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-              placeholder="Enter first name"
-              required
-            />
-            <Input
-              label="Last Name"
-              value={formData.lastName}
-              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-              placeholder="Enter last name"
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({...formData, password: e.target.value})}
-              placeholder="Enter password"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                {Object.entries(roleConfiguration).map(([role, config]) => (
-                  canManageRole(role) && (
-                    <option key={role} value={role}>{config.label}</option>
-                  )
-                ))}
-              </select>
+        <div className="space-y-8">
+          {/* Personal Information Section */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiUser className="h-5 w-5 text-blue-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Personal Information</h4>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Username"
+                value={formData.username}
+                onChange={(e) => handleInputChange('username', e.target.value)}
+                placeholder="Enter unique username"
+                required
+                leftIcon={FiUser}
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                required
+                leftIcon={FiMail}
+              />
+              <Input
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder="Enter first name"
+                required
+              />
+              <Input
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder="Enter last name"
+                required
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Project Access</label>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3">
+          {/* Security & Access Section */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiLock className="h-5 w-5 text-green-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Security & Access</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Input
+                label="Password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleInputChange('password', e.target.value)}
+                placeholder="Enter secure password"
+                required
+                leftIcon={FiLock}
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => handleInputChange('role', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-200"
+                >
+                  {Object.entries(roleConfiguration).map(([role, config]) => (
+                    canManageRole(role) && (
+                      <option key={role} value={role}>{config.label}</option>
+                    )
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-200"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Access Section */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiGrid className="h-5 w-5 text-purple-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Project Access</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-4 bg-white">
               {availableProjects.map((project) => {
                 const projectId = typeof project === 'string' ? project : project.projectId || project.id;
                 const projectName = typeof project === 'string' ? project : project.projectName || project.name;
                 
                 return (
-                  <label key={projectId} className="flex items-center space-x-2">
+                  <label key={projectId} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.projects.includes(projectId)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({...formData, projects: [...formData.projects, projectId]});
+                          handleInputChange('projects', [...formData.projects, projectId]);
                         } else {
-                          setFormData({...formData, projects: formData.projects.filter(p => p !== projectId)});
+                          handleInputChange('projects', formData.projects.filter(p => p !== projectId));
                         }
                       }}
-                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                     />
-                    <span className="text-sm text-gray-700">{projectName}</span>
+                    <span className="text-sm text-gray-700 font-medium">{projectName}</span>
                   </label>
                 );
               })}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <Button
               variant="secondary"
               onClick={() => setShowCreateModal(false)}
               disabled={isSubmitting}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateUser}
               disabled={!formData.username || !formData.email || !formData.firstName || !formData.lastName || !formData.password || isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
             >
-              {isSubmitting ? 'Creating...' : 'Create User'}
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Creating...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <FiUserPlus className="h-4 w-4" />
+                  <span>Create User</span>
+                </div>
+              )}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Edit User Modal */}
+      {/* Enhanced Edit User Modal */}
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        title="Edit User"
-        size="lg"
+        title={
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <FiEdit2 className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Edit User</h3>
+              <p className="text-sm text-gray-500">Update user information and settings</p>
+            </div>
+          </div>
+        }
+        size="xl"
       >
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Username"
-              value={formData.username}
-              onChange={(e) => setFormData({...formData, username: e.target.value})}
-              placeholder="Enter username"
-              required
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              placeholder="Enter email"
-              required
-            />
-            <Input
-              label="First Name"
-              value={formData.firstName}
-              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-              placeholder="Enter first name"
-              required
-            />
-            <Input
-              label="Last Name"
-              value={formData.lastName}
-              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-              placeholder="Enter last name"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                disabled={!canManageRole(formData.role)}
-              >
-                {Object.entries(roleConfiguration).map(([role, config]) => (
-                  canManageRole(role) && (
-                    <option key={role} value={role}>{config.label}</option>
-                  )
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
+        <div className="space-y-8">
+          {/* User Info Header */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-semibold text-lg">
+                  {selectedUser?.firstName?.charAt(0)}{selectedUser?.lastName?.charAt(0)}
+                </span>
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900">
+                  {selectedUser?.firstName} {selectedUser?.lastName}
+                </h4>
+                <p className="text-sm text-gray-600">@{selectedUser?.username} • {selectedUser?.email}</p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Project Access</label>
-            <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-3">
+          {/* Personal Information Section */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiUser className="h-5 w-5 text-green-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Personal Information</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Username"
+                value={formData.username}
+                onChange={(e) => handleInputChange('username', e.target.value)}
+                placeholder="Enter username"
+                required
+                leftIcon={FiUser}
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                placeholder="Enter email address"
+                required
+                leftIcon={FiMail}
+              />
+              <Input
+                label="First Name"
+                value={formData.firstName}
+                onChange={(e) => handleInputChange('firstName', e.target.value)}
+                placeholder="Enter first name"
+                required
+              />
+              <Input
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(e) => handleInputChange('lastName', e.target.value)}
+                placeholder="Enter last name"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Access Control Section */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiSettings className="h-5 w-5 text-purple-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Access Control</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => handleInputChange('role', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-200"
+                  disabled={!canManageRole(formData.role)}
+                >
+                  {Object.entries(roleConfiguration).map(([role, config]) => (
+                    canManageRole(role) && (
+                      <option key={role} value={role}>{config.label}</option>
+                    )
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleInputChange('status', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-200"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Access Section */}
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <FiGrid className="h-5 w-5 text-orange-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Project Access</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-4 bg-white">
               {availableProjects.map((project) => {
                 const projectId = typeof project === 'string' ? project : project.projectId || project.id;
                 const projectName = typeof project === 'string' ? project : project.projectName || project.name;
                 
                 return (
-                  <label key={projectId} className="flex items-center space-x-2">
+                  <label key={projectId} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formData.projects.includes(projectId)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setFormData({...formData, projects: [...formData.projects, projectId]});
+                          handleInputChange('projects', [...formData.projects, projectId]);
                         } else {
-                          setFormData({...formData, projects: formData.projects.filter(p => p !== projectId)});
+                          handleInputChange('projects', formData.projects.filter(p => p !== projectId));
                         }
                       }}
-                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
                     />
-                    <span className="text-sm text-gray-700">{projectName}</span>
+                    <span className="text-sm text-gray-700 font-medium">{projectName}</span>
                   </label>
                 );
               })}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <Button
               variant="secondary"
               onClick={() => setShowEditModal(false)}
               disabled={isSubmitting}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleEditUser}
               disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
-              {isSubmitting ? 'Updating...' : 'Update User'}
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Updating...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <FiEdit2 className="h-4 w-4" />
+                  <span>Update User</span>
+                </div>
+              )}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Permissions Modal */}
+      {/* Enhanced Permissions Modal */}
       <Modal
         isOpen={showPermissionsModal}
         onClose={() => setShowPermissionsModal(false)}
-        title={`Manage Permissions - ${selectedUser?.firstName} ${selectedUser?.lastName}`}
-        size="xl"
+        title={
+          <div className="flex items-center space-x-3">
+            <div className="bg-purple-100 p-2 rounded-lg">
+              <FiShield className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Manage Permissions</h3>
+              <p className="text-sm text-gray-500">Configure access rights for {selectedUser?.firstName} {selectedUser?.lastName}</p>
+            </div>
+          </div>
+        }
+        size="2xl"
       >
-        <div className="space-y-6">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${roleConfiguration[selectedUser?.role]?.color || 'bg-gray-100'}`}>
-                {roleConfiguration[selectedUser?.role]?.icon}
+        <div className="space-y-8">
+          {/* User Role Info */}
+          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-semibold text-lg">
+                  {selectedUser?.firstName?.charAt(0)}{selectedUser?.lastName?.charAt(0)}
+                </span>
               </div>
-              <div>
-                <div className="font-medium text-gray-900">{roleConfiguration[selectedUser?.role]?.label}</div>
-                <div className="text-sm text-gray-600">{roleConfiguration[selectedUser?.role]?.description}</div>
+              <div className="flex-1">
+                <h4 className="text-lg font-semibold text-gray-900">
+                  {selectedUser?.firstName} {selectedUser?.lastName}
+                </h4>
+                <p className="text-sm text-gray-600">@{selectedUser?.username}</p>
+              </div>
+              <div className={`px-4 py-2 rounded-lg ${roleConfiguration[selectedUser?.role]?.color || 'bg-gray-100'}`}>
+                <div className="flex items-center space-x-2">
+                  {roleConfiguration[selectedUser?.role]?.icon}
+                  <span className="font-medium">{roleConfiguration[selectedUser?.role]?.label}</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {Object.entries(permissionSections).map(([category, categoryData]) => (
-            <div key={category} className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                <label className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    checked={formData.permissions[category]?.enabled}
-                    onChange={() => togglePermissionCategory(category)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="font-medium text-gray-900">{categoryData.label}</span>
-                </label>
-              </div>
-              
-              {formData.permissions[category]?.enabled && (
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {Object.entries(categoryData.sections).map(([sectionKey, sectionLabel]) => (
-                    <label key={sectionKey} className="flex items-center space-x-3">
+          {/* Permissions Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {Object.entries(permissionSections).map(([category, categoryData]) => (
+              <div key={category} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                  <label className="flex items-center space-x-4 cursor-pointer">
+                    <div className="relative">
                       <input
                         type="checkbox"
-                        checked={formData.permissions[category]?.sections?.includes(sectionKey)}
-                        onChange={() => togglePermissionSection(category, sectionKey)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        checked={formData.permissions[category]?.enabled}
+                        onChange={() => togglePermissionCategory(category)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5"
                       />
-                      <span className="text-sm text-gray-700">{sectionLabel}</span>
-                    </label>
-                  ))}
+                      {formData.permissions[category]?.enabled && (
+                        <FiCheckCircle className="absolute -top-1 -right-1 h-3 w-3 text-green-500 bg-white rounded-full" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-semibold text-gray-900 text-lg">{categoryData.label}</span>
+                      <p className="text-sm text-gray-600 mt-1">Manage {categoryData.label.toLowerCase()} access</p>
+                    </div>
+                  </label>
                 </div>
-              )}
-            </div>
-          ))}
+                
+                {formData.permissions[category]?.enabled && (
+                  <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      {Object.entries(categoryData.sections).map(([sectionKey, sectionLabel]) => (
+                        <label key={sectionKey} className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.permissions[category]?.sections?.includes(sectionKey)}
+                            onChange={() => togglePermissionSection(category, sectionKey)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                          />
+                          <span className="text-sm text-gray-700 font-medium">{sectionLabel}</span>
+                          {formData.permissions[category]?.sections?.includes(sectionKey) && (
+                            <FiCheckCircle className="h-4 w-4 text-green-500 ml-auto" />
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
-          <div className="flex justify-end space-x-3">
+          {/* Permission Summary */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <FiSettings className="h-5 w-5 text-blue-600" />
+              <h4 className="text-lg font-semibold text-gray-900">Permission Summary</h4>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(formData.permissions).map(([category, permission]) => (
+                <div key={category} className="text-center">
+                  <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full mb-2 ${
+                    permission.enabled ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {permission.enabled ? <FiCheckCircle className="h-4 w-4" /> : <FiXCircle className="h-4 w-4" />}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">{permissionSections[category]?.label}</div>
+                  <div className="text-xs text-gray-500">
+                    {permission.enabled ? `${permission.sections.length} sections` : 'Disabled'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <Button
               variant="secondary"
               onClick={() => setShowPermissionsModal(false)}
               disabled={isSubmitting}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdatePermissions}
               disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
             >
-              {isSubmitting ? 'Saving...' : 'Save Permissions'}
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Saving...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <FiShield className="h-4 w-4" />
+                  <span>Save Permissions</span>
+                </div>
+              )}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Delete User Modal */}
+      {/* Enhanced Delete User Modal */}
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title="Delete User"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3 text-red-600">
-            <FiAlertTriangle className="h-6 w-6" />
-            <span className="font-medium">This action cannot be undone</span>
+        title={
+          <div className="flex items-center space-x-3">
+            <div className="bg-red-100 p-2 rounded-lg">
+              <FiTrash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Delete User</h3>
+              <p className="text-sm text-gray-500">Permanently remove user account</p>
+            </div>
           </div>
-          <p className="text-gray-600">
-            Are you sure you want to delete <strong>{selectedUser?.firstName} {selectedUser?.lastName}</strong>? 
-            This will permanently remove their account and all associated data.
-          </p>
-          <div className="flex justify-end space-x-3">
+        }
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-xl p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-r from-red-500 to-pink-600 flex items-center justify-center">
+                <FiAlertTriangle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900">Warning: Irreversible Action</h4>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 flex items-center justify-center">
+                <span className="text-white font-semibold">
+                  {selectedUser?.firstName?.charAt(0)}{selectedUser?.lastName?.charAt(0)}
+                </span>
+              </div>
+              <div>
+                <h5 className="font-semibold text-gray-900">{selectedUser?.firstName} {selectedUser?.lastName}</h5>
+                <p className="text-sm text-gray-600">@{selectedUser?.username} • {selectedUser?.email}</p>
+              </div>
+            </div>
+            <p className="text-gray-600">
+              Are you sure you want to delete this user? This will permanently remove their account and all associated data including:
+            </p>
+            <ul className="mt-3 space-y-1 text-sm text-gray-600">
+              <li className="flex items-center space-x-2">
+                <FiXCircle className="h-4 w-4 text-red-500" />
+                <span>User profile and settings</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <FiXCircle className="h-4 w-4 text-red-500" />
+                <span>Project assignments</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <FiXCircle className="h-4 w-4 text-red-500" />
+                <span>Permission configurations</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <Button
               variant="secondary"
               onClick={() => setShowDeleteModal(false)}
               disabled={isSubmitting}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
@@ -989,42 +1231,116 @@ const UserManagement = () => {
               variant="danger"
               onClick={handleDeleteUser}
               disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
             >
-              {isSubmitting ? 'Deleting...' : 'Delete User'}
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Deleting...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <FiTrash2 className="h-4 w-4" />
+                  <span>Delete User</span>
+                </div>
+              )}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Password Reset Modal */}
+      {/* Enhanced Password Reset Modal */}
       <Modal
         isOpen={showPasswordResetModal}
         onClose={() => setShowPasswordResetModal(false)}
-        title="Reset Password"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3 text-orange-600">
-            <FiKey className="h-6 w-6" />
-            <span className="font-medium">Password Reset</span>
+        title={
+          <div className="flex items-center space-x-3">
+            <div className="bg-orange-100 p-2 rounded-lg">
+              <FiKey className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Reset Password</h3>
+              <p className="text-sm text-gray-500">Generate temporary password</p>
+            </div>
           </div>
-          <p className="text-gray-600">
-            A temporary password will be generated and sent to <strong>{selectedUser?.email}</strong>. 
-            The user will be required to change their password on next login.
-          </p>
-          <div className="flex justify-end space-x-3">
+        }
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-r from-orange-500 to-yellow-600 flex items-center justify-center">
+                <FiKey className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900">Password Reset Process</h4>
+                <p className="text-sm text-gray-600">Temporary password will be generated</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-6">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+                <span className="text-white font-semibold">
+                  {selectedUser?.firstName?.charAt(0)}{selectedUser?.lastName?.charAt(0)}
+                </span>
+              </div>
+              <div>
+                <h5 className="font-semibold text-gray-900">{selectedUser?.firstName} {selectedUser?.lastName}</h5>
+                <p className="text-sm text-gray-600">@{selectedUser?.username}</p>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                <FiMail className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Temporary password will be sent to:</p>
+                  <p className="text-sm text-blue-700">{selectedUser?.email}</p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <FiCheckCircle className="h-4 w-4 text-green-500" />
+                <span>Secure temporary password generated</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <FiCheckCircle className="h-4 w-4 text-green-500" />
+                <span>User will be required to change password on next login</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <FiCheckCircle className="h-4 w-4 text-green-500" />
+                <span>Account security maintained</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
             <Button
               variant="secondary"
               onClick={() => setShowPasswordResetModal(false)}
               disabled={isSubmitting}
+              className="px-6 py-3"
             >
               Cancel
             </Button>
             <Button
               onClick={handlePasswordReset}
-              className="bg-orange-600 hover:bg-orange-700"
               disabled={isSubmitting}
+              className="px-8 py-3 bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700"
             >
-              {isSubmitting ? 'Resetting...' : 'Reset Password'}
+              {isSubmitting ? (
+                <div className="flex items-center space-x-2">
+                  <FiRefreshCw className="h-4 w-4 animate-spin" />
+                  <span>Resetting...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <FiKey className="h-4 w-4" />
+                  <span>Reset Password</span>
+                </div>
+              )}
             </Button>
           </div>
         </div>
