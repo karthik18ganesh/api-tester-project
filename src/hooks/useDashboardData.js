@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboard } from '../utils/api';
-import { useProject } from '../stores/projectStore'; // Updated import
+import { useProjectStore } from '../stores/projectStore'; // Updated import
 
 // Helper function to extract trend percentage from delta string
 const getTrendPercentage = (trends, metricName) => {
@@ -220,7 +220,7 @@ const transformSuitePerformers = (suiteData) => {
 
 // Main hook for unified dashboard data
 const useDashboardData = (timeRange = '7') => {
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectStore();
 
   console.log('📍 Dashboard Data Hook:', {
     timeRange,

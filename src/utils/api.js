@@ -889,10 +889,6 @@ export const dashboard = {
     return dashboard.getMetrics(timeRange);
   },
 
-  getRecentExecutions: async (timeRange = '7') => {
-    return dashboard.getMetrics(timeRange);
-  },
-
   getTopPerformers: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
