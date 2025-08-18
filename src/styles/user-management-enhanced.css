@@ -1,401 +1,337 @@
-/* Enhanced User Management Styles - FIXED */
+/* Enhanced User Management Form Styles - Modernized */
 
-/* Form Input Enhancements */
-.enhanced-input {
-  @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300;
+/* Modern Form Container */
+.modern-form-container {
+  @apply space-y-8;
 }
 
-.enhanced-input:focus {
-  @apply transform scale-[1.02] shadow-lg;
+/* Enhanced Form Sections */
+.form-section-modern {
+  @apply rounded-3xl p-8 border shadow-sm transition-all duration-300;
 }
 
-.enhanced-input:hover {
+.form-section-modern:hover {
+  @apply shadow-md transform-none;
+}
+
+/* Gradient Section Backgrounds */
+.section-personal {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 50%, #f3e8ff 100%);
+  border-color: #bfdbfe;
+}
+
+.section-security {
+  background: linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 50%, #fdf2f8 100%);
+  border-color: #d8b4fe;
+}
+
+.section-projects {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fef2f2 100%);
+  border-color: #fde68a;
+}
+
+.section-edit-personal {
+  background: linear-gradient(135deg, #ecfdf5 0%, #e6fffa 50%, #f0fdfa 100%);
+  border-color: #a7f3d0;
+}
+
+/* Enhanced Section Headers */
+.section-header-modern {
+  @apply flex items-center space-x-4 mb-8;
+}
+
+.section-icon-container {
+  @apply p-3 rounded-2xl shadow-lg;
+}
+
+.section-icon-container.personal {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+}
+
+.section-icon-container.security {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+}
+
+.section-icon-container.projects {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+}
+
+.section-icon-container.edit-personal {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+/* Modern Input Styles */
+.input-modern {
+  @apply w-full px-4 py-4 border-2 border-gray-200 rounded-2xl bg-white text-gray-900 placeholder-gray-400 text-base shadow-sm transition-all duration-300;
+}
+
+.input-modern:hover {
   @apply border-gray-300 shadow-md;
 }
 
-/* Modern Form Input Styles */
-.modern-input {
-  @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300;
+.input-modern:focus {
+  @apply outline-none ring-4 shadow-lg transform scale-[1.01];
 }
 
-.modern-input:focus {
-  @apply outline-none border-indigo-500 ring-2 ring-indigo-200 shadow-md;
+.input-modern.personal:focus {
+  @apply border-blue-500 ring-blue-100;
 }
 
-.modern-input:hover {
-  @apply border-gray-300;
+.input-modern.security:focus {
+  @apply border-violet-500 ring-violet-100;
 }
 
-.modern-input:focus-within {
-  @apply border-indigo-500;
+.input-modern.projects:focus {
+  @apply border-amber-500 ring-amber-100;
 }
 
-/* Input with Icons */
-.input-with-icon {
-  @apply pl-10 pr-4;
+.input-modern.edit-personal:focus {
+  @apply border-emerald-500 ring-emerald-100;
 }
 
-.input-icon {
-  @apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none;
+/* Input with Icon Styling */
+.input-with-icon-modern {
+  @apply pl-12 pr-4;
 }
 
-/* FIXED: Prevent input focus loss */
-input:focus {
-  @apply outline-none;
+.input-icon-modern {
+  @apply absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none;
 }
 
-/* FIXED: Ensure input focus is maintained */
-input:focus-visible {
-  @apply outline-none ring-2 ring-indigo-500 ring-offset-2;
+/* Enhanced Select Styling */
+.select-modern {
+  @apply w-full pl-12 pr-10 py-4 border-2 border-gray-200 rounded-2xl bg-white text-gray-900 text-base shadow-sm transition-all duration-300 appearance-none cursor-pointer;
 }
 
-/* FIXED: Prevent form re-rendering from affecting focus */
-.form-input-stable {
-  @apply transition-none;
-  /* Disable all transitions during focus to prevent re-render focus loss */
-  transition: none !important;
+.select-modern:hover {
+  @apply border-gray-300 shadow-md;
 }
 
-.form-input-stable:focus {
-  @apply transition-none;
-  /* Keep transitions disabled during focus */
-  transition: none !important;
-  /* Ensure focus is maintained */
-  outline: none !important;
+.select-modern:focus {
+  @apply outline-none ring-4 shadow-lg;
 }
 
-/* FIXED: Enhanced input container to maintain focus */
-.input-container {
-  @apply relative;
-  /* Ensure container doesn't interfere with input focus */
-  pointer-events: none;
+.select-modern.personal:focus {
+  @apply border-blue-500 ring-blue-100;
 }
 
-.input-container input {
-  /* Re-enable pointer events for the input */
-  pointer-events: auto;
+.select-modern.security:focus {
+  @apply border-violet-500 ring-violet-100;
 }
 
-.input-container:focus-within {
-  @apply ring-2 ring-indigo-200 rounded-xl;
+.select-modern.edit-personal:focus {
+  @apply border-emerald-500 ring-emerald-100;
 }
 
-/* Enhanced focus management */
-.form-input-stable:focus {
-  /* Override any conflicting styles */
-  transform: none !important;
-  transition: none !important;
-  animation: none !important;
+/* Modern Label Styling */
+.label-modern {
+  @apply flex items-center space-x-2 text-sm font-semibold text-gray-700 mb-2;
 }
 
-/* Permission Card Styles */
-.permission-card {
-  @apply bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm;
-  transition: box-shadow 0.2s ease-in-out;
+.label-icon {
+  @apply h-4 w-4;
 }
 
-.permission-card:hover {
-  @apply shadow-md;
+.label-icon.personal {
+  @apply text-blue-500;
 }
 
-.permission-card-header {
-  @apply bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200;
+.label-icon.security {
+  @apply text-violet-500;
 }
 
-.permission-section {
-  @apply p-6 space-y-4;
+.label-icon.projects {
+  @apply text-amber-500;
 }
 
-.permission-section-item {
-  @apply flex items-center space-x-3 p-3 rounded-lg transition-colors cursor-pointer;
+.label-icon.edit-personal {
+  @apply text-emerald-500;
 }
 
-.permission-section-item:hover {
-  @apply bg-gray-50;
+/* Helper Text Styling */
+.helper-text-modern {
+  @apply text-xs text-gray-500 ml-2 mt-1;
 }
 
-/* FIXED: Button visibility and responsiveness */
-.modal-actions {
-  @apply flex justify-end space-x-4 pt-6 border-t border-gray-200;
-  /* Ensure buttons are always visible */
-  min-height: 60px;
-  position: relative;
-  z-index: 10;
+/* Enhanced Modal Header */
+.modal-header-modern {
+  @apply flex items-center space-x-4 mb-6;
 }
 
-/* FIXED: Responsive button layout */
+.modal-icon-container {
+  @apply p-4 rounded-2xl shadow-lg;
+}
+
+.modal-icon-container.create {
+  background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+}
+
+.modal-icon-container.edit {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+}
+
+/* User Info Header for Edit */
+.user-info-header {
+  @apply bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 mb-8 border border-blue-100;
+}
+
+.user-avatar-large {
+  @apply h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg text-white font-bold text-xl;
+}
+
+/* Project Assignment Enhancements */
+.project-card {
+  @apply p-4 rounded-xl border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all duration-200 cursor-pointer;
+}
+
+.project-checkbox {
+  @apply h-5 w-5 text-amber-600 border-2 border-gray-300 rounded-lg focus:ring-amber-500 focus:ring-offset-0 transition-colors;
+}
+
+.selected-projects-container {
+  @apply bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200;
+}
+
+.project-tag {
+  @apply inline-flex items-center space-x-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium;
+}
+
+/* Info Box Styling */
+.info-box-modern {
+  @apply bg-gray-50 rounded-2xl p-4 border border-gray-200;
+}
+
+/* Enhanced Button Styling */
+.button-modern {
+  @apply px-8 py-3 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 rounded-xl;
+}
+
+.button-cancel {
+  @apply text-gray-600 hover:text-gray-800 hover:bg-gray-100;
+}
+
+.button-create {
+  @apply bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white;
+}
+
+.button-edit {
+  @apply bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white;
+}
+
+/* Loading States */
+.loading-spinner {
+  @apply animate-spin h-4 w-4;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+  .form-section-modern {
+    @apply p-6;
+  }
+  
+  .input-modern,
+  .select-modern {
+    @apply py-3 text-sm;
+  }
+  
+  .section-header-modern h4 {
+    @apply text-lg;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-header-modern {
+    @apply flex-col text-center space-x-0 space-y-3;
+  }
+  
+  .user-info-header {
+    @apply p-4;
+  }
+  
+  .user-info-header .flex {
+    @apply flex-col space-x-0 space-y-4 text-center;
+  }
+  
+  .form-section-modern {
+    @apply p-4;
+  }
+  
+  .section-header-modern {
+    @apply flex-col text-center space-x-0 space-y-3 mb-6;
+  }
+  
+  .input-modern,
+  .select-modern {
+    @apply py-3 text-sm;
+  }
+  
+  .project-card {
+    @apply p-3;
+  }
+  
+  .button-modern {
+    @apply px-6 py-3 text-sm;
+  }
+}
+
 @media (max-width: 640px) {
-  .modal-actions {
+  .modal-actions-modern {
     @apply flex-col space-x-0 space-y-3;
   }
   
-  .modal-actions .btn {
+  .button-modern {
     @apply w-full;
   }
 }
 
-@media (min-width: 641px) {
-  .modal-actions {
-    @apply flex-row space-y-0 space-x-4;
+/* Focus Management Fixes */
+.input-modern:focus,
+.select-modern:focus {
+  /* Prevent focus loss during re-renders */
+  outline: none !important;
+  transition: none !important;
+}
+
+/* Accessibility Enhancements */
+.input-modern[aria-invalid="true"] {
+  @apply border-red-300 ring-red-100;
+}
+
+.label-modern:has(+ .input-modern[aria-invalid="true"]) {
+  @apply text-red-700;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .input-modern {
+    @apply border-gray-600;
   }
   
-  .modal-actions .btn {
-    @apply w-auto;
+  .section-personal,
+  .section-security,
+  .section-projects,
+  .section-edit-personal {
+    background: white;
+    @apply border-gray-400;
   }
 }
 
-/* FIXED: Ensure buttons are always visible in desktop view */
-.permission-modal-buttons {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: relative !important;
-  z-index: 100 !important;
-}
-
-/* FIXED: Desktop specific button styles */
-@media (min-width: 768px) {
-  .permission-modal-buttons {
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    gap: 1rem !important;
+/* Reduce Motion for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .input-modern,
+  .select-modern,
+  .button-modern,
+  .project-card {
+    transition: none !important;
+    transform: none !important;
   }
   
-  .permission-modal-buttons button {
-    min-width: 120px !important;
-    display: inline-flex !important;
-    visibility: visible !important;
-  }
-}
-
-/* FIXED: Mobile specific button styles */
-@media (max-width: 767px) {
-  .permission-modal-buttons {
-    flex-direction: column !important;
-    gap: 0.75rem !important;
+  .input-modern:focus,
+  .select-modern:focus {
+    transform: none !important;
   }
   
-  .permission-modal-buttons button {
-    width: 100% !important;
-  }
-}
-
-/* Enhanced button base styles */
-.enhanced-button {
-  @apply px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg;
-}
-
-.enhanced-button:hover {
-  @apply transform -translate-y-0.5;
-}
-
-.enhanced-button:focus {
-  @apply outline-none ring-2 ring-offset-2;
-}
-
-.enhanced-button:disabled {
-  @apply opacity-50 cursor-not-allowed transform-none;
-}
-
-/* Enhanced select styles */
-.enhanced-select {
-  @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300;
-}
-
-/* FIXED: Checkbox styles for permissions */
-.permission-checkbox {
-  @apply rounded border-gray-300 text-indigo-600 focus:ring-indigo-500;
-  /* Ensure checkbox interactions work properly */
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-
-.permission-checkbox:checked {
-  @apply bg-indigo-600 border-indigo-600;
-}
-
-.permission-checkbox:focus {
-  @apply ring-2 ring-indigo-500 ring-offset-2;
-}
-
-/* FIXED: Label styles for permissions */
-.permission-label {
-  @apply flex items-center space-x-3 cursor-pointer;
-  /* Ensure labels are clickable */
-  pointer-events: auto !important;
-  user-select: none;
-}
-
-.permission-label:hover {
-  @apply bg-gray-50;
-}
-
-/* User Avatar Styles */
-.user-avatar {
-  @apply h-12 w-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg shadow-lg;
-}
-
-.user-avatar-small {
-  @apply h-8 w-8 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md;
-}
-
-/* Status Indicators */
-.status-active {
-  @apply bg-green-100 text-green-800 border-green-200;
-}
-
-.status-inactive {
-  @apply bg-red-100 text-red-800 border-red-200;
-}
-
-/* Role Badge Enhancements */
-.role-badge {
-  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border-2 transition-all duration-200;
-}
-
-.role-badge:hover {
-  @apply transform scale-105 shadow-md;
-}
-
-/* Form Validation Styles */
-.form-input-error {
-  @apply border-red-300 focus:border-red-500 focus:ring-red-200;
-}
-
-.form-input-success {
-  @apply border-green-300 focus:border-green-500 focus:ring-green-200;
-}
-
-/* FIXED: Modal specific styles to prevent button hiding */
-.modal-content {
-  /* Ensure modal content doesn't hide buttons */
-  position: relative;
-  z-index: 1;
-}
-
-.modal-body {
-  /* Prevent modal body from overlapping buttons */
-  padding-bottom: 2rem;
-}
-
-.modal-footer {
-  /* Ensure footer is always visible */
-  position: relative;
-  z-index: 10;
-  background: white;
-  border-top: 1px solid #e5e7eb;
-  padding: 1.5rem;
-  margin-top: auto;
-}
-
-/* FIXED: Permission grid layout */
-.permission-grid {
-  @apply grid gap-6;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-}
-
-@media (min-width: 1024px) {
-  .permission-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 1023px) {
-  .permission-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* FIXED: Ensure permission sections are interactive */
-.permission-section-content {
-  /* Ensure all permission elements are interactive */
-  pointer-events: auto;
-}
-
-.permission-section-content input[type="checkbox"] {
-  /* Ensure checkboxes are always clickable */
-  pointer-events: auto !important;
-  cursor: pointer !important;
-  z-index: 2;
-  position: relative;
-}
-
-.permission-section-content label {
-  /* Ensure labels are clickable */
-  cursor: pointer !important;
-  pointer-events: auto !important;
-}
-
-/* Responsive Enhancements */
-@media (max-width: 768px) {
-  .enhanced-input {
-    @apply px-3 py-2 text-sm;
-  }
-  
-  .enhanced-button {
-    @apply px-4 py-2 text-sm;
-  }
-  
-  .user-avatar {
-    @apply h-10 w-10 text-base;
-  }
-}
-
-/* FIXED: Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-  .enhanced-input {
-    @apply bg-gray-800 border-gray-600 text-white;
-  }
-  
-  .enhanced-select {
-    @apply bg-gray-800 border-gray-600 text-white;
-  }
-  
-  .permission-card {
-    @apply bg-gray-800 border-gray-600;
-  }
-  
-  .permission-card-header {
-    @apply bg-gray-700 border-gray-600;
-  }
-}
-
-/* FIXED: Focus trap prevention */
-.form-container {
-  /* Prevent focus trapping issues */
-  isolation: isolate;
-}
-
-.form-field {
-  /* Ensure each form field maintains focus independently */
-  position: relative;
-  z-index: 1;
-}
-
-/* FIXED: Animation performance */
-.form-input-stable {
-  /* Disable GPU acceleration that might cause focus issues */
-  transform: translateZ(0);
-  will-change: auto;
-  backface-visibility: visible;
-}
-
-/* FIXED: Safari specific fixes */
-@supports (-webkit-appearance: none) {
-  .form-input-stable {
-    -webkit-appearance: none;
-    -webkit-transform: translateZ(0);
-    -webkit-backface-visibility: visible;
-  }
-}
-
-/* FIXED: Firefox specific fixes */
-@-moz-document url-prefix() {
-  .form-input-stable {
-    -moz-appearance: none;
-  }
-  
-  .permission-checkbox {
-    -moz-appearance: none;
+  .button-modern:hover {
+    transform: none !important;
   }
 }
