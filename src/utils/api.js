@@ -1,13 +1,13 @@
 // src/utils/api.js
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-const API_PREFIX = '/api/v1/apirepos';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_PREFIX = "/api/v1/apirepos";
 
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from "../stores/authStore";
 
 // Debug logging utility - only logs in development
 const debugLog = (message, data = null) => {
-  if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true') {
-    console.log(`[API Debug] ${message}`, data || '');
+  if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === "true") {
+    console.log(`[API Debug] ${message}`, data || "");
   }
 };
 
@@ -15,12 +15,12 @@ const debugLog = (message, data = null) => {
 export const api = async (path, method = "GET", body = null, headers = {}) => {
   const url = `${BASE_URL}${path}`;
   debugLog(`${method} ${url}`);
-  
+
   // Inject Authorization header when token is available
   let authHeader = {};
   try {
     const tokenFromStore = useAuthStore.getState()?.token;
-    const tokenFromLocalStorage = localStorage.getItem('token');
+    const tokenFromLocalStorage = localStorage.getItem("token");
     const token = tokenFromStore || tokenFromLocalStorage;
     if (token) {
       authHeader = { Authorization: `Bearer ${token}` };
@@ -29,7 +29,11 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
     // no-op: safe fallback when store is not initialized
   }
 
-  const defaultHeaders = { "Content-Type": "application/json", ...authHeader, ...headers };
+  const defaultHeaders = {
+    "Content-Type": "application/json",
+    ...authHeader,
+    ...headers,
+  };
 
   const res = await fetch(url, {
     method,
@@ -46,8 +50,15 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
 // API Repository specific endpoints
 export const apiRepository = {
   // Get all APIs with pagination
-  getAll: async (pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC") => {
-    return api(`${API_PREFIX}?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`);
+  getAll: async (
+    pageNo = 0,
+    limit = 10,
+    sortBy = "createdDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `${API_PREFIX}?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+    );
   },
 
   // Get API details by ID
@@ -65,7 +76,7 @@ export const apiRepository = {
     // Use the directly passed formatted payload from component
     if (apiData.requestMetaData && apiData.data) {
       // Remove the hardcoded envId = 1, use the one provided in the data
-      
+
       // If it's a create operation (no apiId), use POST
       if (!apiData.data.apiId) {
         return api(API_PREFIX, "POST", apiData);
@@ -77,9 +88,9 @@ export const apiRepository = {
     // If old format is used, prepare the request body according to API documentation
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem('userId') || 'anonymous',
+        userId: localStorage.getItem("userId") || "anonymous",
         transactionId: `tx-${Date.now()}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
       data: {
         apiId: apiData.id,
@@ -91,39 +102,60 @@ export const apiRepository = {
         request: {
           requestId: apiData.requestId,
           headers: apiData.headers
-            .filter(h => h.enabled && h.key.trim())
+            .filter((h) => h.enabled && h.key.trim())
             .reduce((obj, h) => ({ ...obj, [h.key]: h.value }), {}),
           queryParams: apiData.params
-            .filter(p => p.enabled && p.key.trim())
+            .filter((p) => p.enabled && p.key.trim())
             .reduce((obj, p) => ({ ...obj, [p.key]: p.value }), {}),
-          pathParams: {},  // Extract from URL if available
-          auth: apiData.auth && apiData.auth.type !== "No Auth" ? {
-            type: apiData.auth.type === "Bearer Token" ? "BEARER" : 
-                  apiData.auth.type === "Basic Auth" ? "BASIC" : 
-                  apiData.auth.type === "API Key" ? "API_KEY" : "NONE",
-            token: apiData.auth.bearerToken || "",
-            username: apiData.auth.username || "",
-            password: apiData.auth.password || "",
-            keyName: apiData.auth.apiKeyName || "",
-            keyValue: apiData.auth.apiKeyValue || "",
-            addTo: apiData.auth.apiKeyAddTo || "Header"
-          } : undefined,
-          body: apiData.body && apiData.body.type !== "none" ? {
-            type: apiData.body.type,
-            contentType: apiData.body.contentType,
-            raw: apiData.body.raw,
-            formData: apiData.body.formData ? apiData.body.formData
-              .filter(item => item.enabled && item.key)
-              .reduce((obj, item) => ({ 
-                ...obj, 
-                [item.key]: { value: item.value, type: item.type } 
-              }), {}) : undefined,
-            urlEncoded: apiData.body.urlEncoded ? apiData.body.urlEncoded
-              .filter(item => item.enabled && item.key)
-              .reduce((obj, item) => ({ ...obj, [item.key]: item.value }), {}) : undefined
-          } : undefined
-        }
-      }
+          pathParams: {}, // Extract from URL if available
+          auth:
+            apiData.auth && apiData.auth.type !== "No Auth"
+              ? {
+                  type:
+                    apiData.auth.type === "Bearer Token"
+                      ? "BEARER"
+                      : apiData.auth.type === "Basic Auth"
+                        ? "BASIC"
+                        : apiData.auth.type === "API Key"
+                          ? "API_KEY"
+                          : "NONE",
+                  token: apiData.auth.bearerToken || "",
+                  username: apiData.auth.username || "",
+                  password: apiData.auth.password || "",
+                  keyName: apiData.auth.apiKeyName || "",
+                  keyValue: apiData.auth.apiKeyValue || "",
+                  addTo: apiData.auth.apiKeyAddTo || "Header",
+                }
+              : undefined,
+          body:
+            apiData.body && apiData.body.type !== "none"
+              ? {
+                  type: apiData.body.type,
+                  contentType: apiData.body.contentType,
+                  raw: apiData.body.raw,
+                  formData: apiData.body.formData
+                    ? apiData.body.formData
+                        .filter((item) => item.enabled && item.key)
+                        .reduce(
+                          (obj, item) => ({
+                            ...obj,
+                            [item.key]: { value: item.value, type: item.type },
+                          }),
+                          {},
+                        )
+                    : undefined,
+                  urlEncoded: apiData.body.urlEncoded
+                    ? apiData.body.urlEncoded
+                        .filter((item) => item.enabled && item.key)
+                        .reduce(
+                          (obj, item) => ({ ...obj, [item.key]: item.value }),
+                          {},
+                        )
+                    : undefined,
+                }
+              : undefined,
+        },
+      },
     };
 
     // Use POST for create (no id) and PUT for update
@@ -137,11 +169,16 @@ export const apiRepository = {
     let authData = undefined;
     if (apiData.auth && apiData.auth.type !== "No Auth") {
       authData = {
-        type: apiData.auth.type === "Bearer Token" ? "BEARER" : 
-              apiData.auth.type === "Basic Auth" ? "BASIC" : 
-              apiData.auth.type === "API Key" ? "API_KEY" : "NONE"
+        type:
+          apiData.auth.type === "Bearer Token"
+            ? "BEARER"
+            : apiData.auth.type === "Basic Auth"
+              ? "BASIC"
+              : apiData.auth.type === "API Key"
+                ? "API_KEY"
+                : "NONE",
       };
-      
+
       if (apiData.auth.type === "Bearer Token") {
         authData.token = apiData.auth.bearerToken || "";
       } else if (apiData.auth.type === "Basic Auth") {
@@ -153,32 +190,32 @@ export const apiRepository = {
         authData.addTo = apiData.auth.apiKeyAddTo || "Header";
       }
     }
-    
+
     // Prepare body data
     let bodyData = undefined;
     if (apiData.body && apiData.body.type !== "none") {
       bodyData = {
         type: apiData.body.type,
-        contentType: apiData.body.contentType
+        contentType: apiData.body.contentType,
       };
-      
+
       if (apiData.body.type === "raw") {
         bodyData.raw = apiData.body.raw;
       } else if (apiData.body.type === "form-data") {
         bodyData.formData = {};
         apiData.body.formData
-          .filter(item => item.enabled && item.key)
-          .forEach(item => {
+          .filter((item) => item.enabled && item.key)
+          .forEach((item) => {
             bodyData.formData[item.key] = {
               value: item.value,
-              type: item.type
+              type: item.type,
             };
           });
       } else if (apiData.body.type === "x-www-form-urlencoded") {
         bodyData.urlEncoded = {};
         apiData.body.urlEncoded
-          .filter(item => item.enabled && item.key)
-          .forEach(item => {
+          .filter((item) => item.enabled && item.key)
+          .forEach((item) => {
             bodyData.urlEncoded[item.key] = item.value;
           });
       }
@@ -187,9 +224,9 @@ export const apiRepository = {
     // Prepare the request body according to API documentation
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem('userId') || 'anonymous',
+        userId: localStorage.getItem("userId") || "anonymous",
         transactionId: `tx-${Date.now()}`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
       data: {
         apiId: apiData.id,
@@ -199,20 +236,34 @@ export const apiRepository = {
         url: apiData.url,
         request: {
           headers: apiData.headers
-            .filter(h => h.enabled && h.key.trim())
+            .filter((h) => h.enabled && h.key.trim())
             .reduce((obj, h) => ({ ...obj, [h.key]: h.value }), {}),
           queryParams: apiData.params
-            .filter(p => p.enabled && p.key.trim())
+            .filter((p) => p.enabled && p.key.trim())
             .reduce((obj, p) => ({ ...obj, [p.key]: p.value }), {}),
-          pathParams: {},  // Extract from URL if available
+          pathParams: {}, // Extract from URL if available
           auth: authData,
-          body: bodyData
-        }
-      }
+          body: bodyData,
+        },
+      },
     };
 
     return api(`${API_PREFIX}/executeAPI`, "POST", requestBody);
-  }
+  },
+
+  // Delete API repositories (bulk)
+  delete: async (apiIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: apiIds,
+    };
+
+    return api("/api/v1/apirepos/delete", "DELETE", requestBody);
+  },
 };
 
 // Enhanced Test Execution specific endpoints with assertion support
@@ -222,16 +273,25 @@ export const testExecution = {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
-      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+      executedBy =
+        user?.username || localStorage.getItem("userId") || "anonymous";
     }
-    
+
     const requestBody = {
       executedBy: executedBy,
-      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
-      ...(executionSettings.environment && { environment: executionSettings.environment })
+      ...(executionSettings.executionStrategy && {
+        executionStrategy: executionSettings.executionStrategy,
+      }),
+      ...(executionSettings.environment && {
+        environment: executionSettings.environment,
+      }),
     };
-    
-    return api(`/api/v1/test-execution/package/${packageId}`, "POST", requestBody);
+
+    return api(
+      `/api/v1/test-execution/package/${packageId}`,
+      "POST",
+      requestBody,
+    );
   },
 
   // Execute test suite
@@ -239,15 +299,20 @@ export const testExecution = {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
-      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+      executedBy =
+        user?.username || localStorage.getItem("userId") || "anonymous";
     }
-    
+
     const requestBody = {
       executedBy: executedBy,
-      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
-      ...(executionSettings.environment && { environment: executionSettings.environment })
+      ...(executionSettings.executionStrategy && {
+        executionStrategy: executionSettings.executionStrategy,
+      }),
+      ...(executionSettings.environment && {
+        environment: executionSettings.environment,
+      }),
     };
-    
+
     return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
   },
 
@@ -256,16 +321,25 @@ export const testExecution = {
     // If no executedBy provided, get from auth store
     if (!executedBy) {
       const { user } = useAuthStore.getState();
-      executedBy = user?.username || localStorage.getItem('userId') || 'anonymous';
+      executedBy =
+        user?.username || localStorage.getItem("userId") || "anonymous";
     }
-    
+
     const requestBody = {
       executedBy: executedBy,
-      ...(executionSettings.executionStrategy && { executionStrategy: executionSettings.executionStrategy }),
-      ...(executionSettings.environment && { environment: executionSettings.environment })
+      ...(executionSettings.executionStrategy && {
+        executionStrategy: executionSettings.executionStrategy,
+      }),
+      ...(executionSettings.environment && {
+        environment: executionSettings.environment,
+      }),
     };
-    
-    return api(`/api/v1/test-execution/case/${testCaseId}`, "POST", requestBody);
+
+    return api(
+      `/api/v1/test-execution/case/${testCaseId}`,
+      "POST",
+      requestBody,
+    );
   },
 
   // Get execution details by execution ID
@@ -274,8 +348,16 @@ export const testExecution = {
   },
 
   // Get execution history/results
-  getExecutionHistory: async (pageNo = 0, limit = 10, sortBy = "executionDate", sortDir = "DESC") => {
-    return api(`/api/v1/test-execution?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  getExecutionHistory: async (
+    pageNo = 0,
+    limit = 10,
+    sortBy = "executionDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `/api/v1/test-execution?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      "GET",
+    );
   },
 
   // NEW: Get detailed assertion results for execution
@@ -285,15 +367,26 @@ export const testExecution = {
 
   // NEW: Get assertion summary for execution
   getExecutionAssertionSummary: async (executionId) => {
-    return api(`/api/v1/test-execution/${executionId}/assertions/summary`, "GET");
-  }
+    return api(
+      `/api/v1/test-execution/${executionId}/assertions/summary`,
+      "GET",
+    );
+  },
 };
 
 // Test Case specific endpoints
 export const testCases = {
   // Get all test cases with pagination
-  getAll: async (pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC") => {
-    return api(`/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  getAll: async (
+    pageNo = 0,
+    limit = 10,
+    sortBy = "createdDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      "GET",
+    );
   },
 
   // Get test case by ID
@@ -319,9 +412,9 @@ export const testCases = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: testCaseIds
+      data: testCaseIds,
     };
-    
+
     return api("/api/v1/test-cases/delete", "DELETE", requestBody);
   },
 
@@ -335,19 +428,27 @@ export const testCases = {
       },
       data: {
         format: format,
-        testCaseIds: testCaseIds
-      }
+        testCaseIds: testCaseIds,
+      },
     };
-    
+
     return api("/api/v1/test-cases/export", "POST", requestBody);
-  }
+  },
 };
 
 // Test Suite specific endpoints
 export const testSuites = {
   // Get all test suites with pagination
-  getAll: async (pageNo = 0, limit = 100, sortBy = "createdDate", sortDir = "DESC") => {
-    return api(`/api/v1/test-suites?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  getAll: async (
+    pageNo = 0,
+    limit = 100,
+    sortBy = "createdDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `/api/v1/test-suites?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      "GET",
+    );
   },
 
   // Get test suite by ID
@@ -373,9 +474,9 @@ export const testSuites = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: suiteIds
+      data: suiteIds,
     };
-    
+
     return api("/api/v1/test-suites/delete", "DELETE", requestBody);
   },
 
@@ -392,10 +493,14 @@ export const testSuites = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: testCaseIds
+      data: testCaseIds,
     };
-    
-    return api(`/api/v1/test-cases/associate-to-suite/${suiteId}`, "POST", requestBody);
+
+    return api(
+      `/api/v1/test-cases/associate-to-suite/${suiteId}`,
+      "POST",
+      requestBody,
+    );
   },
 
   // Remove test case association from suite
@@ -408,19 +513,31 @@ export const testSuites = {
       },
       data: {
         testCaseId: testCaseId,
-        testSuiteId: testSuiteId
-      }
+        testSuiteId: testSuiteId,
+      },
     };
-    
-    return api("/api/v1/test-cases/remove-assoc-to-suite", "DELETE", requestBody);
-  }
+
+    return api(
+      "/api/v1/test-cases/remove-assoc-to-suite",
+      "DELETE",
+      requestBody,
+    );
+  },
 };
 
 // Test Package specific endpoints
 export const testPackages = {
   // Get all test packages with pagination
-  getAll: async (pageNo = 0, limit = 100, sortBy = "createdDate", sortDir = "DESC") => {
-    return api(`/api/v1/packages?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  getAll: async (
+    pageNo = 0,
+    limit = 100,
+    sortBy = "createdDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `/api/v1/packages?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      "GET",
+    );
   },
 
   // Get test package by ID
@@ -446,9 +563,9 @@ export const testPackages = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: packageIds
+      data: packageIds,
     };
-    
+
     return api("/api/v1/packages/delete", "DELETE", requestBody);
   },
 
@@ -465,10 +582,14 @@ export const testPackages = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: testSuiteIds
+      data: testSuiteIds,
     };
-    
-    return api(`/api/v1/test-suites/associate-to-packages/${packageId}`, "POST", requestBody);
+
+    return api(
+      `/api/v1/test-suites/associate-to-packages/${packageId}`,
+      "POST",
+      requestBody,
+    );
   },
 
   // Remove test suite association from package
@@ -481,17 +602,21 @@ export const testPackages = {
       },
       data: {
         testPackageId: testPackageId,
-        testSuiteId: testSuiteId
-      }
+        testSuiteId: testSuiteId,
+      },
     };
-    
-    return api("/api/v1/test-suites/remove-assoc-to-packages", "DELETE", requestBody);
+
+    return api(
+      "/api/v1/test-suites/remove-assoc-to-packages",
+      "DELETE",
+      requestBody,
+    );
   },
 
   // Get package hierarchy for test execution
   getHierarchy: async () => {
-    return api('/api/v1/packages/hierarchy', 'GET');
-  }
+    return api("/api/v1/packages/hierarchy", "GET");
+  },
 };
 
 // Variables specific endpoints
@@ -514,14 +639,22 @@ export const variables = {
   // Delete variable
   delete: async (variableId) => {
     return api(`/api/v1/variables/${variableId}`, "DELETE");
-  }
+  },
 };
 
 // Project specific endpoints
 export const projects = {
   // Get all projects with pagination
-  getAll: async (pageNo = 0, limit = 100, sortBy = "updatedDate", sortDir = "DESC") => {
-    return api(`/api/v1/projects?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`, "GET");
+  getAll: async (
+    pageNo = 0,
+    limit = 100,
+    sortBy = "updatedDate",
+    sortDir = "DESC",
+  ) => {
+    return api(
+      `/api/v1/projects?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      "GET",
+    );
   },
 
   // Get project by ID
@@ -542,7 +675,7 @@ export const projects = {
   // Delete project
   delete: async (projectId) => {
     return api(`/api/v1/projects/${projectId}`, "DELETE");
-  }
+  },
 };
 
 // Environment specific endpoints
@@ -575,15 +708,18 @@ export const environments = {
   // Delete environment
   delete: async (envId) => {
     return api(`/api/v1/environments/${envId}`, "DELETE");
-  }
+  },
 };
 
 // Global Search endpoint
 export const globalSearch = {
   // Search across all entities
   search: async (keyword) => {
-    return api(`/api/v1/global-search?keyword=${encodeURIComponent(keyword)}`, "GET");
-  }
+    return api(
+      `/api/v1/global-search?keyword=${encodeURIComponent(keyword)}`,
+      "GET",
+    );
+  },
 };
 
 // Assertion specific endpoints
@@ -601,7 +737,7 @@ export const assertions = {
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
-      data: assertionData
+      data: assertionData,
     };
     return api("/api/v1/assertions", "POST", requestBody);
   },
@@ -616,8 +752,8 @@ export const assertions = {
       },
       data: {
         ...assertionData,
-        assertionId: assertionId
-      }
+        assertionId: assertionId,
+      },
     };
     return api("/api/v1/assertions", "PUT", requestBody);
   },
@@ -636,8 +772,8 @@ export const assertions = {
         timestamp: new Date().toISOString(),
       },
       data: {
-        assertionIds: assertionIds
-      }
+        assertionIds: assertionIds,
+      },
     };
     return api("/api/v1/assertions/bulk-delete", "DELETE", requestBody);
   },
@@ -652,8 +788,8 @@ export const assertions = {
       },
       data: {
         assertion: assertion,
-        sampleResponse: sampleResponse
-      }
+        sampleResponse: sampleResponse,
+      },
     };
     return api("/api/v1/assertions/test", "POST", requestBody);
   },
@@ -674,8 +810,8 @@ export const assertions = {
       data: {
         templateId: templateId,
         testCaseId: testCaseId,
-        customConfig: customConfig
-      }
+        customConfig: customConfig,
+      },
     };
     return api("/api/v1/assertions/from-template", "POST", requestBody);
   },
@@ -690,78 +826,81 @@ export const assertions = {
       },
       data: {
         testCaseId: testCaseId,
-        assertionPriorities: assertionPriorities // [{ assertionId, priority }]
-      }
+        assertionPriorities: assertionPriorities, // [{ assertionId, priority }]
+      },
     };
     return api("/api/v1/assertions/priorities", "PUT", requestBody);
-  }
+  },
 };
 
-// Dashboard specific endpoints  
+// Dashboard specific endpoints
 export const dashboard = {
   // Utility method to convert days to date range
   getDateRangeFromDays: (days) => {
     const toDate = new Date();
     const fromDate = new Date();
     fromDate.setDate(toDate.getDate() - parseInt(days));
-    
+
     const dateRange = {
-      fromDate: fromDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
-      toDate: toDate.toISOString().split('T')[0]
+      fromDate: fromDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
+      toDate: toDate.toISOString().split("T")[0],
     };
-    
+
     debugLog(`Date range for ${days} days:`, dateRange);
     return dateRange;
   },
 
   // Get unified dashboard metrics with date range
-  getMetrics: async (timeRange = '7') => {
+  getMetrics: async (timeRange = "7") => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
-    return api(`/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`, "GET");
+    return api(
+      `/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`,
+      "GET",
+    );
   },
 
   // Legacy methods for backward compatibility - all use the unified endpoint
-  getSummary: async (timeRange = '7') => {
+  getSummary: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getMetricsForRange: async (timeRange = '7') => {
+  getMetricsForRange: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getSuccessRateTrend: async (timeRange = '7') => {
+  getSuccessRateTrend: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getResponseTimeTrend: async (timeRange = '7') => {
+  getResponseTimeTrend: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getExecutionVolumeTrend: async (timeRange = '7') => {
+  getExecutionVolumeTrend: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getEnvironmentMetrics: async (timeRange = '7') => {
+  getEnvironmentMetrics: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getRecentExecutions: async (timeRange = '7') => {
+  getRecentExecutions: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getTopPerformers: async (timeRange = '7') => {
+  getTopPerformers: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getTopFailures: async (timeRange = '7') => {
+  getTopFailures: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getProjectMetrics: async (timeRange = '7') => {
+  getProjectMetrics: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getSystemHealth: async (timeRange = '7') => {
+  getSystemHealth: async (timeRange = "7") => {
     return dashboard.getMetrics(timeRange);
   },
 
@@ -781,16 +920,22 @@ export const dashboard = {
   },
 
   // Get environment status for a specific project
-  getEnvironmentStatus: async (projectId, timeRange = '7') => {
+  getEnvironmentStatus: async (projectId, timeRange = "7") => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
-    return api(`/api/v1/dashboard/environment-status?projectId=${projectId}&fromDate=${fromDate}&toDate=${toDate}`, "GET");
+    return api(
+      `/api/v1/dashboard/environment-status?projectId=${projectId}&fromDate=${fromDate}&toDate=${toDate}`,
+      "GET",
+    );
   },
 
   // Get suite performers for top performers and needs attention sections
-  getSuitePerformers: async (timeRange = '7') => {
+  getSuitePerformers: async (timeRange = "7") => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
-    return api(`/api/v1/dashboard/suite-performers?fromDate=${fromDate}&toDate=${toDate}`, "GET");
-  }
+    return api(
+      `/api/v1/dashboard/suite-performers?fromDate=${fromDate}&toDate=${toDate}`,
+      "GET",
+    );
+  },
 };
 
 // User Management specific endpoints
@@ -802,8 +947,8 @@ export const userManagement = {
       const requestBody = {
         data: {
           username,
-          password
-        }
+          password,
+        },
       };
       return api("/api/v1/auth/login", "POST", requestBody);
     },
@@ -819,9 +964,9 @@ export const userManagement = {
           lastName: userData.lastName,
           role: {
             roleId: userData.roleId || 1,
-            roleName: userData.role
-          }
-        }
+            roleName: userData.role,
+          },
+        },
       };
       return api("/api/v1/auth/sign-up", "POST", requestBody);
     },
@@ -829,22 +974,28 @@ export const userManagement = {
     // Logout
     logout: async () => {
       return api("/api/v1/auth/logout", "POST");
-    }
+    },
   },
 
   // User management endpoints
   users: {
     // Get all users with search and filtering
-    getAll: async (search = '', role = '', status = '', page = 1, limit = 20) => {
+    getAll: async (
+      search = "",
+      role = "",
+      status = "",
+      page = 1,
+      limit = 20,
+    ) => {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: limit.toString()
+        limit: limit.toString(),
       });
-      
-      if (search) params.append('search', search);
-      if (role) params.append('role', role);
-      if (status) params.append('status', status);
-      
+
+      if (search) params.append("search", search);
+      if (role) params.append("role", role);
+      if (status) params.append("status", status);
+
       return api(`/api/v1/users?${params}`, "GET");
     },
 
@@ -869,7 +1020,7 @@ export const userManagement = {
         role: userData.role,
         status: userData.status,
         projects: userData.projects || [],
-        permissions: userData.permissions || {}
+        permissions: userData.permissions || {},
       };
       return api("/api/v1/users", "POST", requestBody);
     },
@@ -884,7 +1035,7 @@ export const userManagement = {
         role: userData.role,
         status: userData.status,
         projects: userData.projects || [],
-        permissions: userData.permissions || {}
+        permissions: userData.permissions || {},
       };
       return api(`/api/v1/users/${userId}`, "PUT", requestBody);
     },
@@ -897,7 +1048,7 @@ export const userManagement = {
     // Update user permissions
     updatePermissions: async (userId, permissions) => {
       const requestBody = {
-        permissions: permissions
+        permissions: permissions,
       };
       return api(`/api/v1/users/${userId}/permissions`, "PATCH", requestBody);
     },
@@ -905,7 +1056,7 @@ export const userManagement = {
     // Reset user password
     resetPassword: async (userId) => {
       return api(`/api/v1/users/${userId}/reset-password`, "POST");
-    }
+    },
   },
 
   // Configuration endpoints
@@ -918,7 +1069,7 @@ export const userManagement = {
     // Get role configuration
     getRoles: async () => {
       return api("/api/v1/users/roles", "GET");
-    }
+    },
   },
 
   // Legacy endpoints for backward compatibility
@@ -936,7 +1087,7 @@ export const userManagement = {
     // Update user (legacy)
     updateUser: async (userData) => {
       return api("/api/v1/legacy/users/update", "PATCH", userData);
-    }
+    },
   },
 
   // Admin endpoints
@@ -944,8 +1095,8 @@ export const userManagement = {
     // Initialize system
     initialize: async () => {
       return api("/api/v1/admin/initialize", "POST");
-    }
-  }
+    },
+  },
 };
 
 // Default export for backward compatibility

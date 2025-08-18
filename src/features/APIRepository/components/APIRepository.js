@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { FaTrash, FaFileExport, FaPlus, FaSearch } from "react-icons/fa";
-import { FiX, FiGrid, FiChevronRight, FiCalendar, FiLink, FiCode } from "react-icons/fi";
+import {
+  FiX,
+  FiGrid,
+  FiChevronRight,
+  FiCalendar,
+  FiLink,
+  FiCode,
+} from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import Breadcrumb from "../../../components/common/Breadcrumb";
 import { toast } from "react-toastify";
@@ -31,8 +38,8 @@ const APIRepository = () => {
     pageSize: pageSize,
     sort: {
       direction: "DESC",
-      property: "createdDate"
-    }
+      property: "createdDate",
+    },
   });
 
   // Updated calculated pagination values
@@ -42,19 +49,19 @@ const APIRepository = () => {
   const fetchEnvironments = async () => {
     // Check if there's an active project
     if (!activeProject?.id) {
-      console.warn('No active project found for environments');
+      console.warn("No active project found for environments");
       setEnvironmentsMap(new Map());
       return;
     }
 
     try {
       const response = await environments.getByProject(activeProject.id);
-      
+
       if (response && response.result && response.result.data) {
         const envList = response.result.data.content || response.result.data;
         const envMap = new Map();
-        
-        envList.forEach(env => {
+
+        envList.forEach((env) => {
           envMap.set(env.environmentId, env.environmentName);
         });
         setEnvironmentsMap(envMap);
@@ -69,12 +76,17 @@ const APIRepository = () => {
   const fetchAPIs = async (page = 0) => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await apiRepository.getAll(page, pageSize, "createdDate", "DESC");
-      
+      const response = await apiRepository.getAll(
+        page,
+        pageSize,
+        "createdDate",
+        "DESC",
+      );
+
       if (response && response.result && response.result.data) {
-        const apiData = response.result.data.content.map(api => ({
+        const apiData = response.result.data.content.map((api) => ({
           id: api.apiId,
           apiId: `API-${api.apiId}`,
           name: api.apiRepoName,
@@ -84,7 +96,7 @@ const APIRepository = () => {
           createdDate: new Date(api.createdDate).toLocaleDateString("en-GB"),
           environment: api.envId,
         }));
-        
+
         setData(apiData);
         setFilteredData(apiData);
         setPagination({
@@ -92,7 +104,7 @@ const APIRepository = () => {
           totalPages: response.result.data.totalPages,
           pageNumber: response.result.data.pageable.pageNumber,
           pageSize: response.result.data.pageable.pageSize,
-          sort: response.result.data.pageable.sort
+          sort: response.result.data.pageable.sort,
         });
       } else {
         throw new Error("Invalid response format");
@@ -106,22 +118,39 @@ const APIRepository = () => {
     }
   };
 
-  // Handle API deletion
+  // Replace the existing handleDelete function with this implementation:
   const handleDelete = async () => {
     if (selected.length === 0) {
       toast.warning("No APIs selected for deletion");
       return;
     }
-    
+
+    const payload = {
+      requestMetaData: {
+        userId: localStorage.getItem("userId") || "302",
+        transactionId: nanoid(),
+        timestamp: new Date().toISOString(),
+      },
+      data: selected,
+    };
+
     try {
-      // In a real implementation, we would make DELETE API calls for each selected API
-      // For now, we'll just simulate success and update the UI
-      
-      toast.success(`Successfully deleted ${selected.length} API${selected.length > 1 ? 's' : ''}`);
-      setSelected([]);
-      
-      // Refresh the data after deletion
-      fetchAPIs(pagination.pageNumber);
+      const json = await apiRepository.delete(selected);
+      const { code, message } = json.result;
+
+      if (code === "200") {
+        toast.success(
+          message ||
+            `Successfully deleted ${selected.length} API${selected.length > 1 ? "s" : ""}`,
+        );
+        // Update local state by filtering out deleted APIs
+        const updatedData = data.filter((api) => !selected.includes(api.id));
+        setData(updatedData);
+        setFilteredData(updatedData);
+        setSelected([]);
+      } else {
+        toast.error(message || "Failed to delete APIs");
+      }
     } catch (error) {
       console.error("Error during delete:", error);
       toast.error("Error occurred while deleting APIs");
@@ -133,14 +162,14 @@ const APIRepository = () => {
   // Handle checkbox selections
   const toggleSelect = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const toggleSelectAll = () => {
     const currentPageIds = currentData.map((item) => item.id);
     const allSelected = currentPageIds.every((id) => selected.includes(id));
-    
+
     setSelected((prev) => {
       if (allSelected) {
         // Deselect all on current page
@@ -156,16 +185,16 @@ const APIRepository = () => {
   const handleSearch = (e) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
-    
+
     if (!term.trim()) {
       setFilteredData(data);
     } else {
       const filtered = data.filter(
-        api => 
-          api.name.toLowerCase().includes(term) || 
+        (api) =>
+          api.name.toLowerCase().includes(term) ||
           api.apiId.toString().includes(term) ||
           api.url.toLowerCase().includes(term) ||
-          (api.description && api.description.toLowerCase().includes(term))
+          (api.description && api.description.toLowerCase().includes(term)),
       );
       setFilteredData(filtered);
     }
@@ -178,16 +207,16 @@ const APIRepository = () => {
 
   // Get method badge color
   const getMethodColor = (method) => {
-    switch(method.toUpperCase()) {
-      case 'GET':
+    switch (method.toUpperCase()) {
+      case "GET":
         return "bg-green-100 text-green-800";
-      case 'POST':
+      case "POST":
         return "bg-blue-100 text-blue-800";
-      case 'PUT':
+      case "PUT":
         return "bg-yellow-100 text-yellow-800";
-      case 'DELETE':
+      case "DELETE":
         return "bg-red-100 text-red-800";
-      case 'PATCH':
+      case "PATCH":
         return "bg-purple-100 text-purple-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -197,7 +226,7 @@ const APIRepository = () => {
   // Display environment name from the environments map
   const formatEnvironmentName = (envId) => {
     if (!envId) return "Unknown";
-    
+
     const envName = environmentsMap.get(envId);
     return envName || `Environment ${envId}`;
   };
@@ -205,15 +234,17 @@ const APIRepository = () => {
   // Get environment badge color based on environment name
   const getEnvironmentBadge = (envId) => {
     const envName = formatEnvironmentName(envId).toLowerCase();
-    
-    switch(true) {
-      case envName.includes('production') || envName.includes('prod'):
+
+    switch (true) {
+      case envName.includes("production") || envName.includes("prod"):
         return "bg-red-100 text-red-800";
-      case envName.includes('staging') || envName.includes('stage'):
+      case envName.includes("staging") || envName.includes("stage"):
         return "bg-amber-100 text-amber-800";
-      case envName.includes('development') || envName.includes('dev'):
+      case envName.includes("development") || envName.includes("dev"):
         return "bg-green-100 text-green-800";
-      case envName.includes('testing') || envName.includes('test') || envName.includes('qa'):
+      case envName.includes("testing") ||
+        envName.includes("test") ||
+        envName.includes("qa"):
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
@@ -258,7 +289,7 @@ const APIRepository = () => {
       await fetchEnvironments();
       await fetchAPIs();
     };
-    
+
     initializeData();
   }, [activeProject?.id]);
 
@@ -266,10 +297,7 @@ const APIRepository = () => {
     <div className="p-6 font-inter text-gray-800">
       {/* Breadcrumb */}
       <Breadcrumb
-        items={[
-          { label: "API Design" },
-          { label: "API Repository" },
-        ]}
+        items={[{ label: "API Design" }, { label: "API Repository" }]}
       />
 
       {/* Main Content Area */}
@@ -277,7 +305,9 @@ const APIRepository = () => {
         {/* Header with title and search */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">API Repository</h2>
+            <h2 className="text-2xl font-semibold text-gray-900">
+              API Repository
+            </h2>
             <p className="text-sm text-gray-600 mt-1">
               Manage your collection of API endpoints for testing
             </p>
@@ -317,7 +347,8 @@ const APIRepository = () => {
           ) : (
             <div className="flex gap-3">
               <span className="flex items-center px-3 py-1 bg-indigo-50 text-indigo-700 rounded-md">
-                {selected.length} item{selected.length !== 1 ? "s" : ""} selected
+                {selected.length} item{selected.length !== 1 ? "s" : ""}{" "}
+                selected
               </span>
               <button
                 onClick={() => setDeleteModalOpen(true)}
@@ -337,15 +368,31 @@ const APIRepository = () => {
                 {exportOpen && (
                   <div className="absolute right-0 mt-2 bg-white border rounded-md shadow-lg w-40 z-10 animate-fade-in">
                     <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer rounded-t-md flex items-center text-gray-700">
-                      <svg className="w-5 h-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-5 h-5 mr-2 text-gray-500"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4a1 1 0 00-1-1H6z" clipRule="evenodd" />
+                        <path
+                          fillRule="evenodd"
+                          d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4a1 1 0 00-1-1H6z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       PDF
                     </div>
                     <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer rounded-b-md flex items-center text-gray-700 border-t">
-                      <svg className="w-5 h-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z" clipRule="evenodd" />
+                      <svg
+                        className="w-5 h-5 mr-2 text-gray-500"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       Excel
                     </div>
@@ -368,12 +415,24 @@ const APIRepository = () => {
             /* Error State */
             <div className="p-8 flex flex-col items-center justify-center">
               <div className="bg-red-100 rounded-full p-4 mb-4 text-red-600">
-                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="h-8 w-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">{error}</h3>
-              <button 
+              <h3 className="text-lg font-medium text-gray-900 mb-1">
+                {error}
+              </h3>
+              <button
                 className="mt-4 px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all"
                 onClick={() => fetchAPIs()}
               >
@@ -386,14 +445,16 @@ const APIRepository = () => {
               <div className="bg-gray-100 rounded-full p-4 mb-4">
                 <FiCode className="h-8 w-8 text-gray-500" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No APIs found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">
+                No APIs found
+              </h3>
               <p className="text-gray-500 mb-6 text-center max-w-md">
-                {searchTerm 
+                {searchTerm
                   ? `No APIs match your search "${searchTerm}"`
                   : "Create your first API to start testing endpoints"}
               </p>
               {searchTerm ? (
-                <button 
+                <button
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 hover:-translate-y-0.5 transition-all flex items-center"
                   onClick={clearSearch}
                 >
@@ -401,7 +462,7 @@ const APIRepository = () => {
                   Clear Search
                 </button>
               ) : (
-                <button 
+                <button
                   className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
                   onClick={() => navigate("/test-design/api-repository/create")}
                 >
@@ -423,23 +484,35 @@ const APIRepository = () => {
                           onChange={toggleSelectAll}
                           checked={
                             currentData.length > 0 &&
-                            currentData.every((item) => selected.includes(item.id))
+                            currentData.every((item) =>
+                              selected.includes(item.id),
+                            )
                           }
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                       </th>
                       <th className="py-3 px-4 font-medium w-[10%]">API ID</th>
-                      <th className="py-3 px-4 font-medium w-[20%]">API Name</th>
-                      <th className="py-3 px-4 font-medium w-[10%] text-center">Method</th>
-                      <th className="py-3 px-4 font-medium w-[20%]">Endpoint</th>
-                      <th className="py-3 px-4 font-medium w-[10%] text-center">Environment</th>
-                      <th className="py-3 px-4 font-medium w-[25%]">Description</th>
+                      <th className="py-3 px-4 font-medium w-[20%]">
+                        API Name
+                      </th>
+                      <th className="py-3 px-4 font-medium w-[10%] text-center">
+                        Method
+                      </th>
+                      <th className="py-3 px-4 font-medium w-[20%]">
+                        Endpoint
+                      </th>
+                      <th className="py-3 px-4 font-medium w-[10%] text-center">
+                        Environment
+                      </th>
+                      <th className="py-3 px-4 font-medium w-[25%]">
+                        Description
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {currentData.map((item) => (
-                      <tr 
-                        key={item.id} 
+                      <tr
+                        key={item.id}
                         className="hover:bg-gray-50 transition-colors"
                       >
                         <td className="py-3 px-4">
@@ -467,18 +540,24 @@ const APIRepository = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMethodColor(item.method)}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMethodColor(item.method)}`}
+                          >
                             {item.method}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600 truncate">
                           <div className="flex items-center">
-                            <FiLink className="mr-1 flex-shrink-0 h-3 w-3 text-gray-400" /> 
-                            <span className="truncate font-mono text-xs">{item.url}</span>
+                            <FiLink className="mr-1 flex-shrink-0 h-3 w-3 text-gray-400" />
+                            <span className="truncate font-mono text-xs">
+                              {item.url}
+                            </span>
                           </div>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnvironmentBadge(item.environment)}`}>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnvironmentBadge(item.environment)}`}
+                          >
                             {formatEnvironmentName(item.environment)}
                           </span>
                         </td>
@@ -496,10 +575,19 @@ const APIRepository = () => {
               {/* Pagination */}
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
                 <div className="text-sm text-gray-600">
-                  Showing {Math.min((pagination.pageNumber * pagination.pageSize) + 1, pagination.totalElements)} to{" "}
-                  {Math.min((pagination.pageNumber + 1) * pagination.pageSize, pagination.totalElements)} of {pagination.totalElements} items
+                  Showing{" "}
+                  {Math.min(
+                    pagination.pageNumber * pagination.pageSize + 1,
+                    pagination.totalElements,
+                  )}{" "}
+                  to{" "}
+                  {Math.min(
+                    (pagination.pageNumber + 1) * pagination.pageSize,
+                    pagination.totalElements,
+                  )}{" "}
+                  of {pagination.totalElements} items
                 </div>
-                
+
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -542,7 +630,7 @@ const APIRepository = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Delete APIs"
-        message={`Are you sure you want to delete ${selected.length} selected API${selected.length !== 1 ? 's' : ''}? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${selected.length} selected API${selected.length !== 1 ? "s" : ""}? This action cannot be undone.`}
       />
     </div>
   );
