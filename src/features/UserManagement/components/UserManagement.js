@@ -4,8 +4,8 @@ import React, {
   useMemo,
   useCallback,
   useRef,
-} from "react";
-import { toast } from "react-toastify";
+} from 'react';
+import { toast } from 'react-toastify';
 import {
   FiActivity,
   FiAlertTriangle,
@@ -35,7 +35,7 @@ import {
   FiUsers,
   FiX,
   FiXCircle,
-} from "react-icons/fi";
+} from 'react-icons/fi';
 import {
   FaCrown,
   FaUserShield,
@@ -43,15 +43,15 @@ import {
   FaUser,
   FaCheck,
   FaTimes,
-} from "react-icons/fa";
-import { useAuthStore } from "../../../stores/authStore";
-import { usePermissions } from "../../../hooks/usePermissions";
-import { userManagement } from "../../../utils/api";
-import Modal from "../../../components/UI/Modal";
-import Button from "../../../components/UI/Button";
-import Input from "../../../components/UI/Input";
-import Badge from "../../../components/UI/Badge";
-import "../../../styles/user-management-enhanced.css";
+} from 'react-icons/fa';
+import { useAuthStore } from '../../../stores/authStore';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { userManagement } from '../../../utils/api';
+import Modal from '../../../components/UI/Modal';
+import Button from '../../../components/UI/Button';
+import Input from '../../../components/UI/Input';
+import Badge from '../../../components/UI/Badge';
+import '../../../styles/user-management-enhanced.css';
 
 // Helper function to transform API role data to UI format
 const transformRoleData = (apiRoleData) => {
@@ -65,10 +65,10 @@ const transformRoleData = (apiRoleData) => {
   };
 
   const roleColors = {
-    SUPER_ADMIN: "bg-purple-100 text-purple-800 border-purple-200",
-    ADMIN: "bg-blue-100 text-blue-800 border-blue-200",
-    TEST_DESIGNER: "bg-green-100 text-green-800 border-green-200",
-    EXECUTOR: "bg-gray-100 text-gray-800 border-gray-200",
+    SUPER_ADMIN: 'bg-purple-100 text-purple-800 border-purple-200',
+    ADMIN: 'bg-blue-100 text-blue-800 border-blue-200',
+    TEST_DESIGNER: 'bg-green-100 text-green-800 border-green-200',
+    EXECUTOR: 'bg-gray-100 text-gray-800 border-gray-200',
   };
 
   const transformedRoles = {};
@@ -76,7 +76,7 @@ const transformRoleData = (apiRoleData) => {
     transformedRoles[roleKey] = {
       label: roleData.label,
       icon: roleIcons[roleKey] || <FaUser className="h-4 w-4" />,
-      color: roleColors[roleKey] || "bg-gray-100 text-gray-800 border-gray-200",
+      color: roleColors[roleKey] || 'bg-gray-100 text-gray-800 border-gray-200',
       description: roleData.description,
       hierarchy: roleData.hierarchy,
     };
@@ -95,8 +95,8 @@ const transformPermissionData = (apiRoleData) => {
 // UNCONTROLLED Input Component - NO STATE, NO RE-RENDERS
 const UncontrolledInput = ({
   label,
-  defaultValue = "",
-  type = "text",
+  defaultValue = '',
+  type = 'text',
   placeholder,
   icon: Icon,
   required = false,
@@ -125,8 +125,8 @@ const UncontrolledInput = ({
           defaultValue={defaultValue}
           placeholder={placeholder}
           className={`
-            w-full ${Icon ? "pl-12" : "pl-4"} pr-4 py-3 
-            border-2 ${error ? "border-red-300" : "border-gray-200"} 
+            w-full ${Icon ? 'pl-12' : 'pl-4'} pr-4 py-3 
+            border-2 ${error ? 'border-red-300' : 'border-gray-200'} 
             rounded-xl bg-white text-gray-900 placeholder-gray-400
             focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none
             hover:border-gray-300 transition-colors text-base
@@ -146,7 +146,7 @@ const UncontrolledInput = ({
 // UNCONTROLLED Select Component
 const UncontrolledSelect = ({
   label,
-  defaultValue = "",
+  defaultValue = '',
   options = [],
   required = false,
   error = null,
@@ -168,7 +168,7 @@ const UncontrolledSelect = ({
           defaultValue={defaultValue}
           className={`
             w-full pl-4 pr-10 py-3 
-            border-2 ${error ? "border-red-300" : "border-gray-200"} 
+            border-2 ${error ? 'border-red-300' : 'border-gray-200'} 
             rounded-xl bg-white text-gray-900
             focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none
             hover:border-gray-300 transition-colors text-base
@@ -204,9 +204,9 @@ const UserManagement = () => {
   const [availableProjects, setAvailableProjects] = useState([]);
   const [roleConfiguration, setRoleConfiguration] = useState({});
   const [permissionSections, setPermissionSections] = useState({});
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
@@ -252,11 +252,11 @@ const UserManagement = () => {
       const [usersResponse, projectsResponse, rolesResponse] =
         await Promise.all([
           userManagement.users.getAll(
-            "",
-            "",
-            "",
+            '',
+            '',
+            '',
             pagination.page,
-            pagination.limit,
+            pagination.limit
           ),
           userManagement.config.getProjects(),
           userManagement.config.getRoles(),
@@ -279,15 +279,15 @@ const UserManagement = () => {
       if (rolesResponse.result) {
         const transformedRoles = transformRoleData(rolesResponse.result);
         const transformedPermissions = transformPermissionData(
-          rolesResponse.result,
+          rolesResponse.result
         );
 
         setRoleConfiguration(transformedRoles);
         setPermissionSections(transformedPermissions);
       }
     } catch (error) {
-      console.error("Error loading initial data:", error);
-      toast.error("Failed to load user management data");
+      console.error('Error loading initial data:', error);
+      toast.error('Failed to load user management data');
     } finally {
       setIsLoading(false);
     }
@@ -297,15 +297,15 @@ const UserManagement = () => {
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch =
-        searchTerm === "" ||
+        searchTerm === '' ||
         user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.lastName?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
       const matchesStatus =
-        statusFilter === "all" || user.status === statusFilter;
+        statusFilter === 'all' || user.status === statusFilter;
 
       return matchesSearch && matchesRole && matchesStatus;
     });
@@ -321,28 +321,28 @@ const UserManagement = () => {
 
   const statusOptions = useMemo(
     () => [
-      { value: "ACTIVE", label: "Active" },
-      { value: "INACTIVE", label: "Inactive" },
+      { value: 'ACTIVE', label: 'Active' },
+      { value: 'INACTIVE', label: 'Inactive' },
     ],
-    [],
+    []
   );
 
   // Helper to reset form refs
   const resetFormRefs = () => {
-    if (usernameRef.current) usernameRef.current.value = "";
-    if (emailRef.current) emailRef.current.value = "";
-    if (firstNameRef.current) firstNameRef.current.value = "";
-    if (lastNameRef.current) lastNameRef.current.value = "";
-    if (passwordRef.current) passwordRef.current.value = "";
-    if (roleRef.current) roleRef.current.value = "EXECUTOR";
-    if (statusRef.current) statusRef.current.value = "ACTIVE";
+    if (usernameRef.current) usernameRef.current.value = '';
+    if (emailRef.current) emailRef.current.value = '';
+    if (firstNameRef.current) firstNameRef.current.value = '';
+    if (lastNameRef.current) lastNameRef.current.value = '';
+    if (passwordRef.current) passwordRef.current.value = '';
+    if (roleRef.current) roleRef.current.value = 'EXECUTOR';
+    if (statusRef.current) statusRef.current.value = 'ACTIVE';
 
     setSelectedProjects([]);
 
     const defaultPermissions = {};
     Object.keys(permissionSections).forEach((category) => {
       defaultPermissions[category] = {
-        enabled: category === "dashboard",
+        enabled: category === 'dashboard',
         sections: [],
       };
     });
@@ -352,13 +352,13 @@ const UserManagement = () => {
   // Helper to get form data from refs
   const getFormDataFromRefs = () => {
     return {
-      username: usernameRef.current?.value || "",
-      email: emailRef.current?.value || "",
-      firstName: firstNameRef.current?.value || "",
-      lastName: lastNameRef.current?.value || "",
-      password: passwordRef.current?.value || "",
-      role: roleRef.current?.value || "EXECUTOR",
-      status: statusRef.current?.value || "ACTIVE",
+      username: usernameRef.current?.value || '',
+      email: emailRef.current?.value || '',
+      firstName: firstNameRef.current?.value || '',
+      lastName: lastNameRef.current?.value || '',
+      password: passwordRef.current?.value || '',
+      role: roleRef.current?.value || 'EXECUTOR',
+      status: statusRef.current?.value || 'ACTIVE',
       projects: selectedProjects,
       permissions: permissions,
     };
@@ -377,21 +377,21 @@ const UserManagement = () => {
         !formData.lastName ||
         !formData.password
       ) {
-        toast.error("Please fill in all required fields");
+        toast.error('Please fill in all required fields');
         return;
       }
 
       const response = await userManagement.users.create(formData);
 
       if (response.result) {
-        toast.success("User created successfully");
+        toast.success('User created successfully');
         setShowCreateModal(false);
         resetFormRefs();
         loadInitialData();
       }
     } catch (error) {
-      console.error("Error creating user:", error);
-      toast.error("Failed to create user");
+      console.error('Error creating user:', error);
+      toast.error('Failed to create user');
     } finally {
       setIsSubmitting(false);
     }
@@ -409,25 +409,25 @@ const UserManagement = () => {
         !formData.firstName ||
         !formData.lastName
       ) {
-        toast.error("Please fill in all required fields");
+        toast.error('Please fill in all required fields');
         return;
       }
 
       const response = await userManagement.users.update(
         selectedUser.id,
-        formData,
+        formData
       );
 
       if (response.result) {
-        toast.success("User updated successfully");
+        toast.success('User updated successfully');
         setShowEditModal(false);
         setSelectedUser(null);
         resetFormRefs();
         loadInitialData();
       }
     } catch (error) {
-      console.error("Error updating user:", error);
-      toast.error("Failed to update user");
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
     } finally {
       setIsSubmitting(false);
     }
@@ -440,14 +440,14 @@ const UserManagement = () => {
       const response = await userManagement.users.delete(selectedUser.id);
 
       if (response.result !== null) {
-        toast.success("User deleted successfully");
+        toast.success('User deleted successfully');
         setShowDeleteModal(false);
         setSelectedUser(null);
         loadInitialData();
       }
     } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      console.error('Error deleting user:', error);
+      toast.error('Failed to delete user');
     } finally {
       setIsSubmitting(false);
     }
@@ -458,19 +458,19 @@ const UserManagement = () => {
       setIsSubmitting(true);
 
       const response = await userManagement.users.resetPassword(
-        selectedUser.id,
+        selectedUser.id
       );
 
       if (response.result) {
         toast.success(
-          `Password reset successful. Temporary password: ${response.result.temporaryPassword}`,
+          `Password reset successful. Temporary password: ${response.result.temporaryPassword}`
         );
         setShowPasswordResetModal(false);
         setSelectedUser(null);
       }
     } catch (error) {
-      console.error("Error resetting password:", error);
-      toast.error("Failed to reset password");
+      console.error('Error resetting password:', error);
+      toast.error('Failed to reset password');
     } finally {
       setIsSubmitting(false);
     }
@@ -480,21 +480,46 @@ const UserManagement = () => {
     try {
       setIsSubmitting(true);
 
+      // Normalize permissions: send ['*'] when a category is enabled with no subsections,
+      // and remove '*' when any subsection is selected
+      const sanitizedPermissions = Object.keys(permissions).reduce(
+        (acc, category) => {
+          const categoryPerm = permissions[category] || {};
+          const enabled = categoryPerm.enabled === true;
+          const rawSections = Array.isArray(categoryPerm.sections)
+            ? categoryPerm.sections.filter(Boolean)
+            : [];
+
+          let sections = rawSections.slice();
+          if (enabled) {
+            if (sections.length === 0) {
+              sections = ['*'];
+            } else if (sections.includes('*')) {
+              sections = sections.filter((s) => s !== '*');
+            }
+          }
+
+          acc[category] = { enabled, sections };
+          return acc;
+        },
+        {}
+      );
+
       const response = await userManagement.users.updatePermissions(
         selectedUser.id,
-        permissions,
+        sanitizedPermissions
       );
 
       if (response.result) {
-        toast.success("Permissions updated successfully");
+        toast.success('Permissions updated successfully');
         setShowPermissionsModal(false);
         setSelectedUser(null);
         resetFormRefs();
         loadInitialData();
       }
     } catch (error) {
-      console.error("Error updating permissions:", error);
-      toast.error("Failed to update permissions");
+      console.error('Error updating permissions:', error);
+      toast.error('Failed to update permissions');
     } finally {
       setIsSubmitting(false);
     }
@@ -505,13 +530,13 @@ const UserManagement = () => {
 
     // Set form ref values directly
     setTimeout(() => {
-      if (usernameRef.current) usernameRef.current.value = user.username || "";
-      if (emailRef.current) emailRef.current.value = user.email || "";
+      if (usernameRef.current) usernameRef.current.value = user.username || '';
+      if (emailRef.current) emailRef.current.value = user.email || '';
       if (firstNameRef.current)
-        firstNameRef.current.value = user.firstName || "";
-      if (lastNameRef.current) lastNameRef.current.value = user.lastName || "";
-      if (roleRef.current) roleRef.current.value = user.role || "EXECUTOR";
-      if (statusRef.current) statusRef.current.value = user.status || "ACTIVE";
+        firstNameRef.current.value = user.firstName || '';
+      if (lastNameRef.current) lastNameRef.current.value = user.lastName || '';
+      if (roleRef.current) roleRef.current.value = user.role || 'EXECUTOR';
+      if (statusRef.current) statusRef.current.value = user.status || 'ACTIVE';
     }, 0);
 
     setSelectedProjects(user.projects || []);
@@ -548,16 +573,23 @@ const UserManagement = () => {
   };
 
   const togglePermissionSection = useCallback((category, section) => {
-    setPermissions((prev) => ({
-      ...prev,
-      [category]: {
-        ...prev[category],
-        enabled: prev[category]?.enabled || false,
-        sections: (prev[category]?.sections || []).includes(section)
-          ? (prev[category]?.sections || []).filter((s) => s !== section)
-          : [...(prev[category]?.sections || []), section],
-      },
-    }));
+    setPermissions((prev) => {
+      const previousSections = Array.isArray(prev[category]?.sections)
+        ? prev[category].sections
+        : [];
+      const isSelected = previousSections.includes(section);
+      const nextSections = isSelected
+        ? previousSections.filter((s) => s !== section)
+        : [...previousSections.filter((s) => s !== '*'), section];
+      return {
+        ...prev,
+        [category]: {
+          ...prev[category],
+          enabled: prev[category]?.enabled || false,
+          sections: nextSections,
+        },
+      };
+    });
   }, []);
 
   const togglePermissionCategory = useCallback((category) => {
@@ -758,9 +790,9 @@ const UserManagement = () => {
                   <td className="py-4 px-6">
                     <Badge
                       className={`px-3 py-1 rounded-full text-sm font-medium border-2 ${
-                        user.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800 border-green-200"
-                          : "bg-red-100 text-red-800 border-red-200"
+                        user.status === 'ACTIVE'
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : 'bg-red-100 text-red-800 border-red-200'
                       }`}
                     >
                       {user.status}
@@ -770,7 +802,7 @@ const UserManagement = () => {
                     <div className="text-sm text-gray-600">
                       {user.projects?.length > 0
                         ? `${user.projects.length} projects`
-                        : "No projects"}
+                        : 'No projects'}
                     </div>
                   </td>
                   <td className="py-4 px-6">
@@ -801,7 +833,7 @@ const UserManagement = () => {
                           >
                             <FiKey className="h-4 w-4" />
                           </button>
-                          {user.role !== "SUPER_ADMIN" && (
+                          {user.role !== 'SUPER_ADMIN' && (
                             <button
                               onClick={() => {
                                 setSelectedUser(user);
@@ -1110,11 +1142,11 @@ const UserManagement = () => {
                         {availableProjects.map((project) => {
                           // Handle both string and object formats for projects
                           const projectId =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project.projectId || project.id;
                           const projectName =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project.projectName || project.name;
 
@@ -1134,7 +1166,7 @@ const UserManagement = () => {
                                     ]);
                                   } else {
                                     setSelectedProjects((prev) =>
-                                      prev.filter((p) => p !== projectId),
+                                      prev.filter((p) => p !== projectId)
                                     );
                                   }
                                 }}
@@ -1176,12 +1208,12 @@ const UserManagement = () => {
                           // Find the project name for display
                           const project = availableProjects.find(
                             (p) =>
-                              (typeof p === "string"
+                              (typeof p === 'string'
                                 ? p
-                                : p.projectId || p.id) === projectId,
+                                : p.projectId || p.id) === projectId
                           );
                           const projectName =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project?.projectName ||
                                 project?.name ||
@@ -1251,7 +1283,7 @@ const UserManagement = () => {
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Edit User</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Update information for {selectedUser?.firstName}{" "}
+                Update information for {selectedUser?.firstName}{' '}
                 {selectedUser?.lastName}
               </p>
             </div>
@@ -1278,9 +1310,9 @@ const UserManagement = () => {
                   <div className="flex items-center space-x-2 mt-1">
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        selectedUser?.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                        selectedUser?.status === 'ACTIVE'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                       }`}
                     >
                       {selectedUser?.status}
@@ -1484,7 +1516,7 @@ const UserManagement = () => {
                         <span className="text-sm text-gray-600">
                           {selectedUser?.lastLogin
                             ? new Date(selectedUser.lastLogin).toLocaleString()
-                            : "Never"}
+                            : 'Never'}
                         </span>
                       </div>
                     </div>
@@ -1501,9 +1533,9 @@ const UserManagement = () => {
                         <span className="text-sm text-gray-600">
                           {selectedUser?.createdAt
                             ? new Date(
-                                selectedUser.createdAt,
+                                selectedUser.createdAt
                               ).toLocaleDateString()
-                            : "Unknown"}
+                            : 'Unknown'}
                         </span>
                       </div>
                     </div>
@@ -1541,11 +1573,11 @@ const UserManagement = () => {
                         {availableProjects.map((project) => {
                           // Handle both string and object formats for projects
                           const projectId =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project.projectId || project.id;
                           const projectName =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project.projectName || project.name;
 
@@ -1565,7 +1597,7 @@ const UserManagement = () => {
                                     ]);
                                   } else {
                                     setSelectedProjects((prev) =>
-                                      prev.filter((p) => p !== projectId),
+                                      prev.filter((p) => p !== projectId)
                                     );
                                   }
                                 }}
@@ -1607,12 +1639,12 @@ const UserManagement = () => {
                           // Find the project name for display
                           const project = availableProjects.find(
                             (p) =>
-                              (typeof p === "string"
+                              (typeof p === 'string'
                                 ? p
-                                : p.projectId || p.id) === projectId,
+                                : p.projectId || p.id) === projectId
                           );
                           const projectName =
-                            typeof project === "string"
+                            typeof project === 'string'
                               ? project
                               : project?.projectName ||
                                 project?.name ||
@@ -1684,7 +1716,7 @@ const UserManagement = () => {
                 Manage Permissions
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Configure access rights for {selectedUser?.firstName}{" "}
+                Configure access rights for {selectedUser?.firstName}{' '}
                 {selectedUser?.lastName}
               </p>
             </div>
@@ -1711,7 +1743,7 @@ const UserManagement = () => {
                 </p>
               </div>
               <div
-                className={`px-6 py-3 rounded-2xl ${roleConfiguration[selectedUser?.role]?.color || "bg-gray-100"}`}
+                className={`px-6 py-3 rounded-2xl ${roleConfiguration[selectedUser?.role]?.color || 'bg-gray-100'}`}
               >
                 <div className="flex items-center space-x-3">
                   {roleConfiguration[selectedUser?.role]?.icon}
@@ -1772,13 +1804,13 @@ const UserManagement = () => {
                                   type="checkbox"
                                   checked={
                                     permissions[category]?.sections?.includes(
-                                      sectionKey,
+                                      sectionKey
                                     ) || false
                                   }
                                   onChange={() =>
                                     togglePermissionSection(
                                       category,
-                                      sectionKey,
+                                      sectionKey
                                     )
                                   }
                                   className="rounded-lg border-2 border-gray-300 text-indigo-600 focus:ring-indigo-500 h-5 w-5 group-hover:border-indigo-400 transition-colors"
@@ -1787,18 +1819,18 @@ const UserManagement = () => {
                                   {sectionLabel}
                                 </span>
                                 {permissions[category]?.sections?.includes(
-                                  sectionKey,
+                                  sectionKey
                                 ) && (
                                   <FiCheckCircle className="h-5 w-5 text-green-500" />
                                 )}
                               </label>
-                            ),
+                            )
                           )}
                         </div>
                       </div>
                     )}
                   </div>
-                ),
+                )
               )}
             </div>
 
@@ -1826,8 +1858,8 @@ const UserManagement = () => {
                     <div
                       className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-3 ${
                         permission.enabled
-                          ? "bg-green-100 text-green-600"
-                          : "bg-gray-100 text-gray-400"
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-gray-100 text-gray-400'
                       }`}
                     >
                       {permission.enabled ? (
@@ -1842,7 +1874,7 @@ const UserManagement = () => {
                     <div className="text-sm text-gray-500">
                       {permission.enabled
                         ? `${permission.sections.length} sections`
-                        : "Disabled"}
+                        : 'Disabled'}
                     </div>
                   </div>
                 ))}
@@ -1897,7 +1929,7 @@ const UserManagement = () => {
               Delete User Account
             </h3>
             <p className="text-gray-600">
-              Are you sure you want to delete{" "}
+              Are you sure you want to delete{' '}
               <strong>
                 {selectedUser?.firstName} {selectedUser?.lastName}
               </strong>
@@ -1950,7 +1982,7 @@ const UserManagement = () => {
               Reset User Password
             </h3>
             <p className="text-gray-600">
-              Generate a new temporary password for{" "}
+              Generate a new temporary password for{' '}
               <strong>
                 {selectedUser?.firstName} {selectedUser?.lastName}
               </strong>
