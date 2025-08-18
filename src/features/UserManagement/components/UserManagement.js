@@ -30,6 +30,7 @@ import {
 } from 'react-icons/fa';
 import { useAuthStore } from '../../../stores/authStore';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { useFormState } from '../../../hooks/useFormState';
 import { userManagement } from '../../../utils/api';
 import Modal from '../../../components/UI/Modal';
 import Button from '../../../components/UI/Button';
@@ -105,7 +106,7 @@ const UserManagement = () => {
     statusDistribution: {}
   });
 
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     username: '',
     email: '',
     firstName: '',
@@ -115,46 +116,23 @@ const UserManagement = () => {
     status: 'ACTIVE',
     projects: [],
     permissions: {}
-  });
+  };
 
-  // Enhanced form handlers with useCallback to prevent re-renders
-  const handleInputChange = useCallback((field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  }, []);
-
-  const handleFormReset = useCallback(() => {
-    const defaultPermissions = {};
-    Object.keys(permissionSections).forEach(category => {
-      defaultPermissions[category] = {
-        enabled: category === 'dashboard',
-        sections: []
-      };
-    });
-    
-    setFormData({
-      username: '',
-      email: '',
-      firstName: '',
-      lastName: '',
-      password: '',
-      role: 'EXECUTOR',
-      status: 'ACTIVE',
-      projects: [],
-      permissions: defaultPermissions
-    });
-  }, [permissionSections]);
+  const {
+    formData,
+    handleInputChange,
+    handleFormReset,
+    updateFormData
+  } = useFormState(initialFormState);
 
   // Load initial data
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Initialize permissions when permissionSections are loaded
+  // Initialize permissions when permissionSections are loaded - only on first load
   useEffect(() => {
-    if (Object.keys(permissionSections).length > 0) {
+    if (Object.keys(permissionSections).length > 0 && Object.keys(formData.permissions).length === 0) {
       const defaultPermissions = {};
       Object.keys(permissionSections).forEach(category => {
         defaultPermissions[category] = {
@@ -163,12 +141,9 @@ const UserManagement = () => {
         };
       });
       
-      setFormData(prev => ({
-        ...prev,
-        permissions: defaultPermissions
-      }));
+      updateFormData({ permissions: defaultPermissions });
     }
-  }, [permissionSections]);
+  }, [permissionSections, formData.permissions, updateFormData]);
 
   const loadInitialData = async () => {
     try {
@@ -224,8 +199,28 @@ const UserManagement = () => {
   }, [users, searchTerm, roleFilter, statusFilter]);
 
   const resetForm = useCallback(() => {
-    handleFormReset();
-  }, [handleFormReset]);
+    const defaultPermissions = {};
+    Object.keys(permissionSections).forEach(category => {
+      defaultPermissions[category] = {
+        enabled: category === 'dashboard',
+        sections: []
+      };
+    });
+    
+    const resetState = {
+      username: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      password: '',
+      role: 'EXECUTOR',
+      status: 'ACTIVE',
+      projects: [],
+      permissions: defaultPermissions
+    };
+    
+    handleFormReset(resetState);
+  }, [handleFormReset, permissionSections]);
 
   const handleCreateUser = async () => {
     try {
@@ -342,7 +337,7 @@ const UserManagement = () => {
       };
     });
     
-    setFormData({
+    const editFormData = {
       username: user.username || '',
       email: user.email || '',
       firstName: user.firstName || '',
@@ -352,7 +347,9 @@ const UserManagement = () => {
       status: user.status || 'ACTIVE',
       projects: user.projects || [],
       permissions: mergedPermissions
-    });
+    };
+    
+    handleFormReset(editFormData);
     setShowEditModal(true);
   };
 
@@ -379,10 +376,7 @@ const UserManagement = () => {
       };
     });
     
-    setFormData({
-      ...formData,
-      permissions: mergedPermissions
-    });
+    updateFormData({ permissions: mergedPermissions });
     setShowPermissionsModal(true);
   };
 
@@ -698,37 +692,64 @@ const UserManagement = () => {
               <h4 className="text-lg font-semibold text-gray-900">Personal Information</h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Username"
-                value={formData.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
-                placeholder="Enter unique username"
-                required
-                leftIcon={FiUser}
-              />
-              <Input
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Enter email address"
-                required
-                leftIcon={FiMail}
-              />
-              <Input
-                label="First Name"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                placeholder="Enter first name"
-                required
-              />
-              <Input
-                label="Last Name"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                placeholder="Enter last name"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <div className="input-container">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiUser className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
+                    placeholder="Enter unique username"
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300 form-input-stable"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiMail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="Enter email address"
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  placeholder="Enter first name"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  placeholder="Enter last name"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                />
+              </div>
             </div>
           </div>
 
@@ -739,15 +760,23 @@ const UserManagement = () => {
               <h4 className="text-lg font-semibold text-gray-900">Security & Access</h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Input
-                label="Password"
-                type="password"
-                value={formData.password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                placeholder="Enter secure password"
-                required
-                leftIcon={FiLock}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiLock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    placeholder="Enter secure password"
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                 <select
@@ -793,10 +822,11 @@ const UserManagement = () => {
                       type="checkbox"
                       checked={formData.projects.includes(projectId)}
                       onChange={(e) => {
+                        const currentProjects = formData.projects;
                         if (e.target.checked) {
-                          handleInputChange('projects', [...formData.projects, projectId]);
+                          handleInputChange('projects', [...currentProjects, projectId]);
                         } else {
-                          handleInputChange('projects', formData.projects.filter(p => p !== projectId));
+                          handleInputChange('projects', currentProjects.filter(p => p !== projectId));
                         }
                       }}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
@@ -881,37 +911,64 @@ const UserManagement = () => {
               <h4 className="text-lg font-semibold text-gray-900">Personal Information</h4>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                label="Username"
-                value={formData.username}
-                onChange={(e) => handleInputChange('username', e.target.value)}
-                placeholder="Enter username"
-                required
-                leftIcon={FiUser}
-              />
-              <Input
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="Enter email address"
-                required
-                leftIcon={FiMail}
-              />
-              <Input
-                label="First Name"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                placeholder="Enter first name"
-                required
-              />
-              <Input
-                label="Last Name"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                placeholder="Enter last name"
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiUser className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
+                    placeholder="Enter username"
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiMail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="Enter email address"
+                    className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  placeholder="Enter first name"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  placeholder="Enter last name"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm transition-all duration-300 hover:border-gray-300"
+                />
+              </div>
             </div>
           </div>
 
@@ -968,10 +1025,11 @@ const UserManagement = () => {
                       type="checkbox"
                       checked={formData.projects.includes(projectId)}
                       onChange={(e) => {
+                        const currentProjects = formData.projects;
                         if (e.target.checked) {
-                          handleInputChange('projects', [...formData.projects, projectId]);
+                          handleInputChange('projects', [...currentProjects, projectId]);
                         } else {
-                          handleInputChange('projects', formData.projects.filter(p => p !== projectId));
+                          handleInputChange('projects', currentProjects.filter(p => p !== projectId));
                         }
                       }}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
