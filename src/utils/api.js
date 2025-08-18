@@ -1,18 +1,18 @@
 // src/utils/api.js
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-const API_PREFIX = "/api/v1/apirepos";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_PREFIX = '/api/v1/apirepos';
 
-import { useAuthStore } from "../stores/authStore";
+import { useAuthStore } from '../stores/authStore';
 
 // Debug logging utility - only logs in development
 const debugLog = (message, data = null) => {
-  if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === "true") {
-    console.log(`[API Debug] ${message}`, data || "");
+  if (import.meta.env.DEV && import.meta.env.VITE_API_DEBUG === 'true') {
+    console.log(`[API Debug] ${message}`, data || '');
   }
 };
 
 // Generic API fetch function
-export const api = async (path, method = "GET", body = null, headers = {}) => {
+export const api = async (path, method = 'GET', body = null, headers = {}) => {
   const url = `${BASE_URL}${path}`;
   debugLog(`${method} ${url}`);
 
@@ -20,7 +20,7 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
   let authHeader = {};
   try {
     const tokenFromStore = useAuthStore.getState()?.token;
-    const tokenFromLocalStorage = localStorage.getItem("token");
+    const tokenFromLocalStorage = localStorage.getItem('token');
     const token = tokenFromStore || tokenFromLocalStorage;
     if (token) {
       authHeader = { Authorization: `Bearer ${token}` };
@@ -30,7 +30,7 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
   }
 
   const defaultHeaders = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...authHeader,
     ...headers,
   };
@@ -42,7 +42,7 @@ export const api = async (path, method = "GET", body = null, headers = {}) => {
   });
 
   const json = await res.json();
-  if (!res.ok) throw new Error(json.result?.message || "API Error");
+  if (!res.ok) throw new Error(json.result?.message || 'API Error');
 
   return json;
 };
@@ -53,11 +53,11 @@ export const apiRepository = {
   getAll: async (
     pageNo = 0,
     limit = 10,
-    sortBy = "createdDate",
-    sortDir = "DESC",
+    sortBy = 'createdDate',
+    sortDir = 'DESC'
   ) => {
     return api(
-      `${API_PREFIX}?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
+      `${API_PREFIX}?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`
     );
   },
 
@@ -79,16 +79,16 @@ export const apiRepository = {
 
       // If it's a create operation (no apiId), use POST
       if (!apiData.data.apiId) {
-        return api(API_PREFIX, "POST", apiData);
+        return api(API_PREFIX, 'POST', apiData);
       }
       // If it's an update operation (has apiId), use PUT
-      return api(API_PREFIX, "PUT", apiData);
+      return api(API_PREFIX, 'PUT', apiData);
     }
 
     // If old format is used, prepare the request body according to API documentation
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "anonymous",
+        userId: localStorage.getItem('userId') || 'anonymous',
         transactionId: `tx-${Date.now()}`,
         timestamp: new Date().toISOString(),
       },
@@ -109,26 +109,26 @@ export const apiRepository = {
             .reduce((obj, p) => ({ ...obj, [p.key]: p.value }), {}),
           pathParams: {}, // Extract from URL if available
           auth:
-            apiData.auth && apiData.auth.type !== "No Auth"
+            apiData.auth && apiData.auth.type !== 'No Auth'
               ? {
                   type:
-                    apiData.auth.type === "Bearer Token"
-                      ? "BEARER"
-                      : apiData.auth.type === "Basic Auth"
-                        ? "BASIC"
-                        : apiData.auth.type === "API Key"
-                          ? "API_KEY"
-                          : "NONE",
-                  token: apiData.auth.bearerToken || "",
-                  username: apiData.auth.username || "",
-                  password: apiData.auth.password || "",
-                  keyName: apiData.auth.apiKeyName || "",
-                  keyValue: apiData.auth.apiKeyValue || "",
-                  addTo: apiData.auth.apiKeyAddTo || "Header",
+                    apiData.auth.type === 'Bearer Token'
+                      ? 'BEARER'
+                      : apiData.auth.type === 'Basic Auth'
+                        ? 'BASIC'
+                        : apiData.auth.type === 'API Key'
+                          ? 'API_KEY'
+                          : 'NONE',
+                  token: apiData.auth.bearerToken || '',
+                  username: apiData.auth.username || '',
+                  password: apiData.auth.password || '',
+                  keyName: apiData.auth.apiKeyName || '',
+                  keyValue: apiData.auth.apiKeyValue || '',
+                  addTo: apiData.auth.apiKeyAddTo || 'Header',
                 }
               : undefined,
           body:
-            apiData.body && apiData.body.type !== "none"
+            apiData.body && apiData.body.type !== 'none'
               ? {
                   type: apiData.body.type,
                   contentType: apiData.body.contentType,
@@ -141,7 +141,7 @@ export const apiRepository = {
                             ...obj,
                             [item.key]: { value: item.value, type: item.type },
                           }),
-                          {},
+                          {}
                         )
                     : undefined,
                   urlEncoded: apiData.body.urlEncoded
@@ -149,7 +149,7 @@ export const apiRepository = {
                         .filter((item) => item.enabled && item.key)
                         .reduce(
                           (obj, item) => ({ ...obj, [item.key]: item.value }),
-                          {},
+                          {}
                         )
                     : undefined,
                 }
@@ -159,7 +159,7 @@ export const apiRepository = {
     };
 
     // Use POST for create (no id) and PUT for update
-    const method = !apiData.id ? "POST" : "PUT";
+    const method = !apiData.id ? 'POST' : 'PUT';
     return api(API_PREFIX, method, requestBody);
   },
 
@@ -167,41 +167,41 @@ export const apiRepository = {
   execute: async (apiData) => {
     // Prepare auth data
     let authData = undefined;
-    if (apiData.auth && apiData.auth.type !== "No Auth") {
+    if (apiData.auth && apiData.auth.type !== 'No Auth') {
       authData = {
         type:
-          apiData.auth.type === "Bearer Token"
-            ? "BEARER"
-            : apiData.auth.type === "Basic Auth"
-              ? "BASIC"
-              : apiData.auth.type === "API Key"
-                ? "API_KEY"
-                : "NONE",
+          apiData.auth.type === 'Bearer Token'
+            ? 'BEARER'
+            : apiData.auth.type === 'Basic Auth'
+              ? 'BASIC'
+              : apiData.auth.type === 'API Key'
+                ? 'API_KEY'
+                : 'NONE',
       };
 
-      if (apiData.auth.type === "Bearer Token") {
-        authData.token = apiData.auth.bearerToken || "";
-      } else if (apiData.auth.type === "Basic Auth") {
-        authData.username = apiData.auth.username || "";
-        authData.password = apiData.auth.password || "";
-      } else if (apiData.auth.type === "API Key") {
-        authData.keyName = apiData.auth.apiKeyName || "";
-        authData.keyValue = apiData.auth.apiKeyValue || "";
-        authData.addTo = apiData.auth.apiKeyAddTo || "Header";
+      if (apiData.auth.type === 'Bearer Token') {
+        authData.token = apiData.auth.bearerToken || '';
+      } else if (apiData.auth.type === 'Basic Auth') {
+        authData.username = apiData.auth.username || '';
+        authData.password = apiData.auth.password || '';
+      } else if (apiData.auth.type === 'API Key') {
+        authData.keyName = apiData.auth.apiKeyName || '';
+        authData.keyValue = apiData.auth.apiKeyValue || '';
+        authData.addTo = apiData.auth.apiKeyAddTo || 'Header';
       }
     }
 
     // Prepare body data
     let bodyData = undefined;
-    if (apiData.body && apiData.body.type !== "none") {
+    if (apiData.body && apiData.body.type !== 'none') {
       bodyData = {
         type: apiData.body.type,
         contentType: apiData.body.contentType,
       };
 
-      if (apiData.body.type === "raw") {
+      if (apiData.body.type === 'raw') {
         bodyData.raw = apiData.body.raw;
-      } else if (apiData.body.type === "form-data") {
+      } else if (apiData.body.type === 'form-data') {
         bodyData.formData = {};
         apiData.body.formData
           .filter((item) => item.enabled && item.key)
@@ -211,7 +211,7 @@ export const apiRepository = {
               type: item.type,
             };
           });
-      } else if (apiData.body.type === "x-www-form-urlencoded") {
+      } else if (apiData.body.type === 'x-www-form-urlencoded') {
         bodyData.urlEncoded = {};
         apiData.body.urlEncoded
           .filter((item) => item.enabled && item.key)
@@ -224,7 +224,7 @@ export const apiRepository = {
     // Prepare the request body according to API documentation
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "anonymous",
+        userId: localStorage.getItem('userId') || 'anonymous',
         transactionId: `tx-${Date.now()}`,
         timestamp: new Date().toISOString(),
       },
@@ -248,21 +248,21 @@ export const apiRepository = {
       },
     };
 
-    return api(`${API_PREFIX}/executeAPI`, "POST", requestBody);
+    return api(`${API_PREFIX}/executeAPI`, 'POST', requestBody);
   },
 
   // Delete API repositories (bulk)
   delete: async (apiIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
       data: apiIds,
     };
 
-    return api("/api/v1/apirepos/delete", "DELETE", requestBody);
+    return api('/api/v1/apirepos/delete', 'DELETE', requestBody);
   },
 };
 
@@ -274,7 +274,7 @@ export const testExecution = {
     if (!executedBy) {
       const { user } = useAuthStore.getState();
       executedBy =
-        user?.username || localStorage.getItem("userId") || "anonymous";
+        user?.username || localStorage.getItem('userId') || 'anonymous';
     }
 
     const requestBody = {
@@ -289,8 +289,8 @@ export const testExecution = {
 
     return api(
       `/api/v1/test-execution/package/${packageId}`,
-      "POST",
-      requestBody,
+      'POST',
+      requestBody
     );
   },
 
@@ -300,7 +300,7 @@ export const testExecution = {
     if (!executedBy) {
       const { user } = useAuthStore.getState();
       executedBy =
-        user?.username || localStorage.getItem("userId") || "anonymous";
+        user?.username || localStorage.getItem('userId') || 'anonymous';
     }
 
     const requestBody = {
@@ -313,7 +313,7 @@ export const testExecution = {
       }),
     };
 
-    return api(`/api/v1/test-execution/suite/${suiteId}`, "POST", requestBody);
+    return api(`/api/v1/test-execution/suite/${suiteId}`, 'POST', requestBody);
   },
 
   // Execute individual test case - FIXED ENDPOINT
@@ -322,7 +322,7 @@ export const testExecution = {
     if (!executedBy) {
       const { user } = useAuthStore.getState();
       executedBy =
-        user?.username || localStorage.getItem("userId") || "anonymous";
+        user?.username || localStorage.getItem('userId') || 'anonymous';
     }
 
     const requestBody = {
@@ -337,39 +337,39 @@ export const testExecution = {
 
     return api(
       `/api/v1/test-execution/case/${testCaseId}`,
-      "POST",
-      requestBody,
+      'POST',
+      requestBody
     );
   },
 
   // Get execution details by execution ID
   getExecutionDetails: async (executionId) => {
-    return api(`/api/v1/test-execution/${executionId}`, "GET");
+    return api(`/api/v1/test-execution/${executionId}`, 'GET');
   },
 
   // Get execution history/results
   getExecutionHistory: async (
     pageNo = 0,
     limit = 10,
-    sortBy = "executionDate",
-    sortDir = "DESC",
+    sortBy = 'executionDate',
+    sortDir = 'DESC'
   ) => {
     return api(
       `/api/v1/test-execution?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
-      "GET",
+      'GET'
     );
   },
 
   // NEW: Get detailed assertion results for execution
   getExecutionAssertions: async (executionId) => {
-    return api(`/api/v1/test-execution/${executionId}/assertions`, "GET");
+    return api(`/api/v1/test-execution/${executionId}/assertions`, 'GET');
   },
 
   // NEW: Get assertion summary for execution
   getExecutionAssertionSummary: async (executionId) => {
     return api(
       `/api/v1/test-execution/${executionId}/assertions/summary`,
-      "GET",
+      'GET'
     );
   },
 };
@@ -380,49 +380,49 @@ export const testCases = {
   getAll: async (
     pageNo = 0,
     limit = 10,
-    sortBy = "createdDate",
-    sortDir = "DESC",
+    sortBy = 'createdDate',
+    sortDir = 'DESC'
   ) => {
     return api(
       `/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
-      "GET",
+      'GET'
     );
   },
 
   // Get test case by ID
   getById: async (testCaseId) => {
-    return api(`/api/v1/test-cases/${testCaseId}`, "GET");
+    return api(`/api/v1/test-cases/${testCaseId}`, 'GET');
   },
 
   // Create new test case
   create: async (testCaseData) => {
-    return api("/api/v1/test-cases", "POST", testCaseData);
+    return api('/api/v1/test-cases', 'POST', testCaseData);
   },
 
   // Update existing test case
   update: async (testCaseData) => {
-    return api("/api/v1/test-cases", "PUT", testCaseData);
+    return api('/api/v1/test-cases', 'PUT', testCaseData);
   },
 
   // Delete test cases (bulk)
   delete: async (testCaseIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
       data: testCaseIds,
     };
 
-    return api("/api/v1/test-cases/delete", "DELETE", requestBody);
+    return api('/api/v1/test-cases/delete', 'DELETE', requestBody);
   },
 
   // Export test cases
   export: async (format, testCaseIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -432,7 +432,7 @@ export const testCases = {
       },
     };
 
-    return api("/api/v1/test-cases/export", "POST", requestBody);
+    return api('/api/v1/test-cases/export', 'POST', requestBody);
   },
 };
 
@@ -442,54 +442,54 @@ export const testSuites = {
   getAll: async (
     pageNo = 0,
     limit = 100,
-    sortBy = "createdDate",
-    sortDir = "DESC",
+    sortBy = 'createdDate',
+    sortDir = 'DESC'
   ) => {
     return api(
       `/api/v1/test-suites?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
-      "GET",
+      'GET'
     );
   },
 
   // Get test suite by ID
   getById: async (suiteId) => {
-    return api(`/api/v1/test-suites/${suiteId}`, "GET");
+    return api(`/api/v1/test-suites/${suiteId}`, 'GET');
   },
 
   // Create new test suite
   create: async (suiteData) => {
-    return api("/api/v1/test-suites", "POST", suiteData);
+    return api('/api/v1/test-suites', 'POST', suiteData);
   },
 
   // Update existing test suite
   update: async (suiteData) => {
-    return api("/api/v1/test-suites", "PUT", suiteData);
+    return api('/api/v1/test-suites', 'PUT', suiteData);
   },
 
   // Delete test suites (bulk)
   delete: async (suiteIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
       data: suiteIds,
     };
 
-    return api("/api/v1/test-suites/delete", "DELETE", requestBody);
+    return api('/api/v1/test-suites/delete', 'DELETE', requestBody);
   },
 
   // Get test cases associated with a suite
   getTestCases: async (suiteId) => {
-    return api(`/api/v1/test-suites/${suiteId}/test-cases`, "GET");
+    return api(`/api/v1/test-suites/${suiteId}/test-cases`, 'GET');
   },
 
   // Associate test cases to suite
   associateTestCases: async (suiteId, testCaseIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -498,8 +498,8 @@ export const testSuites = {
 
     return api(
       `/api/v1/test-cases/associate-to-suite/${suiteId}`,
-      "POST",
-      requestBody,
+      'POST',
+      requestBody
     );
   },
 
@@ -507,7 +507,7 @@ export const testSuites = {
   removeTestCaseAssociation: async (testCaseId, testSuiteId) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -518,9 +518,9 @@ export const testSuites = {
     };
 
     return api(
-      "/api/v1/test-cases/remove-assoc-to-suite",
-      "DELETE",
-      requestBody,
+      '/api/v1/test-cases/remove-assoc-to-suite',
+      'DELETE',
+      requestBody
     );
   },
 };
@@ -531,54 +531,54 @@ export const testPackages = {
   getAll: async (
     pageNo = 0,
     limit = 100,
-    sortBy = "createdDate",
-    sortDir = "DESC",
+    sortBy = 'createdDate',
+    sortDir = 'DESC'
   ) => {
     return api(
       `/api/v1/packages?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
-      "GET",
+      'GET'
     );
   },
 
   // Get test package by ID
   getById: async (packageId) => {
-    return api(`/api/v1/packages/${packageId}`, "GET");
+    return api(`/api/v1/packages/${packageId}`, 'GET');
   },
 
   // Create new test package
   create: async (packageData) => {
-    return api("/api/v1/packages", "POST", packageData);
+    return api('/api/v1/packages', 'POST', packageData);
   },
 
   // Update existing test package
   update: async (packageData) => {
-    return api("/api/v1/packages", "PUT", packageData);
+    return api('/api/v1/packages', 'PUT', packageData);
   },
 
   // Delete test packages (bulk)
   delete: async (packageIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
       data: packageIds,
     };
 
-    return api("/api/v1/packages/delete", "DELETE", requestBody);
+    return api('/api/v1/packages/delete', 'DELETE', requestBody);
   },
 
   // Get test suites associated with a package
   getTestSuites: async (packageId) => {
-    return api(`/api/v1/packages/${packageId}/test-suites`, "GET");
+    return api(`/api/v1/packages/${packageId}/test-suites`, 'GET');
   },
 
   // Associate test suites to package
   associateTestSuites: async (packageId, testSuiteIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -587,8 +587,8 @@ export const testPackages = {
 
     return api(
       `/api/v1/test-suites/associate-to-packages/${packageId}`,
-      "POST",
-      requestBody,
+      'POST',
+      requestBody
     );
   },
 
@@ -596,7 +596,7 @@ export const testPackages = {
   removeTestSuiteAssociation: async (testPackageId, testSuiteId) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -607,15 +607,15 @@ export const testPackages = {
     };
 
     return api(
-      "/api/v1/test-suites/remove-assoc-to-packages",
-      "DELETE",
-      requestBody,
+      '/api/v1/test-suites/remove-assoc-to-packages',
+      'DELETE',
+      requestBody
     );
   },
 
   // Get package hierarchy for test execution
   getHierarchy: async () => {
-    return api("/api/v1/packages/hierarchy", "GET");
+    return api('/api/v1/packages/hierarchy', 'GET');
   },
 };
 
@@ -623,22 +623,22 @@ export const testPackages = {
 export const variables = {
   // Get variables for a test case
   getByTestCase: async (testCaseId) => {
-    return api(`/api/v1/variables/${testCaseId}`, "GET");
+    return api(`/api/v1/variables/${testCaseId}`, 'GET');
   },
 
   // Create new variable
   create: async (variableData) => {
-    return api("/api/v1/variables", "POST", variableData);
+    return api('/api/v1/variables', 'POST', variableData);
   },
 
   // Update existing variable
   update: async (variableData) => {
-    return api("/api/v1/variables", "PUT", variableData);
+    return api('/api/v1/variables', 'PUT', variableData);
   },
 
   // Delete variable
   delete: async (variableId) => {
-    return api(`/api/v1/variables/${variableId}`, "DELETE");
+    return api(`/api/v1/variables/${variableId}`, 'DELETE');
   },
 };
 
@@ -648,33 +648,33 @@ export const projects = {
   getAll: async (
     pageNo = 0,
     limit = 100,
-    sortBy = "updatedDate",
-    sortDir = "DESC",
+    sortBy = 'updatedDate',
+    sortDir = 'DESC'
   ) => {
     return api(
       `/api/v1/projects?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`,
-      "GET",
+      'GET'
     );
   },
 
   // Get project by ID
   getById: async (projectId) => {
-    return api(`/api/v1/projects/${projectId}`, "GET");
+    return api(`/api/v1/projects/${projectId}`, 'GET');
   },
 
   // Create new project
   create: async (projectData) => {
-    return api("/api/v1/projects", "POST", projectData);
+    return api('/api/v1/projects', 'POST', projectData);
   },
 
   // Update existing project
   update: async (projectData) => {
-    return api("/api/v1/projects", "PUT", projectData);
+    return api('/api/v1/projects', 'PUT', projectData);
   },
 
   // Delete project
   delete: async (projectId) => {
-    return api(`/api/v1/projects/${projectId}`, "DELETE");
+    return api(`/api/v1/projects/${projectId}`, 'DELETE');
   },
 };
 
@@ -682,32 +682,32 @@ export const projects = {
 export const environments = {
   // Get all environments (legacy - will be deprecated)
   getAll: async () => {
-    return api("/api/v1/environments", "GET");
+    return api('/api/v1/environments', 'GET');
   },
 
   // Get environments by project ID (new project-specific endpoint)
   getByProject: async (projectId) => {
-    return api(`/api/v1/environments/by-project/${projectId}`, "GET");
+    return api(`/api/v1/environments/by-project/${projectId}`, 'GET');
   },
 
   // Get environment by ID
   getById: async (envId) => {
-    return api(`/api/v1/environments/${envId}`, "GET");
+    return api(`/api/v1/environments/${envId}`, 'GET');
   },
 
   // Create new environment
   create: async (envData) => {
-    return api("/api/v1/environments", "POST", envData);
+    return api('/api/v1/environments', 'POST', envData);
   },
 
   // Update existing environment
   update: async (envData) => {
-    return api("/api/v1/environments", "PUT", envData);
+    return api('/api/v1/environments', 'PUT', envData);
   },
 
   // Delete environment
   delete: async (envId) => {
-    return api(`/api/v1/environments/${envId}`, "DELETE");
+    return api(`/api/v1/environments/${envId}`, 'DELETE');
   },
 };
 
@@ -717,7 +717,7 @@ export const globalSearch = {
   search: async (keyword) => {
     return api(
       `/api/v1/global-search?keyword=${encodeURIComponent(keyword)}`,
-      "GET",
+      'GET'
     );
   },
 };
@@ -726,27 +726,27 @@ export const globalSearch = {
 export const assertions = {
   // Get assertions for a test case
   getByTestCase: async (testCaseId) => {
-    return api(`/api/v1/test-cases/${testCaseId}/assertions`, "GET");
+    return api(`/api/v1/test-cases/${testCaseId}/assertions`, 'GET');
   },
 
   // Create new assertion
   create: async (assertionData) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
       data: assertionData,
     };
-    return api("/api/v1/assertions", "POST", requestBody);
+    return api('/api/v1/assertions', 'POST', requestBody);
   },
 
   // Update existing assertion
   update: async (assertionId, assertionData) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -755,19 +755,19 @@ export const assertions = {
         assertionId: assertionId,
       },
     };
-    return api("/api/v1/assertions", "PUT", requestBody);
+    return api('/api/v1/assertions', 'PUT', requestBody);
   },
 
   // Delete assertion
   delete: async (assertionId) => {
-    return api(`/api/v1/assertions/${assertionId}`, "DELETE");
+    return api(`/api/v1/assertions/${assertionId}`, 'DELETE');
   },
 
   // Bulk delete assertions
   bulkDelete: async (assertionIds) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -775,14 +775,14 @@ export const assertions = {
         assertionIds: assertionIds,
       },
     };
-    return api("/api/v1/assertions/bulk-delete", "DELETE", requestBody);
+    return api('/api/v1/assertions/bulk-delete', 'DELETE', requestBody);
   },
 
   // Test assertion against sample response
   test: async (assertion, sampleResponse) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -791,19 +791,19 @@ export const assertions = {
         sampleResponse: sampleResponse,
       },
     };
-    return api("/api/v1/assertions/test", "POST", requestBody);
+    return api('/api/v1/assertions/test', 'POST', requestBody);
   },
 
   // Get assertion templates
   getTemplates: async () => {
-    return api("/api/v1/assertion-templates", "GET");
+    return api('/api/v1/assertion-templates', 'GET');
   },
 
   // Create assertion from template
   createFromTemplate: async (templateId, testCaseId, customConfig = {}) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -813,14 +813,14 @@ export const assertions = {
         customConfig: customConfig,
       },
     };
-    return api("/api/v1/assertions/from-template", "POST", requestBody);
+    return api('/api/v1/assertions/from-template', 'POST', requestBody);
   },
 
   // Update assertion priority/order
   updatePriorities: async (testCaseId, assertionPriorities) => {
     const requestBody = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: Date.now().toString(),
         timestamp: new Date().toISOString(),
       },
@@ -829,7 +829,7 @@ export const assertions = {
         assertionPriorities: assertionPriorities, // [{ assertionId, priority }]
       },
     };
-    return api("/api/v1/assertions/priorities", "PUT", requestBody);
+    return api('/api/v1/assertions/priorities', 'PUT', requestBody);
   },
 };
 
@@ -842,65 +842,70 @@ export const dashboard = {
     fromDate.setDate(toDate.getDate() - parseInt(days));
 
     const dateRange = {
-      fromDate: fromDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
-      toDate: toDate.toISOString().split("T")[0],
+      fromDate: fromDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      toDate: toDate.toISOString().split('T')[0],
     };
 
     debugLog(`Date range for ${days} days:`, dateRange);
     return dateRange;
   },
 
+  // NEW: Get recent executions with specific endpoint
+  getRecentExecutions: async (limit = 10) => {
+    return api(`/api/v1/dashboard/recent-executions?limit=${limit}`, 'GET');
+  },
+
   // Get unified dashboard metrics with date range
-  getMetrics: async (timeRange = "7") => {
+  getMetrics: async (timeRange = '7') => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
     return api(
       `/api/v1/dashboard/metrics/range?fromDate=${fromDate}&toDate=${toDate}`,
-      "GET",
+      'GET'
     );
   },
 
   // Legacy methods for backward compatibility - all use the unified endpoint
-  getSummary: async (timeRange = "7") => {
+  getSummary: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getMetricsForRange: async (timeRange = "7") => {
+  getMetricsForRange: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getSuccessRateTrend: async (timeRange = "7") => {
+  getSuccessRateTrend: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getResponseTimeTrend: async (timeRange = "7") => {
+  getResponseTimeTrend: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getExecutionVolumeTrend: async (timeRange = "7") => {
+  getExecutionVolumeTrend: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getEnvironmentMetrics: async (timeRange = "7") => {
+  getEnvironmentMetrics: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getRecentExecutions: async (timeRange = "7") => {
+  getRecentExecutions: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getTopPerformers: async (timeRange = "7") => {
+  getTopPerformers: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getTopFailures: async (timeRange = "7") => {
+  getTopFailures: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getProjectMetrics: async (timeRange = "7") => {
+  getProjectMetrics: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
-  getSystemHealth: async (timeRange = "7") => {
+  getSystemHealth: async (timeRange = '7') => {
     return dashboard.getMetrics(timeRange);
   },
 
@@ -911,29 +916,29 @@ export const dashboard = {
 
   // Refresh cache
   refreshCache: async () => {
-    return api("/api/v1/dashboard/refresh-cache", "POST");
+    return api('/api/v1/dashboard/refresh-cache', 'POST');
   },
 
   // Health check
   healthCheck: async () => {
-    return api("/api/v1/dashboard/health", "GET");
+    return api('/api/v1/dashboard/health', 'GET');
   },
 
   // Get environment status for a specific project
-  getEnvironmentStatus: async (projectId, timeRange = "7") => {
+  getEnvironmentStatus: async (projectId, timeRange = '7') => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
     return api(
       `/api/v1/dashboard/environment-status?projectId=${projectId}&fromDate=${fromDate}&toDate=${toDate}`,
-      "GET",
+      'GET'
     );
   },
 
   // Get suite performers for top performers and needs attention sections
-  getSuitePerformers: async (timeRange = "7") => {
+  getSuitePerformers: async (timeRange = '7') => {
     const { fromDate, toDate } = dashboard.getDateRangeFromDays(timeRange);
     return api(
       `/api/v1/dashboard/suite-performers?fromDate=${fromDate}&toDate=${toDate}`,
-      "GET",
+      'GET'
     );
   },
 };
@@ -950,7 +955,7 @@ export const userManagement = {
           password,
         },
       };
-      return api("/api/v1/auth/login", "POST", requestBody);
+      return api('/api/v1/auth/login', 'POST', requestBody);
     },
 
     // Enhanced sign up
@@ -968,12 +973,12 @@ export const userManagement = {
           },
         },
       };
-      return api("/api/v1/auth/sign-up", "POST", requestBody);
+      return api('/api/v1/auth/sign-up', 'POST', requestBody);
     },
 
     // Logout
     logout: async () => {
-      return api("/api/v1/auth/logout", "POST");
+      return api('/api/v1/auth/logout', 'POST');
     },
   },
 
@@ -981,32 +986,32 @@ export const userManagement = {
   users: {
     // Get all users with search and filtering
     getAll: async (
-      search = "",
-      role = "",
-      status = "",
+      search = '',
+      role = '',
+      status = '',
       page = 1,
-      limit = 20,
+      limit = 20
     ) => {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
       });
 
-      if (search) params.append("search", search);
-      if (role) params.append("role", role);
-      if (status) params.append("status", status);
+      if (search) params.append('search', search);
+      if (role) params.append('role', role);
+      if (status) params.append('status', status);
 
-      return api(`/api/v1/users?${params}`, "GET");
+      return api(`/api/v1/users?${params}`, 'GET');
     },
 
     // Get simple user list (legacy compatible)
     getSimple: async () => {
-      return api("/api/v1/users-simple", "GET");
+      return api('/api/v1/users-simple', 'GET');
     },
 
     // Get user by ID
     getById: async (userId) => {
-      return api(`/api/v1/users/${userId}`, "GET");
+      return api(`/api/v1/users/${userId}`, 'GET');
     },
 
     // Create new user
@@ -1022,7 +1027,7 @@ export const userManagement = {
         projects: userData.projects || [],
         permissions: userData.permissions || {},
       };
-      return api("/api/v1/users", "POST", requestBody);
+      return api('/api/v1/users', 'POST', requestBody);
     },
 
     // Update user
@@ -1037,12 +1042,12 @@ export const userManagement = {
         projects: userData.projects || [],
         permissions: userData.permissions || {},
       };
-      return api(`/api/v1/users/${userId}`, "PUT", requestBody);
+      return api(`/api/v1/users/${userId}`, 'PUT', requestBody);
     },
 
     // Delete user
     delete: async (userId) => {
-      return api(`/api/v1/users/${userId}`, "DELETE");
+      return api(`/api/v1/users/${userId}`, 'DELETE');
     },
 
     // Update user permissions
@@ -1050,12 +1055,12 @@ export const userManagement = {
       const requestBody = {
         permissions: permissions,
       };
-      return api(`/api/v1/users/${userId}/permissions`, "PATCH", requestBody);
+      return api(`/api/v1/users/${userId}/permissions`, 'PATCH', requestBody);
     },
 
     // Reset user password
     resetPassword: async (userId) => {
-      return api(`/api/v1/users/${userId}/reset-password`, "POST");
+      return api(`/api/v1/users/${userId}/reset-password`, 'POST');
     },
   },
 
@@ -1063,12 +1068,12 @@ export const userManagement = {
   config: {
     // Get available projects
     getProjects: async () => {
-      return api("/api/v1/users/projects", "GET");
+      return api('/api/v1/users/projects', 'GET');
     },
 
     // Get role configuration
     getRoles: async () => {
-      return api("/api/v1/users/roles", "GET");
+      return api('/api/v1/users/roles', 'GET');
     },
   },
 
@@ -1076,17 +1081,17 @@ export const userManagement = {
   legacy: {
     // Get all users (legacy)
     getUsers: async () => {
-      return api("/api/v1/legacy/users", "GET");
+      return api('/api/v1/legacy/users', 'GET');
     },
 
     // Get user by ID (legacy)
     getUserById: async (userId) => {
-      return api(`/api/v1/legacy/users/${userId}`, "GET");
+      return api(`/api/v1/legacy/users/${userId}`, 'GET');
     },
 
     // Update user (legacy)
     updateUser: async (userData) => {
-      return api("/api/v1/legacy/users/update", "PATCH", userData);
+      return api('/api/v1/legacy/users/update', 'PATCH', userData);
     },
   },
 
@@ -1094,7 +1099,7 @@ export const userManagement = {
   admin: {
     // Initialize system
     initialize: async () => {
-      return api("/api/v1/admin/initialize", "POST");
+      return api('/api/v1/admin/initialize', 'POST');
     },
   },
 };

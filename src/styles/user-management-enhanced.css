@@ -228,12 +228,12 @@
   .form-section-modern {
     @apply p-6;
   }
-  
+
   .input-modern,
   .select-modern {
     @apply py-3 text-sm;
   }
-  
+
   .section-header-modern h4 {
     @apply text-lg;
   }
@@ -243,32 +243,32 @@
   .modal-header-modern {
     @apply flex-col text-center space-x-0 space-y-3;
   }
-  
+
   .user-info-header {
     @apply p-4;
   }
-  
+
   .user-info-header .flex {
     @apply flex-col space-x-0 space-y-4 text-center;
   }
-  
+
   .form-section-modern {
     @apply p-4;
   }
-  
+
   .section-header-modern {
     @apply flex-col text-center space-x-0 space-y-3 mb-6;
   }
-  
+
   .input-modern,
   .select-modern {
     @apply py-3 text-sm;
   }
-  
+
   .project-card {
     @apply p-3;
   }
-  
+
   .button-modern {
     @apply px-6 py-3 text-sm;
   }
@@ -278,7 +278,7 @@
   .modal-actions-modern {
     @apply flex-col space-x-0 space-y-3;
   }
-  
+
   .button-modern {
     @apply w-full;
   }
@@ -293,11 +293,11 @@
 }
 
 /* Accessibility Enhancements */
-.input-modern[aria-invalid="true"] {
+.input-modern[aria-invalid='true'] {
   @apply border-red-300 ring-red-100;
 }
 
-.label-modern:has(+ .input-modern[aria-invalid="true"]) {
+.label-modern:has(+ .input-modern[aria-invalid='true']) {
   @apply text-red-700;
 }
 
@@ -306,7 +306,7 @@
   .input-modern {
     @apply border-gray-600;
   }
-  
+
   .section-personal,
   .section-security,
   .section-projects,
@@ -325,12 +325,12 @@
     transition: none !important;
     transform: none !important;
   }
-  
+
   .input-modern:focus,
   .select-modern:focus {
     transform: none !important;
   }
-  
+
   .button-modern:hover {
     transform: none !important;
   }

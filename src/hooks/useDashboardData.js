@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboard } from '../utils/api';
-import { useProjectStore } from '../stores/projectStore';
+import { useProject } from '../stores/projectStore'; // Updated import
 
 // Helper function to extract trend percentage from delta string
 const getTrendPercentage = (trends, metricName) => {
-  const trend = trends?.find(t => t.metricName === metricName);
+  const trend = trends?.find((t) => t.metricName === metricName);
   if (!trend) return 0;
-  
+
   // Extract percentage from delta string (e.g., "+5.2%" -> 5.2)
   const deltaMatch = trend.delta.match(/([+-]?\d+\.?\d*)%/);
   return deltaMatch ? parseFloat(deltaMatch[1]) : 0;
@@ -14,42 +14,43 @@ const getTrendPercentage = (trends, metricName) => {
 
 // Enhanced helper function to extract full trend information including color and direction
 const getTrendInfo = (trends, metricName) => {
-  const trend = trends?.find(t => t.metricName === metricName);
-  if (!trend) return { percentage: 0, direction: 'STABLE', color: 'gray', icon: '→' };
-  
+  const trend = trends?.find((t) => t.metricName === metricName);
+  if (!trend)
+    return { percentage: 0, direction: 'STABLE', color: 'gray', icon: '→' };
+
   // Extract percentage from delta string (e.g., "+5.2%" -> 5.2)
   const deltaMatch = trend.delta.match(/([+-]?\d+\.?\d*)%/);
   const percentage = deltaMatch ? parseFloat(deltaMatch[1]) : 0;
-  
+
   return {
     percentage,
     direction: trend.trendDirection,
     color: trend.trendColor,
     icon: trend.trendIcon,
-    delta: trend.delta
+    delta: trend.delta,
   };
 };
 
 // Helper function to fill missing dates with 0 values
 const fillMissingDates = (data, fromDate, toDate) => {
   if (!data || data.length === 0) return [];
-  
+
   const start = new Date(fromDate);
   const end = new Date(toDate);
   const filledData = [];
-  const dataMap = new Map(data.map(item => [item.label, item.value]));
-  
+  const dataMap = new Map(data.map((item) => [item.label, item.value]));
+
   // Generate all dates in range
   const currentDate = new Date(start);
   while (currentDate <= end) {
     const dateStr = currentDate.toISOString().split('T')[0];
     filledData.push({
       label: dateStr,
-      value: dataMap.get(dateStr) || 0.0
+      value: dataMap.get(dateStr) || 0.0,
     });
     currentDate.setDate(currentDate.getDate() + 1);
   }
-  
+
   return filledData;
 };
 
@@ -58,38 +59,56 @@ const calculateStats = (data) => {
   if (!data || data.length === 0) {
     return { average: 0, best: 0, worst: 0 };
   }
-  
-  const values = data.map(item => item.value).filter(val => val != null && !isNaN(val));
+
+  const values = data
+    .map((item) => item.value)
+    .filter((val) => val != null && !isNaN(val));
   if (values.length === 0) {
     return { average: 0, best: 0, worst: 0 };
   }
-  
+
   const sum = values.reduce((acc, val) => acc + val, 0);
   const average = sum / values.length;
   const best = Math.max(...values);
   const worst = Math.min(...values);
-  
+
   return { average, best, worst };
 };
 
 // Transform trend data for chart components with date filling
 const transformTrendData = (trends, timeRange = '1') => {
-  const successRateTrend = trends.find(t => t.metricName === 'Overall Success Rate');
-  const responseTimeTrend = trends.find(t => t.metricName === 'Avg Response Time');
-  const volumeTrend = trends.find(t => t.metricName === 'Tests Executed');
+  const successRateTrend = trends.find(
+    (t) => t.metricName === 'Overall Success Rate'
+  );
+  const responseTimeTrend = trends.find(
+    (t) => t.metricName === 'Avg Response Time'
+  );
+  const volumeTrend = trends.find((t) => t.metricName === 'Tests Executed');
 
   // Calculate date range for filling missing dates
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(toDate.getDate() - parseInt(timeRange));
-  
+
   const fromDateStr = fromDate.toISOString().split('T')[0];
   const toDateStr = toDate.toISOString().split('T')[0];
 
   // Fill missing dates and calculate stats
-  const successRateData = fillMissingDates(successRateTrend?.currentWindowData || [], fromDateStr, toDateStr);
-  const responseTimeData = fillMissingDates(responseTimeTrend?.currentWindowData || [], fromDateStr, toDateStr);
-  const executionVolumeData = fillMissingDates(volumeTrend?.currentWindowData || [], fromDateStr, toDateStr);
+  const successRateData = fillMissingDates(
+    successRateTrend?.currentWindowData || [],
+    fromDateStr,
+    toDateStr
+  );
+  const responseTimeData = fillMissingDates(
+    responseTimeTrend?.currentWindowData || [],
+    fromDateStr,
+    toDateStr
+  );
+  const executionVolumeData = fillMissingDates(
+    volumeTrend?.currentWindowData || [],
+    fromDateStr,
+    toDateStr
+  );
 
   return {
     successRate: successRateData,
@@ -99,65 +118,65 @@ const transformTrendData = (trends, timeRange = '1') => {
     stats: {
       successRate: calculateStats(successRateData),
       responseTime: calculateStats(responseTimeData),
-      executionVolume: calculateStats(executionVolumeData)
-    }
+      executionVolume: calculateStats(executionVolumeData),
+    },
   };
 };
 
 // Transform environment data from API response to expected format
 const transformEnvironmentData = (environmentData) => {
   console.log('🔧 Transforming environment data:', environmentData);
-  
+
   if (!environmentData || !Array.isArray(environmentData)) {
     console.log('⚠️ No environment data or not an array');
     return [];
   }
-  
-  const transformed = environmentData.map(env => ({
+
+  const transformed = environmentData.map((env) => ({
     name: env.environment_name,
     successRate: env.success_rate,
     tests: env.total_executions,
     environmentId: env.environment_id,
-    totalTestCases: env.total_test_cases
+    totalTestCases: env.total_test_cases,
   }));
-  
+
   console.log('✅ Transformed environment data:', transformed);
   return transformed;
 };
 
-const getMockRecentExecutions = () => [
-  {
-    executionId: 'exec-1',
-    testPackageName: 'API Regression Suite',
-    executionStatus: 'Passed',
-    successRate: 95,
-    executionTimeMs: 2500,
-    executionDate: new Date().toISOString().split('T')[0],
-    environmentName: 'Production',
-    totalTests: 25,
-    passedTests: 24,
-    failedTests: 1,
-    executionType: 'Scheduled'
-  },
-  {
-    executionId: 'exec-2', 
-    testSuiteName: 'Authentication Tests',
-    executionStatus: 'Failed',
-    successRate: 72,
-    executionTimeMs: 1800,
-    executionDate: new Date().toISOString().split('T')[0],
-    environmentName: 'Staging',
-    totalTests: 18,
-    passedTests: 13,
-    failedTests: 5,
-    executionType: 'Manual'
+// Transform recent executions data from API response to expected format
+const transformRecentExecutionsData = (executionsData) => {
+  console.log('🔧 Transforming recent executions data:', executionsData);
+
+  if (!executionsData || !Array.isArray(executionsData)) {
+    console.log('⚠️ No executions data or not an array');
+    return [];
   }
-];
+
+  const transformed = executionsData.map((execution) => ({
+    executionId: execution.executionId,
+    testPackageName: execution.testPackageName || 'Test Execution',
+    executionStatus: execution.executionStatus, // PASSED/FAILED from API
+    successRate: execution.successRate,
+    executionTimeMs: execution.executionTimeMs,
+    executionDate: execution.executionDate,
+    environmentName: execution.environmentName,
+    totalTests: execution.totalTests,
+    passedTests: execution.passedTests,
+    failedTests: execution.failedTests,
+    errorTests: execution.errorTests,
+    executedBy: execution.executedBy,
+    executionType: 'API', // Default type since not provided in API
+  }));
+
+  console.log('✅ Transformed recent executions data:', transformed);
+  return transformed;
+};
 
 // Transform suite performers data into top performers and needs attention
 const transformSuitePerformers = (suiteData) => {
   console.log('🔧 Transforming suite performers data:', suiteData);
-  
+
   if (!suiteData || !Array.isArray(suiteData)) {
     console.log('⚠️ No suite data or not an array');
     return { topPerformers: [], needsAttention: [] };
@@ -168,78 +187,98 @@ const transformSuitePerformers = (suiteData) => {
 
   // Categorize based on success rate (>65 = top performers, <=65 = needs attention)
   const topPerformers = sortedSuites
-    .filter(suite => suite.successRate > 65)
-    .map(suite => ({
+    .filter((suite) => suite.successRate > 65)
+    .map((suite) => ({
       id: suite.id,
       name: suite.name,
       successRate: Math.round(suite.successRate * 100) / 100, // Round to 2 decimal places
       executionCount: suite.totalExecutions,
       totalTestCases: suite.totalTestCases,
       averageResponseTime: suite.averageResponseTime,
-      type: suite.type
+      type: suite.type,
     }));
 
   const needsAttention = sortedSuites
-    .filter(suite => suite.successRate <= 65)
-    .map(suite => ({
+    .filter((suite) => suite.successRate <= 65)
+    .map((suite) => ({
       id: suite.id,
       name: suite.name,
       successRate: Math.round(suite.successRate * 100) / 100, // Round to 2 decimal places
       executionCount: suite.totalExecutions,
       totalTestCases: suite.totalTestCases,
       averageResponseTime: suite.averageResponseTime,
-      type: suite.type
+      type: suite.type,
     }));
 
-  console.log('✅ Transformed suite performers:', { 
-    topPerformers: topPerformers.length, 
-    needsAttention: needsAttention.length 
+  console.log('✅ Transformed suite performers:', {
+    topPerformers: topPerformers.length,
+    needsAttention: needsAttention.length,
   });
 
   return { topPerformers, needsAttention };
 };
 
-// Custom hook for unified dashboard data
-export const useDashboardData = (timeRange = '1') => {
-  // Get active project from store
-  const { activeProject } = useProjectStore();
-  
-  console.log('🏗️ useDashboardData called:', { timeRange, activeProject: activeProject?.id ? `${activeProject.name} (${activeProject.id})` : 'No active project' });
-  
+// Main hook for unified dashboard data
+const useDashboardData = (timeRange = '7') => {
+  const { activeProject } = useProject();
+
+  console.log('📍 Dashboard Data Hook:', {
+    timeRange,
+    activeProject: activeProject
+      ? `${activeProject.name} (${activeProject.id})`
+      : 'No active project',
+  });
+
   // Unified query for dashboard data including environment status
   const dashboardQuery = useQuery({
     queryKey: ['dashboard', 'unified', timeRange, activeProject?.id],
     queryFn: async () => {
-      console.log('🔄 Dashboard Data Fetch:', { timeRange, activeProjectId: activeProject?.id });
-      
+      console.log('🔄 Dashboard Data Fetch:', {
+        timeRange,
+        activeProjectId: activeProject?.id,
+      });
+
       const metricsPromise = dashboard.getMetrics(timeRange);
-      
+
       // Only fetch environment data if we have an active project
-      const environmentPromise = activeProject?.id 
+      const environmentPromise = activeProject?.id
         ? dashboard.getEnvironmentStatus(activeProject.id, timeRange)
         : Promise.resolve({ result: { data: [] } });
 
       // Fetch suite performers data
       const suitePerformersPromise = dashboard.getSuitePerformers(timeRange);
-      
-      console.log('📊 Fetching metrics, environment, and suite performers data...');
-      
-      const [metricsResponse, environmentResponse, suitePerformersResponse] = await Promise.all([
+
+      // NEW: Fetch recent executions data
+      const recentExecutionsPromise = dashboard.getRecentExecutions(10);
+
+      console.log(
+        '📊 Fetching metrics, environment, suite performers, and recent executions data...'
+      );
+
+      const [
+        metricsResponse,
+        environmentResponse,
+        suitePerformersResponse,
+        recentExecutionsResponse,
+      ] = await Promise.all([
         metricsPromise,
         environmentPromise,
-        suitePerformersPromise
+        suitePerformersPromise,
+        recentExecutionsPromise,
       ]);
-      
-      console.log('✅ API Responses:', { 
-        metricsData: metricsResponse.result?.data, 
+
+      console.log('✅ API Responses:', {
+        metricsData: metricsResponse.result?.data,
         environmentData: environmentResponse.result?.data,
-        suitePerformersData: suitePerformersResponse.result?.data
+        suitePerformersData: suitePerformersResponse.result?.data,
+        recentExecutionsData: recentExecutionsResponse.result?.data,
       });
-      
+
       return {
         metrics: metricsResponse.result?.data,
         environments: environmentResponse.result?.data || [],
-        suitePerformers: suitePerformersResponse.result?.data || []
+        suitePerformers: suitePerformersResponse.result?.data || [],
+        recentExecutions: recentExecutionsResponse.result?.data || [],
       };
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -251,79 +290,124 @@ export const useDashboardData = (timeRange = '1') => {
   });
 
   // Transform and structure the data for existing UI components
-  const transformedData = dashboardQuery.data?.metrics ? {
-    // Core metrics from the unified response
-    metrics: {
-      totalTestCases: dashboardQuery.data.metrics.totalTestCases,
-      successRate: dashboardQuery.data.metrics.successRate,
-      averageResponseTime: dashboardQuery.data.metrics.averageResponseTime,
-      totalProjects: dashboardQuery.data.metrics.totalProjects,
-      totalExecutions: dashboardQuery.data.metrics.totalExecutedTests, // Updated field name
-      passedExecutions: (dashboardQuery.data.metrics.totalExecutedTests || 0) - (dashboardQuery.data.metrics.failedTests || 0), // Calculated
-      failedExecutions: dashboardQuery.data.metrics.failedTests,
-      errorExecutions: 0, // Not provided in new API, set to 0
-      activeProjects: dashboardQuery.data.metrics.totalProjects,
-      throughputPerHour: Math.round((dashboardQuery.data.metrics.totalExecutedTests || 0) / 24) // Approximate, using new field name
-    },
+  const transformedData = dashboardQuery.data?.metrics
+    ? {
+        // Core metrics from the unified response
+        metrics: {
+          totalTestCases: dashboardQuery.data.metrics.totalTestCases,
+          successRate: dashboardQuery.data.metrics.successRate,
+          averageResponseTime: dashboardQuery.data.metrics.averageResponseTime,
+          totalProjects: dashboardQuery.data.metrics.totalProjects,
+          totalExecutions: dashboardQuery.data.metrics.totalExecutedTests, // Updated field name
+          passedExecutions:
+            (dashboardQuery.data.metrics.totalExecutedTests || 0) -
+            (dashboardQuery.data.metrics.failedTests || 0), // Calculated
+          failedExecutions: dashboardQuery.data.metrics.failedTests,
+          errorExecutions: 0, // Not provided in new API, set to 0
+          activeProjects: dashboardQuery.data.metrics.totalProjects,
+          throughputPerHour: Math.round(
+            (dashboardQuery.data.metrics.totalExecutedTests || 0) / 24
+          ), // Approximate, using new field name
+        },
 
-    // Transform trends data for chart components with timeRange
-    trends: transformTrendData(dashboardQuery.data.metrics.trends || [], timeRange),
+        // Transform trends data for chart components with timeRange
+        trends: transformTrendData(
+          dashboardQuery.data.metrics.trends || [],
+          timeRange
+        ),
 
-    // Use real environment data from API
-    environments: transformEnvironmentData(dashboardQuery.data.environments),
-    
-    // Transform suite performers data
-    ...(() => {
-      const performers = transformSuitePerformers(dashboardQuery.data.suitePerformers);
-      return {
-        topPerformers: performers.topPerformers,
-        topFailures: performers.needsAttention // Rename for UI compatibility
-      };
-    })(),
-    
-    // Use mock data for features not yet in unified response
-    recentExecutions: getMockRecentExecutions(),
+        // Use real environment data from API
+        environments: transformEnvironmentData(
+          dashboardQuery.data.environments
+        ),
 
-    // System health can be derived from success rate
-    systemHealth: {
-      healthScore: Math.round(dashboardQuery.data.metrics.successRate || 0)
-    },
+        // Transform suite performers data
+        ...(() => {
+          const performers = transformSuitePerformers(
+            dashboardQuery.data.suitePerformers
+          );
+          return {
+            topPerformers: performers.topPerformers,
+            topFailures: performers.needsAttention, // Rename for UI compatibility
+          };
+        })(),
 
-    // Additional metadata
-    metricsGeneratedAt: dashboardQuery.data.metrics.metricsGeneratedAt,
-    
-    // Trend percentages for UI indicators (backward compatibility)
-    trendPercentages: {
-      successRate: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Overall Success Rate'),
-      responseTime: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Avg Response Time'),
-      executionVolume: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Tests Executed'),
-      failedTests: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Failed Tests'),
-      totalTestCases: getTrendPercentage(dashboardQuery.data.metrics.trends || [], 'Total Test Cases')
-    },
+        // NEW: Use real recent executions data instead of mock data
+        recentExecutions: transformRecentExecutionsData(
+          dashboardQuery.data.recentExecutions
+        ),
 
-    // Enhanced trend information with direction, color, and icons
-    trendInfo: {
-      successRate: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Overall Success Rate'),
-      responseTime: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Avg Response Time'),
-      executionVolume: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Tests Executed'),
-      failedTests: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Failed Tests'),
-      totalTestCases: getTrendInfo(dashboardQuery.data.metrics.trends || [], 'Total Test Cases')
-    }
-  } : null;
+        // System health can be derived from success rate
+        systemHealth: {
+          healthScore: Math.round(dashboardQuery.data.metrics.successRate || 0),
+        },
+
+        // Additional metadata
+        metricsGeneratedAt: dashboardQuery.data.metrics.metricsGeneratedAt,
+
+        // Trend percentages for UI indicators (backward compatibility)
+        trendPercentages: {
+          successRate: getTrendPercentage(
+            dashboardQuery.data.metrics.trends || [],
+            'Overall Success Rate'
+          ),
+          responseTime: getTrendPercentage(
+            dashboardQuery.data.metrics.trends || [],
+            'Avg Response Time'
+          ),
+          executionVolume: getTrendPercentage(
+            dashboardQuery.data.metrics.trends || [],
+            'Tests Executed'
+          ),
+          failedTests: getTrendPercentage(
+            dashboardQuery.data.metrics.trends || [],
+            'Failed Tests'
+          ),
+          totalTestCases: getTrendPercentage(
+            dashboardQuery.data.metrics.trends || [],
+            'Total Test Cases'
+          ),
+        },
+
+        // Enhanced trend information with direction, color, and icons
+        trendInfo: {
+          successRate: getTrendInfo(
+            dashboardQuery.data.metrics.trends || [],
+            'Overall Success Rate'
+          ),
+          responseTime: getTrendInfo(
+            dashboardQuery.data.metrics.trends || [],
+            'Avg Response Time'
+          ),
+          executionVolume: getTrendInfo(
+            dashboardQuery.data.metrics.trends || [],
+            'Tests Executed'
+          ),
+          failedTests: getTrendInfo(
+            dashboardQuery.data.metrics.trends || [],
+            'Failed Tests'
+          ),
+          totalTestCases: getTrendInfo(
+            dashboardQuery.data.metrics.trends || [],
+            'Total Test Cases'
+          ),
+        },
+      }
+    : null;
 
   return {
     // Structured data for UI components
     dashboardData: transformedData,
-    
+
     // Loading states
     isLoading: dashboardQuery.isLoading,
     isLoadingTrends: dashboardQuery.isLoading,
     isLoadingPerformance: dashboardQuery.isLoading,
     isLoadingProjects: dashboardQuery.isLoading,
-    
-    // Error states  
+
+    // Error states
     error: dashboardQuery.error,
-    
+
     // Individual query states for granular control
     queryStates: {
       metrics: {
@@ -357,20 +441,20 @@ export const useDashboardData = (timeRange = '1') => {
         isSuccess: dashboardQuery.isSuccess,
       },
     },
-    
+
     // Refetch functions
     refetch: () => dashboardQuery.refetch(),
     refetchCore: () => dashboardQuery.refetch(),
     refetchTrends: () => dashboardQuery.refetch(),
-    
+
     // Last updated
     lastUpdated: new Date(dashboardQuery.dataUpdatedAt || 0),
-    
+
     // Cache status
     isCached: dashboardQuery.isSuccess && !dashboardQuery.isLoading,
-              
+
     // Stale status
-    isStale: dashboardQuery.isStale
+    isStale: dashboardQuery.isStale,
   };
 };
 
@@ -383,21 +467,25 @@ export const useDashboardMetrics = (timeRange = '1') => {
     retry: 2,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    select: (data) => data?.result?.data || {}
+    select: (data) => data?.result?.data || {},
   });
 };
 
-// Hook for recent executions only (for other components) 
-export const useRecentExecutions = (timeRange = '1') => {
+// Hook for recent executions only (for other components)
+export const useRecentExecutions = (limit = 10) => {
   return useQuery({
-    queryKey: ['dashboard', 'recent-executions', timeRange],
-    queryFn: () => dashboard.getMetrics(timeRange),
+    queryKey: ['dashboard', 'recent-executions', limit],
+    queryFn: () => dashboard.getRecentExecutions(limit),
     staleTime: 30 * 1000, // 30 seconds
     retry: 2,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
-    select: (data) => getMockRecentExecutions() // Use mock data until backend provides this
+    select: (data) => transformRecentExecutionsData(data?.result?.data || []),
   });
 };
 
-export default useDashboardData; 
+// Export as named export (this is what Dashboard.js is importing)
+export { useDashboardData };
+
+// Also export as default for backward compatibility
+export default useDashboardData;
