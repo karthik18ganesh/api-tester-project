@@ -42,7 +42,14 @@ export const api = async (path, method = 'GET', body = null, headers = {}) => {
   });
 
   const json = await res.json();
-  if (!res.ok) throw new Error(json.result?.message || 'API Error');
+  if (!res.ok) {
+    const error = new Error(json.result?.message || 'API Error');
+    // Attach useful context for downstream handlers
+    error.code = json.result?.code;
+    error.status = res.status;
+    error.response = json;
+    throw error;
+  }
 
   return json;
 };
