@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FaTrash, FaFileExport, FaPlus, FaSearch } from "react-icons/fa";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { FaTrash, FaFileExport, FaPlus, FaSearch } from 'react-icons/fa';
 import {
   FiX,
   FiGrid,
@@ -7,14 +7,14 @@ import {
   FiCalendar,
   FiLink,
   FiCode,
-} from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
-import Breadcrumb from "../../../components/common/Breadcrumb";
-import { toast } from "react-toastify";
-import { nanoid } from "nanoid";
-import ConfirmationModal from "../../../components/common/ConfirmationModal";
-import { apiRepository, environments } from "../../../utils/api";
-import { useProjectStore } from "../../../stores/projectStore";
+} from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../../components/common/Breadcrumb';
+import { toast } from 'react-toastify';
+import { nanoid } from 'nanoid';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { apiRepository } from '../../../utils/api';
+import { useProjectStore } from '../../../stores/projectStore';
 
 const pageSize = 6;
 
@@ -28,50 +28,23 @@ const APIRepository = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState(null);
-  const [environmentsMap, setEnvironmentsMap] = useState(new Map());
+
   const [pagination, setPagination] = useState({
     totalElements: 0,
     totalPages: 0,
     pageNumber: 0,
     pageSize: pageSize,
     sort: {
-      direction: "DESC",
-      property: "createdDate",
+      direction: 'DESC',
+      property: 'createdDate',
     },
   });
 
   // Updated calculated pagination values
   const totalPages = pagination.totalPages;
   const currentData = filteredData;
-
-  const fetchEnvironments = async () => {
-    // Check if there's an active project
-    if (!activeProject?.id) {
-      console.warn("No active project found for environments");
-      setEnvironmentsMap(new Map());
-      return;
-    }
-
-    try {
-      const response = await environments.getByProject(activeProject.id);
-
-      if (response && response.result && response.result.data) {
-        const envList = response.result.data.content || response.result.data;
-        const envMap = new Map();
-
-        envList.forEach((env) => {
-          envMap.set(env.environmentId, env.environmentName);
-        });
-        setEnvironmentsMap(envMap);
-      }
-    } catch (error) {
-      console.error("Error fetching environments:", error);
-      // Set empty map as fallback
-      setEnvironmentsMap(new Map());
-    }
-  };
 
   const fetchAPIs = async (page = 0) => {
     setLoading(true);
@@ -81,8 +54,8 @@ const APIRepository = () => {
       const response = await apiRepository.getAll(
         page,
         pageSize,
-        "createdDate",
-        "DESC",
+        'createdDate',
+        'DESC'
       );
 
       if (response && response.result && response.result.data) {
@@ -92,9 +65,10 @@ const APIRepository = () => {
           name: api.apiRepoName,
           method: api.method,
           url: api.url,
-          description: api.description || "",
-          createdDate: new Date(api.createdDate).toLocaleDateString("en-GB"),
-          environment: api.envId,
+          description: api.description || '',
+          createdDate: new Date(api.createdDate).toLocaleDateString('en-GB'),
+          environment: api.environment?.environmentId || null,
+          environmentName: api.environment?.environmentName || 'Unknown',
         }));
 
         setData(apiData);
@@ -107,12 +81,12 @@ const APIRepository = () => {
           sort: response.result.data.pageable.sort,
         });
       } else {
-        throw new Error("Invalid response format");
+        throw new Error('Invalid response format');
       }
     } catch (err) {
-      console.error("Error fetching APIs:", err);
-      setError("Failed to load APIs. Please try again later.");
-      toast.error("Error fetching APIs: " + (err.message || "Unknown error"));
+      console.error('Error fetching APIs:', err);
+      setError('Failed to load APIs. Please try again later.');
+      toast.error('Error fetching APIs: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -121,13 +95,13 @@ const APIRepository = () => {
   // Replace the existing handleDelete function with this implementation:
   const handleDelete = async () => {
     if (selected.length === 0) {
-      toast.warning("No APIs selected for deletion");
+      toast.warning('No APIs selected for deletion');
       return;
     }
 
     const payload = {
       requestMetaData: {
-        userId: localStorage.getItem("userId") || "302",
+        userId: localStorage.getItem('userId') || '302',
         transactionId: nanoid(),
         timestamp: new Date().toISOString(),
       },
@@ -138,10 +112,10 @@ const APIRepository = () => {
       const json = await apiRepository.delete(selected);
       const { code, message } = json.result;
 
-      if (code === "200") {
+      if (code === '200') {
         toast.success(
           message ||
-            `Successfully deleted ${selected.length} API${selected.length > 1 ? "s" : ""}`,
+            `Successfully deleted ${selected.length} API${selected.length > 1 ? 's' : ''}`
         );
         // Update local state by filtering out deleted APIs
         const updatedData = data.filter((api) => !selected.includes(api.id));
@@ -149,11 +123,11 @@ const APIRepository = () => {
         setFilteredData(updatedData);
         setSelected([]);
       } else {
-        toast.error(message || "Failed to delete APIs");
+        toast.error(message || 'Failed to delete APIs');
       }
     } catch (error) {
-      console.error("Error during delete:", error);
-      toast.error("Error occurred while deleting APIs");
+      console.error('Error during delete:', error);
+      toast.error('Error occurred while deleting APIs');
     } finally {
       setDeleteModalOpen(false);
     }
@@ -162,7 +136,7 @@ const APIRepository = () => {
   // Handle checkbox selections
   const toggleSelect = (id) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
@@ -194,67 +168,65 @@ const APIRepository = () => {
           api.name.toLowerCase().includes(term) ||
           api.apiId.toString().includes(term) ||
           api.url.toLowerCase().includes(term) ||
-          (api.description && api.description.toLowerCase().includes(term)),
+          (api.description && api.description.toLowerCase().includes(term))
       );
       setFilteredData(filtered);
     }
   };
 
   const clearSearch = () => {
-    setSearchTerm("");
+    setSearchTerm('');
     setFilteredData(data);
   };
 
   // Get method badge color
   const getMethodColor = (method) => {
     switch (method.toUpperCase()) {
-      case "GET":
-        return "bg-green-100 text-green-800";
-      case "POST":
-        return "bg-blue-100 text-blue-800";
-      case "PUT":
-        return "bg-yellow-100 text-yellow-800";
-      case "DELETE":
-        return "bg-red-100 text-red-800";
-      case "PATCH":
-        return "bg-purple-100 text-purple-800";
+      case 'GET':
+        return 'bg-green-100 text-green-800';
+      case 'POST':
+        return 'bg-blue-100 text-blue-800';
+      case 'PUT':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'DELETE':
+        return 'bg-red-100 text-red-800';
+      case 'PATCH':
+        return 'bg-purple-100 text-purple-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Display environment name from the environments map
-  const formatEnvironmentName = (envId) => {
-    if (!envId) return "Unknown";
-
-    const envName = environmentsMap.get(envId);
+  // Display environment name from the API response
+  const formatEnvironmentName = (envId, envName) => {
+    if (!envId) return 'Unknown';
     return envName || `Environment ${envId}`;
   };
 
   // Get environment badge color based on environment name
-  const getEnvironmentBadge = (envId) => {
-    const envName = formatEnvironmentName(envId).toLowerCase();
+  const getEnvironmentBadge = (envId, envName) => {
+    const envNameLower = formatEnvironmentName(envId, envName).toLowerCase();
 
     switch (true) {
-      case envName.includes("production") || envName.includes("prod"):
-        return "bg-red-100 text-red-800";
-      case envName.includes("staging") || envName.includes("stage"):
-        return "bg-amber-100 text-amber-800";
-      case envName.includes("development") || envName.includes("dev"):
-        return "bg-green-100 text-green-800";
-      case envName.includes("testing") ||
-        envName.includes("test") ||
-        envName.includes("qa"):
-        return "bg-blue-100 text-blue-800";
+      case envNameLower.includes('production') || envNameLower.includes('prod'):
+        return 'bg-red-100 text-red-800';
+      case envNameLower.includes('staging') || envNameLower.includes('stage'):
+        return 'bg-amber-100 text-amber-800';
+      case envNameLower.includes('development') || envNameLower.includes('dev'):
+        return 'bg-green-100 text-green-800';
+      case envNameLower.includes('testing') ||
+        envNameLower.includes('test') ||
+        envNameLower.includes('qa'):
+        return 'bg-blue-100 text-blue-800';
       default:
-        return "bg-gray-100 text-gray-800";
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   // Pagination helpers
   const getPaginationRange = () => {
     const range = [];
-    const dots = "...";
+    const dots = '...';
     const visiblePages = 2;
 
     range.push(1);
@@ -284,20 +256,14 @@ const APIRepository = () => {
 
   // Load data on component mount and when active project changes
   useEffect(() => {
-    // Fetch both environments and APIs
-    const initializeData = async () => {
-      await fetchEnvironments();
-      await fetchAPIs();
-    };
-
-    initializeData();
+    fetchAPIs();
   }, [activeProject?.id]);
 
   return (
     <div className="p-6 font-inter text-gray-800">
       {/* Breadcrumb */}
       <Breadcrumb
-        items={[{ label: "API Design" }, { label: "API Repository" }]}
+        items={[{ label: 'API Design' }, { label: 'API Repository' }]}
       />
 
       {/* Main Content Area */}
@@ -338,7 +304,7 @@ const APIRepository = () => {
         <div className="flex justify-end mb-4">
           {selected.length === 0 ? (
             <button
-              onClick={() => navigate("/test-design/api-repository/create")}
+              onClick={() => navigate('/test-design/api-repository/create')}
               className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
             >
               <FaPlus className="mr-2" />
@@ -347,7 +313,7 @@ const APIRepository = () => {
           ) : (
             <div className="flex gap-3">
               <span className="flex items-center px-3 py-1 bg-indigo-50 text-indigo-700 rounded-md">
-                {selected.length} item{selected.length !== 1 ? "s" : ""}{" "}
+                {selected.length} item{selected.length !== 1 ? 's' : ''}{' '}
                 selected
               </span>
               <button
@@ -451,7 +417,7 @@ const APIRepository = () => {
               <p className="text-gray-500 mb-6 text-center max-w-md">
                 {searchTerm
                   ? `No APIs match your search "${searchTerm}"`
-                  : "Create your first API to start testing endpoints"}
+                  : 'Create your first API to start testing endpoints'}
               </p>
               {searchTerm ? (
                 <button
@@ -464,7 +430,7 @@ const APIRepository = () => {
               ) : (
                 <button
                   className="px-4 py-2 bg-[#4F46E5] text-white rounded-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center"
-                  onClick={() => navigate("/test-design/api-repository/create")}
+                  onClick={() => navigate('/test-design/api-repository/create')}
                 >
                   <FaPlus className="mr-2" />
                   Create API
@@ -485,7 +451,7 @@ const APIRepository = () => {
                           checked={
                             currentData.length > 0 &&
                             currentData.every((item) =>
-                              selected.includes(item.id),
+                              selected.includes(item.id)
                             )
                           }
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
@@ -556,14 +522,17 @@ const APIRepository = () => {
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnvironmentBadge(item.environment)}`}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEnvironmentBadge(item.environment, item.environmentName)}`}
                           >
-                            {formatEnvironmentName(item.environment)}
+                            {formatEnvironmentName(
+                              item.environment,
+                              item.environmentName
+                            )}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600">
                           <div className="truncate">
-                            {item.description || "-"}
+                            {item.description || '-'}
                           </div>
                         </td>
                       </tr>
@@ -575,16 +544,16 @@ const APIRepository = () => {
               {/* Pagination */}
               <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
                 <div className="text-sm text-gray-600">
-                  Showing{" "}
+                  Showing{' '}
                   {Math.min(
                     pagination.pageNumber * pagination.pageSize + 1,
-                    pagination.totalElements,
-                  )}{" "}
-                  to{" "}
+                    pagination.totalElements
+                  )}{' '}
+                  to{' '}
                   {Math.min(
                     (pagination.pageNumber + 1) * pagination.pageSize,
-                    pagination.totalElements,
-                  )}{" "}
+                    pagination.totalElements
+                  )}{' '}
                   of {pagination.totalElements} items
                 </div>
 
@@ -599,12 +568,12 @@ const APIRepository = () => {
                   {getPaginationRange().map((item, idx) => (
                     <button
                       key={idx}
-                      disabled={item === "..."}
-                      onClick={() => item !== "..." && handlePageChange(item)}
+                      disabled={item === '...'}
+                      onClick={() => item !== '...' && handlePageChange(item)}
                       className={`px-3 py-1 border rounded-md hover:-translate-y-0.5 transition-all ${
                         item === currentPage
-                          ? "bg-indigo-600 text-white border-indigo-600"
-                          : "hover:bg-gray-100 text-gray-600"
+                          ? 'bg-indigo-600 text-white border-indigo-600'
+                          : 'hover:bg-gray-100 text-gray-600'
                       }`}
                     >
                       {item}
@@ -630,7 +599,7 @@ const APIRepository = () => {
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Delete APIs"
-        message={`Are you sure you want to delete ${selected.length} selected API${selected.length !== 1 ? "s" : ""}? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${selected.length} selected API${selected.length !== 1 ? 's' : ''}? This action cannot be undone.`}
       />
     </div>
   );

@@ -351,6 +351,16 @@ const UserManagement = () => {
 
   // Helper to get form data from refs
   const getFormDataFromRefs = () => {
+    // Transform selectedProjects from projectId to actual id values
+    const transformedProjects = selectedProjects.map((projectId) => {
+      const project = availableProjects.find((p) => {
+        const pId = typeof p === 'string' ? p : p.projectId || p.id;
+        return pId === projectId;
+      });
+      // Return the actual id from the project object, or the projectId if not found
+      return typeof project === 'string' ? project : project?.id || projectId;
+    });
+
     return {
       username: usernameRef.current?.value || '',
       email: emailRef.current?.value || '',
@@ -359,7 +369,7 @@ const UserManagement = () => {
       password: passwordRef.current?.value || '',
       role: roleRef.current?.value || 'EXECUTOR',
       status: statusRef.current?.value || 'ACTIVE',
-      projects: selectedProjects,
+      projects: transformedProjects,
       permissions: permissions,
     };
   };
@@ -539,7 +549,18 @@ const UserManagement = () => {
       if (statusRef.current) statusRef.current.value = user.status || 'ACTIVE';
     }, 0);
 
-    setSelectedProjects(user.projects || []);
+    // Map user's project ids to the format expected by the UI (projectId)
+    const mappedProjects = (user.projects || []).map((userProjectId) => {
+      const project = availableProjects.find((p) => {
+        const pId = typeof p === 'string' ? p : p.id;
+        return pId === userProjectId;
+      });
+      // Return the projectId for UI matching, or the original id if not found
+      return typeof project === 'string'
+        ? project
+        : project?.projectId || userProjectId;
+    });
+    setSelectedProjects(mappedProjects);
 
     const userPermissions = user.permissions || {};
     const mergedPermissions = {};
