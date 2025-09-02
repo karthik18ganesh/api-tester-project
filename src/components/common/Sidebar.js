@@ -1,6 +1,6 @@
 // src/components/common/Sidebar.js - Enhanced with Modern Visual Design
-import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid,
   FiBox,
@@ -20,12 +20,17 @@ import {
   FiAlertTriangle,
   FiStar,
   FiInfo,
-} from "react-icons/fi";
-import { FaBars, FaChevronDown, FaChevronUp, FaProjectDiagram } from "react-icons/fa";
-import Logo from "../../assets/Logo.svg";
-import { useProjectActivation } from "./ProjectActivationGuard";
-import { useUIStore } from "../../stores/uiStore";
-import { usePermissions } from "../../hooks/usePermissions";
+} from 'react-icons/fi';
+import {
+  FaBars,
+  FaChevronDown,
+  FaChevronUp,
+  FaProjectDiagram,
+} from 'react-icons/fa';
+import Logo from '../../assets/Logo.svg';
+import { useProjectActivation } from './ProjectActivationGuard';
+import { useUIStore } from '../../stores/uiStore';
+import { usePermissions } from '../../hooks/usePermissions';
 
 const Sidebar = () => {
   const [adminOpen, setAdminOpen] = useState(false);
@@ -35,19 +40,20 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const { activeProject, hasActiveProject } = useProjectActivation();
   const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
-  const { 
-    canAccess, 
-    canManageUsers, 
-    canAccessProjectSetup, 
+  const {
+    canAccess,
+    canManageUsers,
+    canAccessProjectSetup,
     canAccessEnvironmentSetup,
     canAccessDashboard,
     hasProjectAccess,
     getUserPermissions,
-    currentUserRole 
+    currentUserRole,
   } = usePermissions();
 
   // Check if user is admin/super admin
-  const isAdminUser = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
+  const isAdminUser =
+    currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN';
 
   // Debug: Log current permissions (temporary for troubleshooting)
   useEffect(() => {
@@ -61,22 +67,29 @@ const Sidebar = () => {
     console.log('User role:', currentUserRole);
     console.log('Is admin user:', isAdminUser);
     console.log('=== END DEBUG ===');
-  }, [getUserPermissions, canAccessDashboard, canAccess, currentUserRole, isAdminUser]);
-
-
+  }, [
+    getUserPermissions,
+    canAccessDashboard,
+    canAccess,
+    currentUserRole,
+    isAdminUser,
+  ]);
 
   useEffect(() => {
     // Auto-expand sections based on current route
-    if (location.pathname.includes("/admin/")) {
+    if (location.pathname.includes('/admin/')) {
       setAdminOpen(true);
     }
-    
-    if (location.pathname.includes("/test-design/")) {
+
+    if (location.pathname.includes('/test-design/')) {
       setTestDesignOpen(true);
     }
 
     // Expand test execution section if on test execution or results pages
-    if (location.pathname.includes("/test-execution") || location.pathname.includes("/test-results")) {
+    if (
+      location.pathname.includes('/test-execution') ||
+      location.pathname.includes('/test-results')
+    ) {
       setTestExecutionOpen(true);
     }
   }, [location.pathname]);
@@ -87,7 +100,7 @@ const Sidebar = () => {
   const canNavigate = (requiresProject = true) => {
     // Admin users can always navigate (they can access any project)
     if (isAdminUser) return true;
-    
+
     // For regular users, check if project is required and available
     if (!requiresProject) return true;
     return hasActiveProject;
@@ -111,89 +124,89 @@ const Sidebar = () => {
   // Test Execution submenu items with permission checks per section
   const testExecutionSubMenus = [
     {
-      label: "Test Execution",
+      label: 'Test Execution',
       icon: <FiPlayCircle />,
-      route: "/test-execution",
+      route: '/test-execution',
       requiresProject: true,
-      permissionSection: 'execution'
+      permissionSection: 'execution',
     },
-    { 
-      label: "Results", 
-      icon: <FiBarChart2 />, 
-      route: "/test-results",
+    {
+      label: 'Results',
+      icon: <FiBarChart2 />,
+      route: '/test-results',
       requiresProject: true,
-      permissionSection: 'results'
+      permissionSection: 'results',
     },
-  ].filter(item => canAccess('testExecution', item.permissionSection));
+  ].filter((item) => canAccess('testExecution', item.permissionSection));
 
   const testDesignSubMenus = [
     {
-      label: "API Repository",
-      route: "/test-design/api-repository",
+      label: 'API Repository',
+      route: '/test-design/api-repository',
       icon: <FiDatabase />,
       requiresProject: true,
-      permissionSection: 'apiRepository'
+      permissionSection: 'apiRepository',
     },
     {
-      label: "Test Case",
-      route: "/test-design/test-case",
+      label: 'Test Case',
+      route: '/test-design/test-case',
       icon: <FiFileText />,
       requiresProject: true,
-      permissionSection: 'testCases'
+      permissionSection: 'testCases',
     },
     {
-      label: "Test Suite",
-      route: "/test-design/test-suite",
+      label: 'Test Suite',
+      route: '/test-design/test-suite',
       icon: <FiFolder />,
       requiresProject: true,
-      permissionSection: 'testSuites'
+      permissionSection: 'testSuites',
     },
     {
-      label: "Test Package",
-      route: "/test-design/test-package",
+      label: 'Test Package',
+      route: '/test-design/test-package',
       icon: <FiArchive />,
       requiresProject: true,
-      permissionSection: 'testPackages'
+      permissionSection: 'testPackages',
     },
+    // {
+    //   label: "Functions & Variables",
+    //   route: "/test-design/functions-variables",
+    //   icon: <FiCode />,
+    //   requiresProject: true,
+    //   permissionSection: 'functionsVariables'
+    // },
     {
-      label: "Functions & Variables",
-      route: "/test-design/functions-variables",
-      icon: <FiCode />,
-      requiresProject: true,
-      permissionSection: 'functionsVariables'
-    },
-    {
-      label: "Bulk Upload",
-      route: "/test-design/bulk-upload",
+      label: 'Bulk Upload',
+      route: '/test-design/bulk-upload',
       icon: <FiLayers />,
       requiresProject: true,
-      permissionSection: 'bulkUpload'
+      permissionSection: 'bulkUpload',
     },
-  ].filter(item => canAccess('testDesign', item.permissionSection));
+  ].filter((item) => canAccess('testDesign', item.permissionSection));
 
   const adminSubMenus = [
     {
-      label: "Environment Setup",
-      route: "/admin/environment-setup",
+      label: 'Environment Setup',
+      route: '/admin/environment-setup',
       icon: <FiGlobe />,
       requiresProject: true,
-      permissionSection: 'environmentSetup'
+      permissionSection: 'environmentSetup',
     },
     {
-      label: "Project Setup",
-      route: "/admin/project-setup",
+      label: 'Project Setup',
+      route: '/admin/project-setup',
       icon: <FiFolder />,
       requiresProject: false, // Project setup doesn't require active project
-      permissionSection: 'projectSetup'
+      permissionSection: 'projectSetup',
     },
-    { 
-      label: "User Settings", 
-      route: "/admin/user-settings", 
+    {
+      label: 'User Settings',
+      route: '/admin/user-settings',
       icon: <FiUser />,
       requiresProject: false,
-      permissionSection: 'userSettings'
+      permissionSection: 'userSettings',
     },
-  ].filter(item => canAccess('admin', item.permissionSection));
+  ].filter((item) => canAccess('admin', item.permissionSection));
 
   const MenuSection = ({ title, open, setOpen, items, icon, permission }) => {
     // If no items, don't render
@@ -201,28 +214,32 @@ const Sidebar = () => {
       return null;
     }
 
-    const hasActiveItems = items.some(item => isActive(item.route));
-    
+    const hasActiveItems = items.some((item) => isActive(item.route));
+
     return (
-      <div className={`mt-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
+      <div className={`mt-1 ${collapsed ? 'flex flex-col items-center' : ''}`}>
         <div
           onClick={() => !collapsed && setOpen(!open)}
           className={`flex ${
-            collapsed ? "flex-col items-center justify-center" : "flex-row justify-between"
+            collapsed
+              ? 'flex-col items-center justify-center'
+              : 'flex-row justify-between'
           } px-3 py-2.5 rounded-lg cursor-pointer transition-colors duration-200 ${
-            hasActiveItems 
-              ? "bg-indigo-50 text-indigo-700" 
-              : "hover:bg-gray-50"
+            hasActiveItems ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50'
           }`}
         >
           <div
-            className={`flex ${collapsed ? "flex-col items-center" : "flex-row items-center gap-3"}`}
+            className={`flex ${collapsed ? 'flex-col items-center' : 'flex-row items-center gap-3'}`}
           >
-            <div className={`text-lg ${hasActiveItems ? 'text-indigo-600' : 'text-gray-600'}`}>
+            <div
+              className={`text-lg ${hasActiveItems ? 'text-indigo-600' : 'text-gray-600'}`}
+            >
               {icon}
             </div>
             {!collapsed && (
-              <span className={`text-sm font-medium ${hasActiveItems ? 'text-indigo-700' : 'text-gray-700'}`}>
+              <span
+                className={`text-sm font-medium ${hasActiveItems ? 'text-indigo-700' : 'text-gray-700'}`}
+              >
                 {title}
               </span>
             )}
@@ -240,49 +257,60 @@ const Sidebar = () => {
             </div>
           )}
         </div>
-        
+
         {/* Submenu items */}
         <div
           className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            open && !collapsed ? "max-h-96 opacity-100 mt-1" : "max-h-0 opacity-0"
+            open && !collapsed
+              ? 'max-h-96 opacity-100 mt-1'
+              : 'max-h-0 opacity-0'
           }`}
         >
           {!collapsed &&
-            items.map(({ label, route, icon, requiresProject = true, permission }) => {
-              const canAccess = canNavigate(requiresProject);
-              const isActiveRoute = isActive(route);
-              
-              return (
-                <div
-                  key={label}
-                  onClick={() => handleNavigation(route, requiresProject)}
-                  className={`transition-colors duration-200 ml-2 my-0.5 rounded-lg ${
-                    isActiveRoute
-                      ? "bg-indigo-600 text-white cursor-pointer"
-                      : canAccess 
-                        ? "hover:bg-gray-100 text-gray-700 cursor-pointer"
-                        : "text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 px-3 py-2">
-                    <div className={`text-sm ${isActiveRoute ? 'text-white' : ''}`}>
-                      {icon}
-                    </div>
-                    <span className={`flex-1 font-medium ${isActiveRoute ? 'text-white' : ''}`}>
-                      {label}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {!canAccess && requiresProject && !isAdminUser && (
-                        <FiAlertTriangle className="text-amber-500 h-3 w-3" title="Requires active project" />
-                      )}
-                      {isActiveRoute && canAccess && (
-                        <FiChevronRight className="text-white h-3 w-3" />
-                      )}
+            items.map(
+              ({ label, route, icon, requiresProject = true, permission }) => {
+                const canAccess = canNavigate(requiresProject);
+                const isActiveRoute = isActive(route);
+
+                return (
+                  <div
+                    key={label}
+                    onClick={() => handleNavigation(route, requiresProject)}
+                    className={`transition-colors duration-200 ml-2 my-0.5 rounded-lg ${
+                      isActiveRoute
+                        ? 'bg-indigo-600 text-white cursor-pointer'
+                        : canAccess
+                          ? 'hover:bg-gray-100 text-gray-700 cursor-pointer'
+                          : 'text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 px-3 py-2">
+                      <div
+                        className={`text-sm ${isActiveRoute ? 'text-white' : ''}`}
+                      >
+                        {icon}
+                      </div>
+                      <span
+                        className={`flex-1 font-medium ${isActiveRoute ? 'text-white' : ''}`}
+                      >
+                        {label}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {!canAccess && requiresProject && !isAdminUser && (
+                          <FiAlertTriangle
+                            className="text-amber-500 h-3 w-3"
+                            title="Requires active project"
+                          />
+                        )}
+                        {isActiveRoute && canAccess && (
+                          <FiChevronRight className="text-white h-3 w-3" />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
         </div>
       </div>
     );
@@ -295,10 +323,12 @@ const Sidebar = () => {
         <div className="flex items-start">
           <FiInfo className="h-4 w-4 text-amber-500 mr-2 mt-0.5 flex-shrink-0" />
           <div className="text-xs">
-            <div className="font-medium text-amber-800 mb-1">No Project Assigned</div>
+            <div className="font-medium text-amber-800 mb-1">
+              No Project Assigned
+            </div>
             <div className="text-amber-700">
-              You need to be assigned to a project to access features. 
-              Contact your administrator.
+              You need to be assigned to a project to access features. Contact
+              your administrator.
             </div>
           </div>
         </div>
@@ -309,13 +339,13 @@ const Sidebar = () => {
   return (
     <div
       className={`bg-white h-screen border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out flex flex-col ${
-        collapsed ? "w-20" : "w-64"
+        collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Sidebar Header */}
       <div
         className={`flex items-center border-b border-gray-200 py-4 px-4 ${
-          collapsed ? "justify-center" : "justify-between"
+          collapsed ? 'justify-center' : 'justify-between'
         }`}
       >
         {!collapsed && (
@@ -331,9 +361,9 @@ const Sidebar = () => {
         <button
           onClick={toggleSidebar}
           className={`text-gray-500 hover:text-indigo-600 transition-colors p-2 rounded-lg hover:bg-gray-50 ${
-            collapsed && "mt-0"
+            collapsed && 'mt-0'
           }`}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <FaBars />
         </button>
@@ -341,16 +371,18 @@ const Sidebar = () => {
 
       {/* Active Project Section */}
       {!collapsed && (
-        <div className={`px-4 py-4 border-b border-gray-200 ${
-          !hasActiveProject 
-            ? 'bg-amber-50' 
-            : 'bg-green-50'
-        }`}>
+        <div
+          className={`px-4 py-4 border-b border-gray-200 ${
+            !hasActiveProject ? 'bg-amber-50' : 'bg-green-50'
+          }`}
+        >
           <div className="flex flex-col">
             <div className="text-xs text-gray-600 mb-2 flex items-center font-semibold">
               <FaProjectDiagram className="mr-2 text-indigo-600" />
               ACTIVE PROJECT
-              {hasActiveProject && <FiStar className="ml-2 text-green-600 h-3 w-3" />}
+              {hasActiveProject && (
+                <FiStar className="ml-2 text-green-600 h-3 w-3" />
+              )}
             </div>
             {hasActiveProject ? (
               <div className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-green-200">
@@ -394,30 +426,39 @@ const Sidebar = () => {
         {/* Dashboard - Only show if user has dashboard permission */}
         {(canAccessDashboard() || isAdminUser) && (
           <div
-            onClick={() => handleNavigation("/dashboard", true)}
+            onClick={() => handleNavigation('/dashboard', true)}
             className={`flex ${
-              collapsed ? "flex-col items-center justify-center" : "flex-row items-center"
+              collapsed
+                ? 'flex-col items-center justify-center'
+                : 'flex-row items-center'
             } gap-3 px-3 py-2.5 my-1 rounded-lg cursor-pointer transition-all duration-200 ease-in-out ${
-              isActive("/dashboard")
-                ? "bg-indigo-600 text-white"
+              isActive('/dashboard')
+                ? 'bg-indigo-600 text-white'
                 : canNavigate(true)
-                  ? "text-gray-700 hover:bg-gray-100"
-                  : "text-gray-400 cursor-not-allowed"
+                  ? 'text-gray-700 hover:bg-gray-100'
+                  : 'text-gray-400 cursor-not-allowed'
             }`}
           >
-            <div className={`text-lg ${isActive("/dashboard") ? 'text-white' : ''}`}>
+            <div
+              className={`text-lg ${isActive('/dashboard') ? 'text-white' : ''}`}
+            >
               <FiGrid />
             </div>
             {!collapsed && (
               <div className="flex justify-between items-center flex-1">
-                <span className={`font-medium ${isActive("/dashboard") ? 'text-white' : ''}`}>
+                <span
+                  className={`font-medium ${isActive('/dashboard') ? 'text-white' : ''}`}
+                >
                   Dashboard
                 </span>
                 <div className="flex items-center">
                   {!canNavigate(true) && !isAdminUser && (
-                    <FiAlertTriangle className="text-amber-500 h-3 w-3 mr-2" title="Requires active project" />
+                    <FiAlertTriangle
+                      className="text-amber-500 h-3 w-3 mr-2"
+                      title="Requires active project"
+                    />
                   )}
-                  {isActive("/dashboard") && canNavigate(true) && (
+                  {isActive('/dashboard') && canNavigate(true) && (
                     <FiChevronRight className="text-white h-4 w-4" />
                   )}
                 </div>
@@ -427,13 +468,17 @@ const Sidebar = () => {
         )}
 
         {/* Simple Divider */}
-        <div className={`border-b border-gray-200 my-4 ${collapsed && "mx-2"}`}></div>
-        
+        <div
+          className={`border-b border-gray-200 my-4 ${collapsed && 'mx-2'}`}
+        ></div>
+
         {/* Section Label */}
         {!collapsed && (
-          <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">TEST MANAGEMENT</div>
+          <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">
+            TEST MANAGEMENT
+          </div>
         )}
-        
+
         {/* Test Design subsection - Only show if user has any test design permissions */}
         {(testDesignSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
@@ -444,7 +489,7 @@ const Sidebar = () => {
             icon={<FiBox />}
           />
         )}
-        
+
         {/* Test Execution subsection - Only show if user has any test execution permissions */}
         {(testExecutionSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
@@ -457,13 +502,17 @@ const Sidebar = () => {
         )}
 
         {/* Simple Divider */}
-        <div className={`border-b border-gray-200 my-4 ${collapsed && "mx-2"}`}></div>
-        
+        <div
+          className={`border-b border-gray-200 my-4 ${collapsed && 'mx-2'}`}
+        ></div>
+
         {/* Section Label */}
         {!collapsed && (
-          <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">ADMINISTRATION</div>
+          <div className="px-3 mb-2 text-xs text-gray-500 font-semibold">
+            ADMINISTRATION
+          </div>
         )}
-        
+
         {/* Admin Settings - Only show if user has any admin permissions */}
         {(adminSubMenus.length > 0 || isAdminUser) && (
           <MenuSection
@@ -481,10 +530,15 @@ const Sidebar = () => {
         <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-gray-500 font-medium">APP VERSION</div>
+              <div className="text-xs text-gray-500 font-medium">
+                APP VERSION
+              </div>
               <div className="text-sm font-semibold text-gray-700">v1.0.0</div>
             </div>
-            <div className="w-2 h-2 bg-green-500 rounded-full" title="System Online"></div>
+            <div
+              className="w-2 h-2 bg-green-500 rounded-full"
+              title="System Online"
+            ></div>
           </div>
         </div>
       )}
