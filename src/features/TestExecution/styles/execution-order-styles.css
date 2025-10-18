@@ -1,0 +1,151 @@
+/* Execution Order Management Styles */
+
+/* Suite being edited */
+.suite-editing {
+  border: 2px solid #4f46e5 !important;
+  background: #eef2ff !important;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* Drag handle styles */
+.drag-handle {
+  cursor: grab;
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.drag-handle:hover {
+  color: #4b5563;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Test case being dragged */
+.test-case-dragging {
+  opacity: 0.5;
+  border: 2px dashed #4f46e5 !important;
+  background: #eef2ff !important;
+  transform: rotate(2deg);
+}
+
+/* Execution order badge */
+.execution-order-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* Drag overlay styles */
+.drag-overlay {
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Smooth transitions for reordering */
+.sortable-item {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Edit mode animations */
+.edit-mode-enter {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Save/Cancel button states */
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  transition: all 0.2s ease;
+}
+
+.cancel-button:hover {
+  background-color: #d1d5db;
+}
+
+/* Drag preview styles */
+.drag-preview {
+  background: white;
+  border: 2px solid #4f46e5;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  transform: rotate(3deg);
+}
+
+/* Order editor container */
+.order-editor-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+/* Test case item in edit mode */
+.test-case-edit-item {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.test-case-edit-item:hover {
+  border-color: #4f46e5;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+}
+
+.test-case-edit-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+/* Empty state for suites with no test cases */
+.empty-suite-message {
+  color: #6b7280;
+  font-style: italic;
+  padding: 16px;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px dashed #d1d5db;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .execution-order-badge {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    margin-right: 6px;
+  }
+  
+  .drag-handle {
+    padding: 4px;
+  }
+}

@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
 import { FaAngleDown, FaAngleRight, FaBoxOpen, FaLayerGroup, FaVial, FaFolder } from 'react-icons/fa';
-import { FiPackage, FiLayers, FiFileText } from 'react-icons/fi';
+import { FiPackage, FiLayers, FiFileText, FiEdit3, FiCheck, FiX } from 'react-icons/fi';
+import TestCaseOrderEditor from './TestCaseOrderEditor';
 
 // Modern Test Hierarchy component with enhanced styling and animations
-const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
+const EnhancedTestHierarchy = ({ 
+  data, 
+  onSelect, 
+  selectedId, 
+  isEditingOrder, 
+  currentEditingSuiteId, 
+  onEditOrder, 
+  onSaveOrder, 
+  onCancelEdit, 
+  onOrderChange, 
+  hasUnsavedChanges 
+}) => {
   const [expanded, setExpanded] = useState({ [data.id]: true });
 
   const toggleExpand = (id) => {
@@ -83,6 +95,8 @@ const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
     const isSelected = selectedId === item.id;
     const { icon, bgColor, textColor } = getIconAndStyle(item.type, hasChildren);
     const itemCount = getItemCount(item);
+    const isSuiteBeingEdited = item.type === 'suite' && currentEditingSuiteId === item.suiteId;
+    const canEditOrder = item.type === 'suite' && hasChildren && item.children.length > 1;
 
     return (
       <div key={item.id} className={`${depth > 0 ? 'ml-4' : ''}`}>
@@ -90,9 +104,17 @@ const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
           className={`flex items-center justify-between p-2.5 rounded-md cursor-pointer transition-all duration-200 group ${
             isSelected 
               ? 'bg-indigo-100 text-indigo-700 shadow-sm border border-indigo-200' 
+              : isSuiteBeingEdited
+              ? 'suite-editing bg-indigo-50 border-2 border-indigo-500'
               : `${bgColor} ${textColor}`
           }`}
-          onClick={() => onSelect(item)}
+          onClick={() => {
+            if (isEditingOrder && !isSuiteBeingEdited) {
+              // Prevent selection when editing other suites
+              return;
+            }
+            onSelect(item);
+          }}
         >
           <div className="flex items-center flex-1 min-w-0">
             {/* Expand/Collapse Button */}
@@ -141,6 +163,20 @@ const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
               </span>
             )}
           </div>
+
+          {/* Edit Order Button for Suites */}
+          {item.type === 'suite' && !isSuiteBeingEdited && canEditOrder && !isEditingOrder && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditOrder(item.suiteId);
+              }}
+              className="ml-2 p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+              title="Edit execution order"
+            >
+              <FiEdit3 className="h-4 w-4" />
+            </button>
+          )}
         </div>
         
         {/* Children */}
@@ -151,20 +187,63 @@ const EnhancedTestHierarchy = ({ data, onSelect, selectedId }) => {
             }`}
           >
             <div className={`${depth < 2 ? 'ml-2 border-l border-gray-200 pl-2' : ''} mt-1`}>
-              {item.children.map(child => renderItem(child, depth + 1))}
-              
-              {/* Show empty state for suites with no test cases */}
-              {item.type === 'suite' && item.children.length === 0 && isExpanded && (
-                <div className="ml-8 py-2 text-xs text-gray-400 italic">
-                  No test cases in this suite
+              {/* Test Case Order Editor for Suites in Edit Mode */}
+              {item.type === 'suite' && isSuiteBeingEdited ? (
+                <div className="space-y-3">
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-indigo-800">
+                        Edit Execution Order
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={onSaveOrder}
+                          disabled={!hasUnsavedChanges}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            hasUnsavedChanges
+                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          <FiCheck className="h-3 w-3" />
+                          Save
+                        </button>
+                        <button
+                          onClick={onCancelEdit}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                        >
+                          <FiX className="h-3 w-3" />
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                    <TestCaseOrderEditor
+                      testCases={item.children}
+                      onOrderChange={(updatedTestCases) => onOrderChange(item.suiteId, updatedTestCases)}
+                      isEditing={true}
+                      suiteId={item.suiteId}
+                    />
+                  </div>
                 </div>
-              )}
-              
-              {/* Show empty state for packages with no suites */}
-              {item.type === 'package' && item.children.length === 0 && isExpanded && (
-                <div className="ml-8 py-2 text-xs text-gray-400 italic">
-                  No test suites in this package
-                </div>
+              ) : (
+                // Normal children rendering
+                <>
+                  {item.children.map(child => renderItem(child, depth + 1))}
+                  
+                  {/* Show empty state for suites with no test cases */}
+                  {item.type === 'suite' && item.children.length === 0 && isExpanded && (
+                    <div className="ml-8 py-2 text-xs text-gray-400 italic">
+                      No test cases in this suite
+                    </div>
+                  )}
+                  
+                  {/* Show empty state for packages with no suites */}
+                  {item.type === 'package' && item.children.length === 0 && isExpanded && (
+                    <div className="ml-8 py-2 text-xs text-gray-400 italic">
+                      No test suites in this package
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

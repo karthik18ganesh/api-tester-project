@@ -530,6 +530,38 @@ export const testSuites = {
       requestBody
     );
   },
+
+  // Update test case execution order within a suite
+  updateTestCaseOrder: async (suiteId, orderedTestCaseIds) => {
+    const requestBody = {
+      requestMetaData: {
+        userId: localStorage.getItem('userId') || '302',
+        transactionId: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+      },
+      data: {
+        testSuiteId: suiteId,
+        testCaseOrder: orderedTestCaseIds.map((caseId, index) => ({
+          testCaseId: caseId,
+          executionOrder: index + 1
+        }))
+      }
+    };
+
+    // MOCK implementation (comment out when real API ready)
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({ 
+          success: true, 
+          message: 'Test case order updated successfully',
+          result: { code: 'SUCCESS' }
+        });
+      }, 500);
+    });
+    
+    // REAL API: Uncomment when backend is ready
+    // return api(`/api/v1/test-suites/${suiteId}/test-case-order`, 'PUT', requestBody);
+  },
 };
 
 // Test Package specific endpoints

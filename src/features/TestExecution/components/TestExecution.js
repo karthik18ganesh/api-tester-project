@@ -14,7 +14,7 @@ import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api, testExecution, environments } from '../../../utils/api';
+import { api, testExecution, environments, testSuites } from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
 import { useProjectStore } from '../../../stores/projectStore';
 import Button from '../../../components/common/Button';
@@ -28,6 +28,7 @@ import ExecutionConfigurationErrorModal from './ExecutionConfigurationErrorModal
 import ExecutionErrorNotification from './ExecutionErrorNotification';
 import ConfigurationErrorResultsView from './ConfigurationErrorResultsView';
 import '../styles/execution-error-styles.css'; // Optional enhanced styling
+import '../styles/execution-order-styles.css'; // Execution order management styles
 
 const ModernTestExecution = () => {
   const navigate = useNavigate();
@@ -55,6 +56,12 @@ const ModernTestExecution = () => {
   const [errorTestSuite, setErrorTestSuite] = useState(null);
   const [errorType, setErrorType] = useState(null);
   const [originalExecutionConfig, setOriginalExecutionConfig] = useState(null);
+
+  // Execution order management state
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [modifiedHierarchy, setModifiedHierarchy] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [currentEditingSuiteId, setCurrentEditingSuiteId] = useState(null);
 
   // Fetch the hierarchy from the API
   const fetchHierarchy = async () => {
@@ -99,11 +106,12 @@ const ModernTestExecution = () => {
             type: 'suite',
             name: suite.suiteName,
             suiteId: suite.id,
-            children: (suite.testCases || []).map((tc) => ({
+            children: (suite.testCases || []).map((tc, index) => ({
               id: `case-${tc.id}`,
               type: 'case',
               name: tc.caseName,
               caseId: tc.id,
+              executionOrder: tc.executionOrder || index + 1,
               children: [],
             })),
           })),
@@ -347,6 +355,20 @@ const ModernTestExecution = () => {
     fetchHierarchy();
     fetchEnvironments();
   }, [activeProject?.id]); // Re-fetch when active project changes
+
+  // Handle unsaved changes protection
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   const getBreadcrumbItems = () => {
     const items = [{ label: 'Test Execution' }];
@@ -619,6 +641,81 @@ const ModernTestExecution = () => {
 
   const handleRetry = () => {
     fetchHierarchy();
+  };
+
+  // Execution order management handlers
+  const handleEditOrder = (suiteId) => {
+    if (isEditingOrder && currentEditingSuiteId !== suiteId) {
+      toast.warning('Please save or cancel current changes before editing another suite');
+      return;
+    }
+
+    // Clone the hierarchy for editing
+    const clonedHierarchy = JSON.parse(JSON.stringify(testHierarchy));
+    setModifiedHierarchy(clonedHierarchy);
+    setIsEditingOrder(true);
+    setCurrentEditingSuiteId(suiteId);
+    setHasUnsavedChanges(false);
+  };
+
+  const handleSaveOrder = async () => {
+    if (!modifiedHierarchy || !currentEditingSuiteId) return;
+
+    try {
+      // Find the suite being edited
+      const suite = modifiedHierarchy.children
+        .flatMap(pkg => pkg.children)
+        .find(s => s.suiteId === currentEditingSuiteId);
+      
+      if (!suite) {
+        toast.error('Suite not found');
+        return;
+      }
+
+      // Extract ordered test case IDs
+      const orderedCaseIds = suite.children
+        .sort((a, b) => a.executionOrder - b.executionOrder)
+        .map(tc => tc.caseId);
+
+      // Call API to save order
+      await testSuites.updateTestCaseOrder(currentEditingSuiteId, orderedCaseIds);
+      
+      // Update the main hierarchy with modified data
+      setTestHierarchy(modifiedHierarchy);
+      setHasUnsavedChanges(false);
+      setIsEditingOrder(false);
+      setCurrentEditingSuiteId(null);
+      setModifiedHierarchy(null);
+      
+      toast.success('Test case execution order saved successfully!');
+    } catch (error) {
+      console.error('Error saving order:', error);
+      toast.error('Failed to save execution order. Please try again.');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingOrder(false);
+    setCurrentEditingSuiteId(null);
+    setModifiedHierarchy(null);
+    setHasUnsavedChanges(false);
+    toast.info('Changes discarded');
+  };
+
+  const handleOrderChange = (suiteId, updatedTestCases) => {
+    if (!modifiedHierarchy) return;
+
+    // Update the modified hierarchy with new order
+    const updatedHierarchy = JSON.parse(JSON.stringify(modifiedHierarchy));
+    const suite = updatedHierarchy.children
+      .flatMap(pkg => pkg.children)
+      .find(s => s.suiteId === suiteId);
+    
+    if (suite) {
+      suite.children = updatedTestCases;
+      setModifiedHierarchy(updatedHierarchy);
+      setHasUnsavedChanges(true);
+    }
   };
 
   // ERR-423 Error Handling Functions
@@ -1029,6 +1126,13 @@ const ModernTestExecution = () => {
               data={testHierarchy}
               onSelect={handleSelect}
               selectedId={selectedItem?.id}
+              isEditingOrder={isEditingOrder}
+              currentEditingSuiteId={currentEditingSuiteId}
+              onEditOrder={handleEditOrder}
+              onSaveOrder={handleSaveOrder}
+              onCancelEdit={handleCancelEdit}
+              onOrderChange={handleOrderChange}
+              hasUnsavedChanges={hasUnsavedChanges}
             />
           )}
         </div>
