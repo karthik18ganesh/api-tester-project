@@ -934,7 +934,7 @@ const ModernTestExecution = () => {
         executedBy: user?.username || 'current_user',
       };
 
-      const results = await bulkExecutionService.executeBulkTestCase(
+      const apiResp = await bulkExecutionService.executeBulkTestCase(
         selectedItem.id,
         bulkData,
         executionSettings,
@@ -944,69 +944,132 @@ const ModernTestExecution = () => {
         }
       );
 
-      // Store bulk results in session storage for Test Results module
+      // Store raw bulk results in session storage for Test Results module
       sessionStorage.setItem(
-        `bulk-execution-${results.executionId}`,
-        JSON.stringify(results)
+        `bulk-execution-${apiResp.executionId}`,
+        JSON.stringify(apiResp)
       );
 
-      // Transform bulk results to match the expected execution format
+      // Transform bulk results to match the existing ExecutionResultsCard format
+      const rowResults = apiResp.testCaseResults || apiResp.results || [];
+      const summary = apiResp.executionSummary || {};
+      const overallAssertions =
+        apiResp.overallAssertionSummary || summary.assertionSummary;
       const transformedExecution = {
-        id: results.executionId,
-        status: results.passed > results.failed ? 'PASSED' : 'FAILED',
-        executionStatus: results.passed > results.failed ? 'PASSED' : 'FAILED',
+        id: apiResp.executionId,
+        status: apiResp.overallStatus === 'PASSED' ? 'PASSED' : 'FAILED',
+        executionStatus:
+          apiResp.executionStatus ||
+          (apiResp.overallStatus === 'PASSED' ? 'PASSED' : 'FAILED'),
         executionType: 'BULK',
-        executedBy: results.executedBy,
-        executedAt: results.timestamp,
-        environment: results.environment,
-        totalTests: results.totalTests,
-        passedTests: results.passed,
-        failedTests: results.failed,
-        executionTime: results.totalDuration,
-        successRate: Math.round((results.passed / results.totalTests) * 100),
-        results: results.results.map((r) => ({
+        executedBy: apiResp.executedBy,
+        executedAt: apiResp.executionDate,
+        environment: apiResp.environmentName,
+        instanceId: apiResp.executionId, // Use executionId for instanceId
+        totalTests:
+          summary.totalTests ?? apiResp.totalTests ?? rowResults.length,
+        passedTests:
+          summary.passedTests ??
+          apiResp.passed ??
+          rowResults.filter((r) => r.executionStatus === 'PASSED').length,
+        failedTests:
+          summary.failedTests ??
+          apiResp.failed ??
+          rowResults.filter(
+            (r) =>
+              r.executionStatus === 'FAILED' || r.executionStatus === 'ERROR'
+          ).length,
+        executionTime: apiResp.totalDuration,
+        successRate:
+          summary.successRate ??
+          apiResp.successRate ??
+          (apiResp.totalTests
+            ? Math.round(((apiResp.passed || 0) / apiResp.totalTests) * 100)
+            : 0),
+        // Align with ExecutionResultsCard fields
+        passedCount:
+          summary.passedTests ??
+          apiResp.passed ??
+          rowResults.filter((r) => r.executionStatus === 'PASSED').length,
+        failedCount:
+          summary.failedTests ??
+          apiResp.failed ??
+          rowResults.filter(
+            (r) =>
+              r.executionStatus === 'FAILED' || r.executionStatus === 'ERROR'
+          ).length,
+        executedCount: summary.skippedTests ?? 0,
+        results: rowResults.map((r) => ({
           id: `tc-${r.rowId}`,
-          name: r.testName,
-          status: r.status,
-          duration: `${r.executionTime}ms`,
+          name: r.testCaseName || r.testName || r.rowId,
+          status:
+            r.executionStatus === 'PASSED'
+              ? 'Passed'
+              : r.executionStatus === 'SKIPPED'
+                ? 'Executed'
+                : 'Failed',
+          duration: `${r.executionTimeMs || 0}ms`,
           request: {
-            method: r.method,
+            method: r.httpMethod,
             url: r.url,
-            headers: {},
-            body: {},
+            headers: r.requestHeaders || {},
+            body: r.requestBody,
           },
           response: {
             status: r.statusCode,
-            data: r.response,
-            headers: {},
+            data: r.responseBody,
+            headers: r.responseHeaders || {},
           },
-          assertionResults: r.assertionResults || [],
+          assertionResults: (r.assertionResults || []).map((a) => ({
+            id: a.assertionId,
+            name: a.assertionName,
+            type: a.type,
+            status:
+              a.status === 'PASSED'
+                ? 'Passed'
+                : a.status === 'SKIPPED'
+                  ? 'Executed'
+                  : 'Failed',
+            actualValue: a.actualValue,
+            expectedValue: a.expectedValue,
+            executionTime: a.executionTime,
+            ...(a.errorMessage && { error: a.errorMessage }),
+          })),
           assertionSummary: r.assertionSummary || {
             total: 0,
             passed: 0,
             failed: 0,
+            skipped: 0,
           },
-          executionId: results.executionId,
-          testCaseId: r.rowId,
+          executionId: apiResp.executionId,
+          testCaseId: r.testCaseId || selectedItem.id,
           testSuiteId: null,
-          testSuiteName: 'Bulk Execution',
-          environment: results.environment,
+          testSuiteName: apiResp.testCaseName || 'Bulk Execution',
+          environment: apiResp.environmentName,
         })),
-        assertionSummary: {
-          total: results.results.reduce(
+        assertionSummary: overallAssertions || {
+          total: rowResults.reduce(
             (acc, r) => acc + (r.assertionSummary?.total || 0),
             0
           ),
-          passed: results.results.reduce(
+          passed: rowResults.reduce(
             (acc, r) => acc + (r.assertionSummary?.passed || 0),
             0
           ),
-          failed: results.results.reduce(
+          failed: rowResults.reduce(
             (acc, r) => acc + (r.assertionSummary?.failed || 0),
             0
           ),
-          skipped: 0,
-          successRate: Math.round((results.passed / results.totalTests) * 100),
+          skipped: rowResults.reduce(
+            (acc, r) => acc + (r.assertionSummary?.skipped || 0),
+            0
+          ),
+          successRate:
+            summary.successRate ??
+            apiResp.successRate ??
+            (apiResp.totalTests
+              ? Math.round(((apiResp.passed || 0) / apiResp.totalTests) * 100)
+              : 0),
         },
       };
 
@@ -1014,13 +1077,22 @@ const ModernTestExecution = () => {
       setExecutionResult(transformedExecution);
       setViewMode('execution');
 
+      if (apiResp.executionStatus === 'PARTIAL') {
+        toast.warning('Bulk execution completed partially');
+      }
+
       toast.success(
         <div>
-          <div className="font-medium">Bulk Execution Complete!</div>
+          <div className="font-medium">Bulk Execution Complete</div>
           <div className="text-sm mt-1">
-            {results.passed}/{results.totalTests} tests passed (
-            {((results.passed / results.totalTests) * 100).toFixed(0)}%)
+            {transformedExecution.passedTests}/{transformedExecution.totalTests}{' '}
+            tests passed ({transformedExecution.successRate}%)
           </div>
+          {apiResp.referenceId && (
+            <div className="text-xs text-gray-400 mt-1">
+              ref: {apiResp.referenceId}
+            </div>
+          )}
         </div>
       );
     } catch (error) {

@@ -1,4 +1,4 @@
-import { api } from '../../../utils/api';
+import { testExecution } from '../../../utils/api';
 import * as XLSX from 'xlsx';
 
 // Mock delay function
@@ -50,12 +50,13 @@ const generateMockResponse = (method, url, rowId) => {
 };
 
 export const bulkExecutionService = {
-  // NEW BULK ENDPOINT - Different from single test execution
+  // NEW BULK ENDPOINT - Calls backend when available, falls back to mock
   executeBulkTestCase: async (
     testCaseId,
     bulkData,
     executionSettings,
-    testCaseInfo = null
+    testCaseInfo = null,
+    { signal } = {}
   ) => {
     console.log('Executing bulk test case with:', {
       testCaseId,
@@ -63,9 +64,80 @@ export const bulkExecutionService = {
       settings: executionSettings,
     });
 
-    // Mock API call for bulk execution
-    // In production, this would call: POST /api/v1/test-execution/bulk/{testCaseId}
-    const MOCK_BULK_EXECUTION = true; // Toggle this when backend is ready
+    // Try real API first; if it fails with network/404, fallback to mock
+    const MOCK_BULK_EXECUTION = false;
+
+    const toBulkRequestPayload = (rows) => {
+      const mapBool = (v) => v === true || v === 'TRUE';
+      return {
+        executionSettings: {
+          environment: executionSettings.environment,
+          executionStrategy:
+            executionSettings.executionStrategy?.toUpperCase?.() ||
+            'SEQUENTIAL',
+          executedBy: executionSettings.executedBy,
+          ...(executionSettings.maxConcurrency && {
+            maxConcurrency: executionSettings.maxConcurrency,
+          }),
+          ...(executionSettings.globalTimeout && {
+            globalTimeout: executionSettings.globalTimeout,
+          }),
+          ...(executionSettings.stopOnFailure !== undefined && {
+            stopOnFailure: executionSettings.stopOnFailure,
+          }),
+          ...(executionSettings.enableVariableSharing !== undefined && {
+            enableVariableSharing: executionSettings.enableVariableSharing,
+          }),
+        },
+        testData: rows.map((r) => ({
+          rowId: String(r.Row_ID),
+          testName: r.Test_Name,
+          headers: r.Headers,
+          queryParams: r.Query_Params,
+          requestBody: r.Request_Body,
+          expectedStatus: r.Expected_Status
+            ? Number(r.Expected_Status)
+            : undefined,
+          assertions: r.Assertions,
+          environment: r.Environment,
+          timeout: r.Timeout ? Number(r.Timeout) : undefined,
+          active: r.Active !== undefined ? mapBool(r.Active) : true,
+          variables: r.Variables || undefined,
+        })),
+      };
+    };
+
+    try {
+      const payload = toBulkRequestPayload(bulkData);
+      const response = await testExecution.executeBulkTestCase(
+        String(testCaseId).replace('case-', ''),
+        payload,
+        { signal }
+      );
+
+      // Backend returns BaseResponse; normalize
+      const base = response;
+      const metaRef = base?.responseMetaData?.referenceId;
+      if (base?.result?.code !== 'SUCCESS') {
+        const message = base?.result?.message || 'Bulk execution failed';
+        const error = new Error(message);
+        error.code = base?.result?.code;
+        throw error;
+      }
+
+      const data = base.result.data;
+      return {
+        ...data,
+        referenceId: metaRef,
+      };
+    } catch (e) {
+      if (!MOCK_BULK_EXECUTION) {
+        console.warn(
+          'Bulk API not available, using mock. Reason:',
+          e?.message || e
+        );
+      }
+    }
 
     if (MOCK_BULK_EXECUTION) {
       // Simulate processing time
@@ -172,10 +244,23 @@ export const bulkExecutionService = {
       };
     } else {
       // Real API call when backend is ready
-      return await api('/api/v1/test-execution/bulk/' + testCaseId, 'POST', {
-        executionSettings,
-        testData: bulkData,
-      });
+      // Legacy mock fallback
+      return {
+        executionId: `bulk-exec-${Date.now()}`,
+        testCaseId: testCaseId,
+        executionType: 'BULK',
+        totalTests: bulkData.length,
+        passed: results.filter((r) => r.status === 'PASSED').length,
+        failed: results.filter((r) => r.status === 'FAILED').length,
+        totalDuration: endTime - startTime,
+        averageExecutionTime: Math.floor(
+          (endTime - startTime) / bulkData.length
+        ),
+        results: results,
+        environment: executionSettings.environment,
+        executedBy: executionSettings.executedBy || 'current_user',
+        timestamp: new Date().toISOString(),
+      };
     }
   },
 

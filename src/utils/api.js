@@ -354,6 +354,15 @@ export const testExecution = {
     return api(`/api/v1/test-execution/${executionId}`, 'GET');
   },
 
+  // Execute bulk test case
+  executeBulkTestCase: async (testCaseId, bulkRequestPayload) => {
+    return api(
+      `/api/v1/test-execution/bulk/${encodeURIComponent(testCaseId)}`,
+      'POST',
+      bulkRequestPayload
+    );
+  },
+
   // Get execution history/results
   getExecutionHistory: async (
     pageNo = 0,
