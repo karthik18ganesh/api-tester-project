@@ -1220,7 +1220,9 @@ const ModernTestExecution = () => {
                   : selectedItem?.type === 'suite'
                     ? 'Suite'
                     : selectedItem?.type === 'case'
-                      ? 'Test Case'
+                      ? bulkMode
+                        ? 'Test Case - Bulk'
+                        : 'Test Case'
                       : 'Selection'}
               </>
             )}
@@ -1248,7 +1250,6 @@ const ModernTestExecution = () => {
                 Bulk Execution Mode
               </span>
             </label>
-            <Badge className="bg-blue-100 text-blue-700 text-xs">Beta</Badge>
           </div>
 
           {bulkMode && (

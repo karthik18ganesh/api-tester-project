@@ -25,12 +25,15 @@ export const useThrottle = (value, limit) => {
   const lastRan = useRef(Date.now());
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      if (Date.now() - lastRan.current >= limit) {
-        setThrottledValue(value);
-        lastRan.current = Date.now();
-      }
-    }, limit - (Date.now() - lastRan.current));
+    const handler = setTimeout(
+      () => {
+        if (Date.now() - lastRan.current >= limit) {
+          setThrottledValue(value);
+          lastRan.current = Date.now();
+        }
+      },
+      limit - (Date.now() - lastRan.current)
+    );
 
     return () => {
       clearTimeout(handler);
@@ -96,15 +99,19 @@ export const useLocalStorage = (key, initialValue) => {
     }
   });
 
-  const setValue = useCallback((value) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.warn(`Error setting localStorage key "${key}":`, error);
-    }
-  }, [key, storedValue]);
+  const setValue = useCallback(
+    (value) => {
+      try {
+        const valueToStore =
+          value instanceof Function ? value(storedValue) : value;
+        setStoredValue(valueToStore);
+        window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      } catch (error) {
+        console.warn(`Error setting localStorage key "${key}":`, error);
+      }
+    },
+    [key, storedValue]
+  );
 
   return [storedValue, setValue];
 };
@@ -133,7 +140,7 @@ export const useAsyncOperation = () => {
 
 // Component performance measurement
 export const measurePerformance = (componentName) => {
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     return {
       start: () => performance.mark(`${componentName}-start`),
       end: () => {
@@ -143,7 +150,7 @@ export const measurePerformance = (componentName) => {
           `${componentName}-start`,
           `${componentName}-end`
         );
-      }
+      },
     };
   }
   return { start: () => {}, end: () => {} };
@@ -152,25 +159,25 @@ export const measurePerformance = (componentName) => {
 // Memory usage optimization for large lists
 export const useVirtualization = (items, itemHeight, containerHeight) => {
   const [scrollTop, setScrollTop] = useState(0);
-  
+
   const visibleItems = useMemo(() => {
     const startIndex = Math.floor(scrollTop / itemHeight);
     const endIndex = Math.min(
       startIndex + Math.ceil(containerHeight / itemHeight) + 1,
       items.length
     );
-    
+
     return items.slice(startIndex, endIndex).map((item, index) => ({
       ...item,
       index: startIndex + index,
-      top: (startIndex + index) * itemHeight
+      top: (startIndex + index) * itemHeight,
     }));
   }, [items, itemHeight, containerHeight, scrollTop]);
 
   return {
     visibleItems,
     totalHeight: items.length * itemHeight,
-    onScroll: (e) => setScrollTop(e.target.scrollTop)
+    onScroll: (e) => setScrollTop(e.target.scrollTop),
   };
 };
 
@@ -184,9 +191,9 @@ export const useWebVitals = (onMetric) => {
       if (onMetric) {
         onMetric(metric);
       }
-      
+
       // Log in development
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         console.log(`[Web Vitals] ${metric.name}:`, metric.value, metric);
       }
     };
@@ -212,7 +219,7 @@ export const usePerformanceProfiler = (id, metadata = {}) => {
     const renderDuration = currentTime - lastRenderTime.current;
     lastRenderTime.current = currentTime;
 
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log(`[Profiler] ${id}:`, {
         renderCount: renderCount.current,
         renderDuration: `${renderDuration.toFixed(2)}ms`,
@@ -230,16 +237,22 @@ export const usePerformanceProfiler = (id, metadata = {}) => {
 
 // Bundle size tracker (for development)
 export const trackBundleSize = () => {
-  if (process.env.NODE_ENV === 'development' && window.performance) {
+  if (import.meta.env.DEV && window.performance) {
     const navigation = performance.getEntriesByType('navigation')[0];
     const resources = performance.getEntriesByType('resource');
-    
-    const jsResources = resources.filter(r => r.name.includes('.js'));
-    const cssResources = resources.filter(r => r.name.includes('.css'));
-    
-    const totalJSSize = jsResources.reduce((acc, r) => acc + (r.transferSize || 0), 0);
-    const totalCSSSize = cssResources.reduce((acc, r) => acc + (r.transferSize || 0), 0);
-    
+
+    const jsResources = resources.filter((r) => r.name.includes('.js'));
+    const cssResources = resources.filter((r) => r.name.includes('.css'));
+
+    const totalJSSize = jsResources.reduce(
+      (acc, r) => acc + (r.transferSize || 0),
+      0
+    );
+    const totalCSSSize = cssResources.reduce(
+      (acc, r) => acc + (r.transferSize || 0),
+      0
+    );
+
     console.log('[Bundle Tracker]', {
       totalJSSize: `${(totalJSSize / 1024).toFixed(2)} KB`,
       totalCSSSize: `${(totalCSSSize / 1024).toFixed(2)} KB`,
@@ -287,7 +300,7 @@ export const useResourcePreloader = () => {
     link.href = href;
     link.as = as;
     link.crossOrigin = 'anonymous';
-    
+
     document.head.appendChild(link);
     preloadedResources.current.add(href);
   }, []);
@@ -298,7 +311,7 @@ export const useResourcePreloader = () => {
     const link = document.createElement('link');
     link.rel = 'prefetch';
     link.href = href;
-    
+
     document.head.appendChild(link);
     preloadedResources.current.add(href);
   }, []);
@@ -320,7 +333,11 @@ export const useFrameRate = () => {
       frameCount.current++;
 
       if (currentTime - lastTime.current >= 1000) {
-        setFps(Math.round((frameCount.current * 1000) / (currentTime - lastTime.current)));
+        setFps(
+          Math.round(
+            (frameCount.current * 1000) / (currentTime - lastTime.current)
+          )
+        );
         frameCount.current = 0;
         lastTime.current = currentTime;
       }
@@ -343,14 +360,16 @@ export const useFrameRate = () => {
 // Critical resource priority hints
 export const useResourceHints = () => {
   const addResourceHint = useCallback((href, rel, crossOrigin = false) => {
-    const existingHint = document.querySelector(`link[href="${href}"][rel="${rel}"]`);
+    const existingHint = document.querySelector(
+      `link[href="${href}"][rel="${rel}"]`
+    );
     if (existingHint) return;
 
     const link = document.createElement('link');
     link.rel = rel;
     link.href = href;
     if (crossOrigin) link.crossOrigin = 'anonymous';
-    
+
     document.head.appendChild(link);
   }, []);
 
@@ -368,29 +387,32 @@ export const useAdvancedIntersection = (options = {}) => {
   const observerRef = useRef();
   const elementsRef = useRef(new Map());
 
-  const observe = useCallback((element, callback) => {
-    if (!element) return;
+  const observe = useCallback(
+    (element, callback) => {
+      if (!element) return;
 
-    if (!observerRef.current) {
-      observerRef.current = new IntersectionObserver((entries) => {
-        setEntries(entries);
-        entries.forEach((entry) => {
-          const callback = elementsRef.current.get(entry.target);
-          if (callback) callback(entry);
-        });
-      }, options);
-    }
-
-    elementsRef.current.set(element, callback);
-    observerRef.current.observe(element);
-
-    return () => {
-      if (observerRef.current && element) {
-        observerRef.current.unobserve(element);
-        elementsRef.current.delete(element);
+      if (!observerRef.current) {
+        observerRef.current = new IntersectionObserver((entries) => {
+          setEntries(entries);
+          entries.forEach((entry) => {
+            const callback = elementsRef.current.get(entry.target);
+            if (callback) callback(entry);
+          });
+        }, options);
       }
-    };
-  }, [options]);
+
+      elementsRef.current.set(element, callback);
+      observerRef.current.observe(element);
+
+      return () => {
+        if (observerRef.current && element) {
+          observerRef.current.unobserve(element);
+          elementsRef.current.delete(element);
+        }
+      };
+    },
+    [options]
+  );
 
   const disconnect = useCallback(() => {
     if (observerRef.current) {
@@ -404,4 +426,4 @@ export const useAdvancedIntersection = (options = {}) => {
   }, [disconnect]);
 
   return { observe, entries, disconnect };
-}; 
+};

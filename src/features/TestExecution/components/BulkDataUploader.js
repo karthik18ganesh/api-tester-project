@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FiUpload,
   FiFile,
@@ -6,10 +6,13 @@ import {
   FiCheck,
   FiAlertCircle,
   FiLayers,
+  FiGlobe,
+  FiZap,
 } from 'react-icons/fi';
 import { FaFileExcel } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
+import { api } from '../../../utils/api';
 
 const BulkDataUploader = ({
   onFileUpload,
@@ -22,6 +25,59 @@ const BulkDataUploader = ({
   const [validationResults, setValidationResults] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
+  const [apiDetails, setApiDetails] = useState(null);
+  const [loadingApiDetails, setLoadingApiDetails] = useState(false);
+
+  // Fetch test case details to get API method and URL directly
+  useEffect(() => {
+    const fetchApiDetails = async () => {
+      if (!testCaseId) {
+        return;
+      }
+
+      setLoadingApiDetails(true);
+      try {
+        // Remove "case-" prefix from testCaseId if present
+        const cleanTestCaseId = testCaseId.replace('case-', '');
+        console.log(
+          'Original testCaseId:',
+          testCaseId,
+          'Clean testCaseId:',
+          cleanTestCaseId
+        );
+
+        // Fetch test case details which already contains API information
+        const testCaseResponse = await api(
+          `/api/v1/test-cases/${cleanTestCaseId}`
+        );
+
+        if (testCaseResponse.result?.data) {
+          const testCaseData = testCaseResponse.result.data;
+          console.log('Test case data:', testCaseData);
+
+          // Extract API details directly from test case response
+          const extractedApiDetails = {
+            method: testCaseData.apiType || testCaseData.api?.method,
+            url: testCaseData.url || testCaseData.api?.url,
+            apiRepoName: testCaseData.apiName || testCaseData.api?.apiRepoName,
+            apiId: testCaseData.api?.apiId,
+          };
+          console.log('Extracted API details:', extractedApiDetails);
+          setApiDetails(extractedApiDetails);
+        } else {
+          console.warn('No test case data found');
+          toast.error('Failed to load test case details');
+        }
+      } catch (error) {
+        console.error('Failed to fetch test case details:', error);
+        toast.error('Failed to load test case details');
+      } finally {
+        setLoadingApiDetails(false);
+      }
+    };
+
+    fetchApiDetails();
+  }, [testCaseId]);
 
   const validateExcelStructure = (workbook) => {
     const requiredColumns = ['Row_ID', 'Active'];
@@ -32,11 +88,8 @@ const BulkDataUploader = ({
       'Request_Body',
       'Expected_Status',
       'Assertions',
-      'Variables_Extract',
       'Environment',
       'Timeout',
-      'Retry_Count',
-      'Delay_After',
     ];
 
     const sheetName = workbook.SheetNames[0];
@@ -78,23 +131,23 @@ const BulkDataUploader = ({
       }
 
       // Validate JSON fields
-      [
-        'Headers',
-        'Query_Params',
-        'Request_Body',
-        'Assertions',
-        'Variables_Extract',
-      ].forEach((field) => {
-        if (row[field] && typeof row[field] === 'string' && row[field].trim()) {
-          try {
-            JSON.parse(row[field]);
-          } catch (e) {
-            errors.push(
-              `Row ${rowNum} (ID: ${row.Row_ID}): Invalid JSON in ${field}`
-            );
+      ['Headers', 'Query_Params', 'Request_Body', 'Assertions'].forEach(
+        (field) => {
+          if (
+            row[field] &&
+            typeof row[field] === 'string' &&
+            row[field].trim()
+          ) {
+            try {
+              JSON.parse(row[field]);
+            } catch (e) {
+              errors.push(
+                `Row ${rowNum} (ID: ${row.Row_ID}): Invalid JSON in ${field}`
+              );
+            }
           }
         }
-      });
+      );
 
       // Note: URL and Method are not validated as they come from the test case
 
@@ -256,24 +309,104 @@ const BulkDataUploader = ({
             )}
 
             {validationResults && !validating && (
-              <div className="mt-3">
+              <div className="mt-4">
                 {validationResults.valid ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-start gap-2">
-                      <FiCheck className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                      <div className="text-sm">
-                        <div className="font-medium text-green-800">
-                          Validation Successful
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                          <FiCheck className="h-5 w-5 text-green-600" />
                         </div>
-                        <div className="text-green-700 mt-1">
-                          <div>
-                            • Total data rows: {validationResults.totalRows}
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-lg font-semibold text-green-800 mb-3">
+                          ✅ Validation Successful
+                        </div>
+
+                        {/* Test Summary */}
+                        <div className="bg-white/60 rounded-lg p-3 mb-3">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            Test Summary
                           </div>
-                          <div>
-                            • Active data sets to test:{' '}
-                            {validationResults.activeRows}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              <span className="text-gray-600">Total Rows:</span>
+                              <span className="font-semibold text-gray-800">
+                                {validationResults.totalRows}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-gray-600">
+                                Active Tests:
+                              </span>
+                              <span className="font-semibold text-gray-800">
+                                {validationResults.activeRows}
+                              </span>
+                            </div>
                           </div>
-                          <div>• Test Case: {testCaseName}</div>
+                        </div>
+
+                        {/* Test Case Info */}
+                        <div className="bg-white/60 rounded-lg p-3 mb-3">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            Test Case
+                          </div>
+                          <div className="text-sm text-gray-800 font-medium">
+                            {testCaseName}
+                          </div>
+                        </div>
+
+                        {/* API Details */}
+                        <div className="bg-white/60 rounded-lg p-3">
+                          <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <FiGlobe className="h-4 w-4" />
+                            API Details
+                            {loadingApiDetails && (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                            )}
+                          </div>
+                          {loadingApiDetails ? (
+                            <div className="text-sm text-gray-500">
+                              Loading API details...
+                            </div>
+                          ) : apiDetails ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <FiZap className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm text-gray-600">
+                                  Method:
+                                </span>
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-mono rounded-md">
+                                  {apiDetails.method || 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <FiGlobe className="h-4 w-4 text-green-500 mt-0.5" />
+                                <span className="text-sm text-gray-600">
+                                  URL:
+                                </span>
+                                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-mono rounded-md break-all">
+                                  {apiDetails.url || 'N/A'}
+                                </span>
+                              </div>
+                              {apiDetails.apiRepoName && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-gray-600">
+                                    API Name:
+                                  </span>
+                                  <span className="text-sm text-gray-800 font-medium">
+                                    {apiDetails.apiRepoName}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">
+                              API details not available
+                            </div>
+                          )}
                         </div>
                         {validationResults.warnings.length > 0 && (
                           <div className="mt-2 text-yellow-700">

@@ -4,7 +4,7 @@ import { useWebVitals } from '../../utils/performance';
 
 // Error fallback component
 const ErrorFallback = ({ error, resetErrorBoundary, errorInfo }) => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isDevelopment = import.meta.env.DEV;
 
   return (
     <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
@@ -34,9 +34,10 @@ const ErrorFallback = ({ error, resetErrorBoundary, errorInfo }) => {
 
         <div className="mb-4">
           <p className="text-sm text-red-700">
-            We apologize for the inconvenience. The application encountered an unexpected error.
+            We apologize for the inconvenience. The application encountered an
+            unexpected error.
           </p>
-          
+
           {isDevelopment && (
             <details className="mt-4">
               <summary className="cursor-pointer text-sm font-medium text-red-800 hover:text-red-600">
@@ -47,7 +48,8 @@ const ErrorFallback = ({ error, resetErrorBoundary, errorInfo }) => {
                   {error.message}
                   {'\n\n'}
                   {error.stack}
-                  {errorInfo && '\n\nComponent Stack:\n' + errorInfo.componentStack}
+                  {errorInfo &&
+                    '\n\nComponent Stack:\n' + errorInfo.componentStack}
                 </pre>
               </div>
             </details>
@@ -93,13 +95,13 @@ const logError = (error, errorInfo, errorId) => {
   };
 
   // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     console.error('[Error Boundary]', errorData);
   }
 
   // Send to error reporting service in production
-  if (process.env.NODE_ENV === 'production' && process.env.REACT_APP_ERROR_REPORTING_URL) {
-    fetch(process.env.REACT_APP_ERROR_REPORTING_URL, {
+  if (import.meta.env.PROD && import.meta.env.VITE_ERROR_REPORTING_URL) {
+    fetch(import.meta.env.VITE_ERROR_REPORTING_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -112,20 +114,24 @@ const logError = (error, errorInfo, errorId) => {
 };
 
 // Main Error Boundary component
-export const ErrorBoundary = ({ children, fallback: CustomFallback, onError }) => {
+export const ErrorBoundary = ({
+  children,
+  fallback: CustomFallback,
+  onError,
+}) => {
   // Monitor Web Vitals on error
   useWebVitals((metric) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('[Web Vitals in Error Boundary]', metric);
     }
   });
 
   const handleError = (error, errorInfo) => {
     const errorId = Date.now().toString(36);
-    
+
     // Log the error
     logError(error, errorInfo, errorId);
-    
+
     // Call custom error handler if provided
     if (onError) {
       onError(error, errorInfo, errorId);
@@ -154,7 +160,11 @@ export const APIErrorBoundary = ({ children }) => {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 m-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="h-5 w-5 text-red-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -167,7 +177,9 @@ export const APIErrorBoundary = ({ children }) => {
                 API Component Error
               </h3>
               <div className="mt-2 text-sm text-red-700">
-                <p>There was an error loading the API data. Please try again.</p>
+                <p>
+                  There was an error loading the API data. Please try again.
+                </p>
               </div>
               <div className="mt-4">
                 <button
@@ -194,7 +206,11 @@ export const TestExecutionErrorBoundary = ({ children }) => {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 m-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                className="h-5 w-5 text-yellow-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -207,7 +223,10 @@ export const TestExecutionErrorBoundary = ({ children }) => {
                 Test Execution Error
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
-                <p>There was an error during test execution. The test may be incomplete.</p>
+                <p>
+                  There was an error during test execution. The test may be
+                  incomplete.
+                </p>
               </div>
               <div className="mt-4">
                 <button
@@ -227,4 +246,4 @@ export const TestExecutionErrorBoundary = ({ children }) => {
   );
 };
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

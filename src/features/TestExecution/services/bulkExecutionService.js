@@ -73,8 +73,6 @@ export const bulkExecutionService = {
 
       const results = [];
       const startTime = Date.now();
-      const extractedVariables = {};
-
       for (let i = 0; i < bulkData.length; i++) {
         const dataRow = bulkData[i];
 
@@ -87,33 +85,12 @@ export const bulkExecutionService = {
             testCaseInfo?.url || 'https://api.example.com/test-case-endpoint';
           const testCaseMethod = testCaseInfo?.method || 'POST';
 
-          // Replace variables in URL
-          let processedUrl = testCaseUrl;
-          Object.keys(extractedVariables).forEach((varName) => {
-            processedUrl = processedUrl.replace(
-              `{{${varName}}}`,
-              extractedVariables[varName]
-            );
-          });
-
           // Generate mock response
           const mockResponse = generateMockResponse(
             testCaseMethod,
-            processedUrl,
+            testCaseUrl,
             dataRow.Row_ID
           );
-
-          // Extract variables if specified
-          if (dataRow.Variables_Extract) {
-            try {
-              const varsToExtract = JSON.parse(dataRow.Variables_Extract);
-              Object.keys(varsToExtract).forEach((varName) => {
-                extractedVariables[varName] = `mock-value-${dataRow.Row_ID}`;
-              });
-            } catch (e) {
-              console.error('Error parsing Variables_Extract:', e);
-            }
-          }
 
           // Simulate assertion execution
           let assertionResults = [];
@@ -157,11 +134,6 @@ export const bulkExecutionService = {
             },
             timestamp: new Date().toISOString(),
           });
-
-          // Apply delay if specified
-          if (dataRow.Delay_After) {
-            await delay(parseInt(dataRow.Delay_After));
-          }
         } catch (error) {
           results.push({
             rowId: dataRow.Row_ID,
@@ -222,11 +194,8 @@ export const bulkExecutionService = {
         Expected_Status: 200,
         Assertions:
           '[{"type": "status", "expected": 200}, {"type": "response_contains", "field": "data.name", "expected": "John Doe"}]',
-        Variables_Extract: '{"userId": "data.id", "userName": "data.name"}',
         Environment: 'DEV',
         Timeout: 5000,
-        Retry_Count: 0,
-        Delay_After: 0,
         Active: 'TRUE',
       },
       {
@@ -240,11 +209,8 @@ export const bulkExecutionService = {
         Expected_Status: 400,
         Assertions:
           '[{"type": "status", "expected": 400}, {"type": "response_contains", "field": "error.message", "expected": "Invalid email format"}]',
-        Variables_Extract: '',
         Environment: 'DEV',
         Timeout: 5000,
-        Retry_Count: 0,
-        Delay_After: 0,
         Active: 'TRUE',
       },
       {
@@ -257,11 +223,8 @@ export const bulkExecutionService = {
         Expected_Status: 400,
         Assertions:
           '[{"type": "status", "expected": 400}, {"type": "response_contains", "field": "error.message", "expected": "Name is required"}]',
-        Variables_Extract: '',
         Environment: 'DEV',
         Timeout: 5000,
-        Retry_Count: 0,
-        Delay_After: 0,
         Active: 'TRUE',
       },
     ];

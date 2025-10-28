@@ -4,12 +4,12 @@ import { queryKeys, invalidateQueries } from '../providers/QueryProvider';
 import { toast } from 'react-toastify';
 
 // Use the same API configuration as the rest of your app
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 // Generic fetch function that matches your existing API utility
 const fetchData = async (url, options = {}) => {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  
+
   const response = await fetch(fullUrl, {
     headers: {
       'Content-Type': 'application/json',
@@ -27,11 +27,19 @@ const fetchData = async (url, options = {}) => {
 
 // API Repository Hooks - Updated to match your actual API endpoints
 export const useAPIRepository = (filters = {}) => {
-  const { pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC" } = filters;
-  
+  const {
+    pageNo = 0,
+    limit = 10,
+    sortBy = 'createdDate',
+    sortDir = 'DESC',
+  } = filters;
+
   return useQuery({
     queryKey: queryKeys.apiRepository.list(filters),
-    queryFn: () => fetchData(`/api/v1/apirepos?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`),
+    queryFn: () =>
+      fetchData(
+        `/api/v1/apirepos?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`
+      ),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
@@ -47,32 +55,40 @@ export const useAPIRepositoryItem = (id) => {
 
 export const useCreateAPIRepositoryItem = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (newItem) => fetchData('/repository', {
-      method: 'POST',
-      body: JSON.stringify(newItem),
-    }),
+    mutationFn: (newItem) =>
+      fetchData('/repository', {
+        method: 'POST',
+        body: JSON.stringify(newItem),
+      }),
     onMutate: async (newItem) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.apiRepository.all });
-      
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.apiRepository.all,
+      });
+
       // Snapshot the previous value
-      const previousItems = queryClient.getQueryData(queryKeys.apiRepository.lists());
-      
+      const previousItems = queryClient.getQueryData(
+        queryKeys.apiRepository.lists()
+      );
+
       // Optimistically update to the new value
       if (previousItems) {
         queryClient.setQueryData(queryKeys.apiRepository.lists(), (old) => [
           ...old,
-          { ...newItem, id: Date.now(), _isOptimistic: true }
+          { ...newItem, id: Date.now(), _isOptimistic: true },
         ]);
       }
-      
+
       return { previousItems };
     },
     onError: (err, newItem, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
-      queryClient.setQueryData(queryKeys.apiRepository.lists(), context.previousItems);
+      queryClient.setQueryData(
+        queryKeys.apiRepository.lists(),
+        context.previousItems
+      );
       toast.error('Failed to create API item');
     },
     onSuccess: () => {
@@ -87,34 +103,44 @@ export const useCreateAPIRepositoryItem = () => {
 
 export const useUpdateAPIRepositoryItem = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, ...updateData }) => fetchData(`/repository/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updateData),
-    }),
+    mutationFn: ({ id, ...updateData }) =>
+      fetchData(`/repository/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      }),
     onMutate: async ({ id, ...updateData }) => {
-      await queryClient.cancelQueries({ queryKey: queryKeys.apiRepository.detail(id) });
-      
-      const previousItem = queryClient.getQueryData(queryKeys.apiRepository.detail(id));
-      
+      await queryClient.cancelQueries({
+        queryKey: queryKeys.apiRepository.detail(id),
+      });
+
+      const previousItem = queryClient.getQueryData(
+        queryKeys.apiRepository.detail(id)
+      );
+
       queryClient.setQueryData(queryKeys.apiRepository.detail(id), (old) => ({
         ...old,
         ...updateData,
-        _isOptimistic: true
+        _isOptimistic: true,
       }));
-      
+
       return { previousItem, id };
     },
     onError: (err, variables, context) => {
-      queryClient.setQueryData(queryKeys.apiRepository.detail(context.id), context.previousItem);
+      queryClient.setQueryData(
+        queryKeys.apiRepository.detail(context.id),
+        context.previousItem
+      );
       toast.error('Failed to update API item');
     },
     onSuccess: () => {
       toast.success('API item updated successfully');
     },
     onSettled: (data, error, { id }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.apiRepository.detail(id) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.apiRepository.detail(id),
+      });
       invalidateQueries.apiRepository(queryClient);
     },
   });
@@ -122,11 +148,19 @@ export const useUpdateAPIRepositoryItem = () => {
 
 // Test Cases Hooks - Updated to match your actual API endpoints
 export const useTestCases = (filters = {}) => {
-  const { pageNo = 0, limit = 10, sortBy = "createdDate", sortDir = "DESC" } = filters;
-  
+  const {
+    pageNo = 0,
+    limit = 10,
+    sortBy = 'createdDate',
+    sortDir = 'DESC',
+  } = filters;
+
   return useQuery({
     queryKey: queryKeys.testCases.list(filters),
-    queryFn: () => fetchData(`/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`),
+    queryFn: () =>
+      fetchData(
+        `/api/v1/test-cases?pageNo=${pageNo}&limit=${limit}&sortBy=${sortBy}&sortDir=${sortDir}`
+      ),
     staleTime: 3 * 60 * 1000, // 3 minutes
   });
 };
@@ -142,12 +176,13 @@ export const useTestCase = (id) => {
 
 export const useCreateTestCase = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (newTestCase) => fetchData('/test-cases', {
-      method: 'POST',
-      body: JSON.stringify(newTestCase),
-    }),
+    mutationFn: (newTestCase) =>
+      fetchData('/test-cases', {
+        method: 'POST',
+        body: JSON.stringify(newTestCase),
+      }),
     onSuccess: () => {
       invalidateQueries.testCases(queryClient);
       toast.success('Test case created successfully');
@@ -160,12 +195,13 @@ export const useCreateTestCase = () => {
 
 export const useExecuteTestCase = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ testCaseId, environment }) => fetchData('/test-execution/execute', {
-      method: 'POST',
-      body: JSON.stringify({ testCaseId, environment }),
-    }),
+    mutationFn: ({ testCaseId, environment }) =>
+      fetchData('/test-execution/execute', {
+        method: 'POST',
+        body: JSON.stringify({ testCaseId, environment }),
+      }),
     onSuccess: (data) => {
       // Invalidate test execution results
       invalidateQueries.testExecution(queryClient);
@@ -227,7 +263,7 @@ export const useEnvironments = () => {
 // Prefetching utilities
 export const usePrefetchTestCase = () => {
   const queryClient = useQueryClient();
-  
+
   return (id) => {
     queryClient.prefetchQuery({
       queryKey: queryKeys.testCases.detail(id),
@@ -240,7 +276,7 @@ export const usePrefetchTestCase = () => {
 // Background sync for offline capability
 export const useBackgroundSync = () => {
   const queryClient = useQueryClient();
-  
+
   return {
     syncAll: () => {
       // Refetch all queries when coming back online
@@ -256,15 +292,17 @@ export const useBackgroundSync = () => {
 // Real-time updates using Server-Sent Events
 export const useRealTimeTestExecution = (testExecutionId) => {
   const queryClient = useQueryClient();
-  
+
   useEffect(() => {
     if (!testExecutionId) return;
-    
-    const eventSource = new EventSource(`${API_BASE_URL}/test-execution/${testExecutionId}/stream`);
-    
+
+    const eventSource = new EventSource(
+      `${API_BASE_URL}/test-execution/${testExecutionId}/stream`
+    );
+
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
-      
+
       // Update the specific test execution result
       queryClient.setQueryData(
         queryKeys.testExecution.result(testExecutionId),
@@ -275,13 +313,13 @@ export const useRealTimeTestExecution = (testExecutionId) => {
         })
       );
     };
-    
+
     eventSource.onerror = () => {
       eventSource.close();
     };
-    
+
     return () => {
       eventSource.close();
     };
   }, [testExecutionId, queryClient]);
-}; 
+};

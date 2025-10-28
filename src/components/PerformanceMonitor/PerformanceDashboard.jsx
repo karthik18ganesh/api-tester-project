@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  useWebVitals, 
-  useMemoryMonitor, 
-  useFrameRate, 
+import {
+  useWebVitals,
+  useMemoryMonitor,
+  useFrameRate,
   usePerformanceProfiler,
-  trackBundleSize 
+  trackBundleSize,
 } from '../../utils/performance';
 
 // Performance metric card component
 const MetricCard = ({ title, value, unit, status, description, icon }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'excellent': return 'text-green-600 bg-green-50 border-green-200';
-      case 'good': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'needs-improvement': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'poor': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'excellent':
+        return 'text-green-600 bg-green-50 border-green-200';
+      case 'good':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'needs-improvement':
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'poor':
+        return 'text-red-600 bg-red-50 border-red-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
@@ -29,9 +34,7 @@ const MetricCard = ({ title, value, unit, status, description, icon }) => {
         <span className="text-2xl font-bold">{value}</span>
         <span className="text-sm opacity-75">{unit}</span>
       </div>
-      {description && (
-        <p className="text-xs mt-1 opacity-75">{description}</p>
-      )}
+      {description && <p className="text-xs mt-1 opacity-75">{description}</p>}
     </div>
   );
 };
@@ -41,9 +44,9 @@ const WebVitalsMonitor = () => {
   const [metrics, setMetrics] = useState({});
 
   useWebVitals((metric) => {
-    setMetrics(prev => ({
+    setMetrics((prev) => ({
       ...prev,
-      [metric.name]: metric
+      [metric.name]: metric,
     }));
   });
 
@@ -53,7 +56,7 @@ const WebVitalsMonitor = () => {
       FID: { good: 100, poor: 300 },
       CLS: { good: 0.1, poor: 0.25 },
       FCP: { good: 1800, poor: 3000 },
-      TTFB: { good: 800, poor: 1800 }
+      TTFB: { good: 800, poor: 1800 },
     };
 
     const threshold = thresholds[name];
@@ -122,7 +125,10 @@ const MemoryMonitor = () => {
         title="Used Memory"
         value={formatBytes(memoryInfo.usedJSHeapSize)}
         unit="MB"
-        status={getMemoryStatus(memoryInfo.usedJSHeapSize, memoryInfo.totalJSHeapSize)}
+        status={getMemoryStatus(
+          memoryInfo.usedJSHeapSize,
+          memoryInfo.totalJSHeapSize
+        )}
         description="JavaScript heap memory in use"
         icon="🧠"
       />
@@ -175,14 +181,14 @@ const BundleSizeTracker = () => {
 
   useEffect(() => {
     // Track bundle size on component mount
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       setTimeout(() => {
         trackBundleSize();
         // You could also capture and display this data
         setBundleInfo({
           jsSize: '245 KB',
           cssSize: '32 KB',
-          loadTime: '1.2s'
+          loadTime: '1.2s',
         });
       }, 1000);
     }
@@ -229,7 +235,7 @@ const BundleSizeTracker = () => {
 // Component performance profiler
 const ComponentProfiler = ({ componentName = 'PerformanceDashboard' }) => {
   const { renderCount, totalTime } = usePerformanceProfiler(componentName, {
-    feature: 'performance-monitoring'
+    feature: 'performance-monitoring',
   });
 
   return (
@@ -270,7 +276,9 @@ export const PerformanceDashboard = ({ isVisible = false }) => {
   return (
     <div className="fixed bottom-4 right-4 w-96 max-h-96 bg-white rounded-lg shadow-lg border border-gray-200 z-90">
       <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Performance Monitor</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          Performance Monitor
+        </h2>
         <div className="flex space-x-1 mt-2">
           {tabs.map((tab) => (
             <button
@@ -306,7 +314,7 @@ export const PerformanceDashboard = ({ isVisible = false }) => {
 
 // Performance toggle button
 export const PerformanceToggle = ({ onToggle, isVisible }) => {
-  if (process.env.NODE_ENV !== 'development') return null;
+  if (import.meta.env.PROD) return null;
 
   return (
     <button
@@ -323,4 +331,4 @@ export const PerformanceToggle = ({ onToggle, isVisible }) => {
   );
 };
 
-export default PerformanceDashboard; 
+export default PerformanceDashboard;
