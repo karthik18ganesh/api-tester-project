@@ -543,22 +543,22 @@ export const testSuites = {
         testSuiteId: suiteId,
         testCaseOrder: orderedTestCaseIds.map((caseId, index) => ({
           testCaseId: caseId,
-          executionOrder: index + 1
-        }))
-      }
+          executionOrder: index + 1,
+        })),
+      },
     };
 
     // MOCK implementation (comment out when real API ready)
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve({ 
-          success: true, 
+        resolve({
+          success: true,
           message: 'Test case order updated successfully',
-          result: { code: 'SUCCESS' }
+          result: { code: 'SUCCESS' },
         });
       }, 500);
     });
-    
+
     // REAL API: Uncomment when backend is ready
     // return api(`/api/v1/test-suites/${suiteId}/test-case-order`, 'PUT', requestBody);
   },
@@ -655,6 +655,11 @@ export const testPackages = {
   // Get package hierarchy for test execution
   getHierarchy: async () => {
     return api('/api/v1/packages/hierarchy', 'GET');
+  },
+
+  // Save package hierarchy after drag and drop reordering
+  saveHierarchy: async (hierarchyData) => {
+    return api('/api/v1/packages/hierarchy/save', 'POST', hierarchyData);
   },
 };
 

@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import { FaCheck, FaTimes, FaChevronLeft, FaUserCircle, FaClock, FaServer, FaCalendarAlt, FaFileAlt, FaDownload, FaShare, FaBullseye } from 'react-icons/fa';
+import {
+  FaCheck,
+  FaTimes,
+  FaChevronLeft,
+  FaUserCircle,
+  FaClock,
+  FaServer,
+  FaCalendarAlt,
+  FaFileAlt,
+  FaDownload,
+  FaShare,
+  FaBullseye,
+} from 'react-icons/fa';
+import { FiLayers } from 'react-icons/fi';
 import AssertionSummaryCard from './AssertionSummaryCard';
 import AssertionResultsList from './AssertionResultsList';
+import Badge from '../../../components/UI/Badge';
 
 // Status Badge component
 const StatusBadge = ({ status }) => {
@@ -23,12 +37,15 @@ const StatusBadge = ({ status }) => {
   };
 
   const displayText = getDisplayText(status);
-  
+
   return (
-    <span 
+    <span
       className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium shadow-sm ${getStatusStyling(status)}`}
     >
-      {(status === 'PASSED' || status === 'Passed' || status === 'EXECUTED' || status === 'Executed') ? (
+      {status === 'PASSED' ||
+      status === 'Passed' ||
+      status === 'EXECUTED' ||
+      status === 'Executed' ? (
         <FaCheck className="mr-1" />
       ) : (
         <FaTimes className="mr-1" />
@@ -40,7 +57,16 @@ const StatusBadge = ({ status }) => {
 
 const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  
+
+  // Bulk execution detection
+  const isBulkExecution = (execution) => {
+    return (
+      execution.executionType === 'BULK' ||
+      (execution.executionId &&
+        String(execution.executionId).startsWith('bulk-'))
+    );
+  };
+
   // Debug: Log the execution data to see what we're receiving
   console.log('ExecutionDetailsView received execution data:', execution);
 
@@ -51,8 +77,8 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
     } else {
       // Fallback navigation using URL manipulation
       window.history.pushState(
-        null, 
-        '', 
+        null,
+        '',
         `/test-execution/results/${execution.id}/${testCaseId}`
       );
       // Trigger a page reload to show the test case details
@@ -64,7 +90,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
     return (
       <div className="p-6 text-center">
         <div className="text-gray-500 p-10">Execution details not found</div>
-        <button 
+        <button
           onClick={onBack}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
         >
@@ -76,34 +102,57 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
 
   // Calculate summary statistics including "Executed" status for test cases with no assertions
   const totalTests = execution.results.length;
-  const passedTests = execution.results.filter(r => r.status === 'Passed').length;
-  const executedTests = execution.results.filter(r => r.status === 'Executed').length;
-  const failedTests = execution.results.filter(r => r.status === 'Failed').length;
+  const passedTests = execution.results.filter(
+    (r) => r.status === 'Passed'
+  ).length;
+  const executedTests = execution.results.filter(
+    (r) => r.status === 'Executed'
+  ).length;
+  const failedTests = execution.results.filter(
+    (r) => r.status === 'Failed'
+  ).length;
   const successfulTests = passedTests + executedTests; // Both passed and executed are successful
-  const successRate = totalTests ? Math.round((successfulTests / totalTests) * 100) : 0;
+  const successRate = totalTests
+    ? Math.round((successfulTests / totalTests) * 100)
+    : 0;
 
   // Calculate assertion summary
-  const assertionSummary = execution.assertionSummary || 
-    (execution.results && execution.results.length > 0 ? {
-      total: execution.results.reduce((sum, result) => sum + (result.assertionSummary?.total || 0), 0),
-      passed: execution.results.reduce((sum, result) => sum + (result.assertionSummary?.passed || 0), 0),
-      failed: execution.results.reduce((sum, result) => sum + (result.assertionSummary?.failed || 0), 0),
-      skipped: execution.results.reduce((sum, result) => sum + (result.assertionSummary?.skipped || 0), 0)
-    } : null);
+  const assertionSummary =
+    execution.assertionSummary ||
+    (execution.results && execution.results.length > 0
+      ? {
+          total: execution.results.reduce(
+            (sum, result) => sum + (result.assertionSummary?.total || 0),
+            0
+          ),
+          passed: execution.results.reduce(
+            (sum, result) => sum + (result.assertionSummary?.passed || 0),
+            0
+          ),
+          failed: execution.results.reduce(
+            (sum, result) => sum + (result.assertionSummary?.failed || 0),
+            0
+          ),
+          skipped: execution.results.reduce(
+            (sum, result) => sum + (result.assertionSummary?.skipped || 0),
+            0
+          ),
+        }
+      : null);
 
   // Collect all assertion results
-  const allAssertionResults = execution.results.flatMap(result => 
-    (result.assertionResults || []).map(assertion => ({
+  const allAssertionResults = execution.results.flatMap((result) =>
+    (result.assertionResults || []).map((assertion) => ({
       ...assertion,
       testCaseId: result.id,
-      testCaseName: result.name
+      testCaseName: result.name,
     }))
   );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex items-center mb-6">
-        <button 
+        <button
           onClick={onBack}
           className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
         >
@@ -111,10 +160,25 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
           Back to Results
         </button>
       </div>
-      
+
+      {/* Bulk Execution Banner */}
+      {isBulkExecution(execution) && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-2 text-blue-700">
+            <FiLayers className="h-5 w-5" />
+            <span className="font-medium">Bulk Execution</span>
+            <span className="text-sm text-blue-600">
+              {execution.totalTests} test iterations from Excel upload
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Execution Details</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">
+            Execution Details
+          </h1>
           <p className="text-gray-600">Execution ID: {execution.id}</p>
         </div>
         <div className="flex gap-2">
@@ -126,10 +190,12 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
             <FaShare className="text-gray-500" size={14} />
             Share
           </button>
-          <StatusBadge status={execution.executionStatus || execution.status || 'FAILED'} />
+          <StatusBadge
+            status={execution.executionStatus || execution.status || 'FAILED'}
+          />
         </div>
       </div>
-      
+
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 mb-6">
         <button
@@ -161,7 +227,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-                         <FaBullseye className="w-3 h-3" />
+            <FaBullseye className="w-3 h-3" />
             Assertions
             <span className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded-full">
               {assertionSummary.total}
@@ -176,7 +242,7 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
           {/* Assertion Summary Card */}
           {assertionSummary && assertionSummary.total > 0 && (
             <div className="mb-6">
-              <AssertionSummaryCard 
+              <AssertionSummaryCard
                 summary={assertionSummary}
                 showDetails={false}
                 compact={false}
@@ -186,134 +252,169 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h2 className="font-semibold text-gray-700 mb-4">Execution Summary</h2>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-xs text-gray-500 mb-1 flex items-center">
-                <FaFileAlt className="mr-1" size={12} /> Instance ID
-              </div>
-              <div className="font-medium text-sm">{execution.instanceId}</div>
-            </div>
-            
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-xs text-gray-500 mb-1 flex items-center">
-                <FaUserCircle className="mr-1" size={12} /> Executed By
-              </div>
-              <div className="font-medium text-sm">{execution.executedBy}</div>
-            </div>
-            
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-xs text-gray-500 mb-1 flex items-center">
-                <FaServer className="mr-1" size={12} /> Environment
-              </div>
-              <div className="font-medium text-sm">{execution.environment}</div>
-            </div>
-            
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <div className="text-xs text-gray-500 mb-1 flex items-center">
-                <FaCalendarAlt className="mr-1" size={12} /> Executed At
-              </div>
-              <div className="font-medium text-sm">{execution.executedAt}</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h2 className="font-semibold text-gray-700 mb-4">Test Results</h2>
-          
-          <div className={`flex items-center ${executedTests > 0 ? 'gap-6' : 'gap-8'}`}>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-indigo-600">{totalTests}</div>
-              <div className="text-sm text-gray-500">Total</div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{passedTests}</div>
-              <div className="text-sm text-gray-500">Passed</div>
-            </div>
-            
-            {executedTests > 0 && (
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{executedTests}</div>
-                <div className="text-sm text-gray-500">Executed</div>
-              </div>
-            )}
-            
-            <div className="text-center">
-              <div className="text-3xl font-bold text-red-600">{failedTests}</div>
-              <div className="text-sm text-gray-500">Failed</div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h2 className="font-semibold text-gray-700 mb-4">Success Rate</h2>
-          
-          <div className="flex items-center">
-            <div className="relative w-32 h-32">
-              <svg className="w-32 h-32" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="3"
-                />
-                <path
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke={successRate >= 80 ? "#10B981" : successRate >= 50 ? "#F59E0B" : "#EF4444"}
-                  strokeWidth="3"
-                  strokeDasharray={`${successRate}, 100`}
-                />
-              </svg>
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                <div className="text-3xl font-bold">{successRate}%</div>
-              </div>
-            </div>
-            
-            <div className="ml-4">
-              <div className="text-sm text-gray-600 mb-2">
-                <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                Passed: {passedTests} tests
-              </div>
-              {executedTests > 0 && (
-                <div className="text-sm text-gray-600 mb-2">
-                  <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
-                  Executed: {executedTests} tests
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h2 className="font-semibold text-gray-700 mb-4">
+                Execution Summary
+              </h2>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center">
+                    <FaFileAlt className="mr-1" size={12} /> Instance ID
+                  </div>
+                  <div className="font-medium text-sm">
+                    {execution.instanceId}
+                  </div>
                 </div>
-              )}
-              <div className="text-sm text-gray-600">
-                <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-                Failed: {failedTests} tests
+
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center">
+                    <FaUserCircle className="mr-1" size={12} /> Executed By
+                  </div>
+                  <div className="font-medium text-sm">
+                    {execution.executedBy}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center">
+                    <FaServer className="mr-1" size={12} /> Environment
+                  </div>
+                  <div className="font-medium text-sm">
+                    {execution.environment}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="text-xs text-gray-500 mb-1 flex items-center">
+                    <FaCalendarAlt className="mr-1" size={12} /> Executed At
+                  </div>
+                  <div className="font-medium text-sm">
+                    {execution.executedAt}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h2 className="font-semibold text-gray-700 mb-4">Test Results</h2>
+
+              <div
+                className={`flex items-center ${executedTests > 0 ? 'gap-6' : 'gap-8'}`}
+              >
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-indigo-600">
+                    {totalTests}
+                  </div>
+                  <div className="text-sm text-gray-500">Total</div>
+                </div>
+
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {passedTests}
+                  </div>
+                  <div className="text-sm text-gray-500">Passed</div>
+                </div>
+
+                {executedTests > 0 && (
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">
+                      {executedTests}
+                    </div>
+                    <div className="text-sm text-gray-500">Executed</div>
+                  </div>
+                )}
+
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-red-600">
+                    {failedTests}
+                  </div>
+                  <div className="text-sm text-gray-500">Failed</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+              <h2 className="font-semibold text-gray-700 mb-4">Success Rate</h2>
+
+              <div className="flex items-center">
+                <div className="relative w-32 h-32">
+                  <svg className="w-32 h-32" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="#E5E7EB"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke={
+                        successRate >= 80
+                          ? '#10B981'
+                          : successRate >= 50
+                            ? '#F59E0B'
+                            : '#EF4444'
+                      }
+                      strokeWidth="3"
+                      strokeDasharray={`${successRate}, 100`}
+                    />
+                  </svg>
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className="text-3xl font-bold">{successRate}%</div>
+                  </div>
+                </div>
+
+                <div className="ml-4">
+                  <div className="text-sm text-gray-600 mb-2">
+                    <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                    Passed: {passedTests} tests
+                  </div>
+                  {executedTests > 0 && (
+                    <div className="text-sm text-gray-600 mb-2">
+                      <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-2"></span>
+                      Executed: {executedTests} tests
+                    </div>
+                  )}
+                  <div className="text-sm text-gray-600">
+                    <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+                    Failed: {failedTests} tests
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
-      
+
           {/* Test Results Table */}
           <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
             <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="font-semibold text-gray-800">Test Cases</h2>
-              
+
               <div className="text-sm text-gray-500">
-                <span className="text-green-600 font-medium">{passedTests}</span> passed
+                <span className="text-green-600 font-medium">
+                  {passedTests}
+                </span>{' '}
+                passed
                 {executedTests > 0 && (
                   <>
                     {' / '}
-                    <span className="text-blue-600 font-medium">{executedTests}</span> executed
+                    <span className="text-blue-600 font-medium">
+                      {executedTests}
+                    </span>{' '}
+                    executed
                   </>
                 )}
                 {' / '}
-                <span className="text-red-600 font-medium">{failedTests}</span> failed
+                <span className="text-red-600 font-medium">
+                  {failedTests}
+                </span>{' '}
+                failed
               </div>
             </div>
-            
+
             <div className="divide-y divide-gray-100">
               {execution.results.map((result) => (
-                <div 
+                <div
                   key={result.id}
                   className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between"
                   onClick={() => handleViewTestCase(result.id)}
@@ -322,33 +423,41 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                     <div className="font-medium">{result.name}</div>
                     <div className="flex items-center text-sm text-gray-500 mt-1">
                       <FaClock className="mr-1 h-3 w-3" /> {result.duration}
-                      
                       {/* Show assertion info */}
-                      {result.assertionSummary && result.assertionSummary.total > 0 && (
-                        <>
-                          <span className="mx-2 text-gray-300">•</span>
-                          <FaBullseye className="mr-1 h-3 w-3" />
-                          <span className="text-green-600">{result.assertionSummary.passed}</span>
-                          {result.assertionSummary.failed > 0 && (
-                            <>
-                              <span className="text-gray-400">/</span>
-                              <span className="text-red-600">{result.assertionSummary.failed}</span>
-                            </>
-                          )}
-                          <span className="text-gray-400 ml-1">assertions</span>
-                        </>
-                      )}
+                      {result.assertionSummary &&
+                        result.assertionSummary.total > 0 && (
+                          <>
+                            <span className="mx-2 text-gray-300">•</span>
+                            <FaBullseye className="mr-1 h-3 w-3" />
+                            <span className="text-green-600">
+                              {result.assertionSummary.passed}
+                            </span>
+                            {result.assertionSummary.failed > 0 && (
+                              <>
+                                <span className="text-gray-400">/</span>
+                                <span className="text-red-600">
+                                  {result.assertionSummary.failed}
+                                </span>
+                              </>
+                            )}
+                            <span className="text-gray-400 ml-1">
+                              assertions
+                            </span>
+                          </>
+                        )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-4">
-                    <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      result.status === 'Passed' 
-                        ? 'bg-green-100 text-green-800' 
-                        : result.status === 'Executed'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
+                    <div
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        result.status === 'Passed'
+                          ? 'bg-green-100 text-green-800'
+                          : result.status === 'Executed'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-red-100 text-red-800'
+                      }`}
+                    >
                       {result.status === 'Passed' ? (
                         <span className="flex items-center">
                           <FaCheck className="mr-1 h-3 w-3" /> Passed
@@ -363,8 +472,8 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                         </span>
                       )}
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent the row click
                         handleViewTestCase(result.id);
@@ -386,23 +495,30 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
           <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="font-semibold text-gray-800">Test Cases</h2>
-            
+
             <div className="text-sm text-gray-500">
-              <span className="text-green-600 font-medium">{passedTests}</span> passed
+              <span className="text-green-600 font-medium">{passedTests}</span>{' '}
+              passed
               {executedTests > 0 && (
                 <>
                   {' / '}
-                  <span className="text-blue-600 font-medium">{executedTests}</span> executed
+                  <span className="text-blue-600 font-medium">
+                    {executedTests}
+                  </span>{' '}
+                  executed
                 </>
               )}
               {' / '}
-              <span className="text-red-600 font-medium">{failedTests}</span> failed
+              <span className="text-red-600 font-medium">
+                {failedTests}
+              </span>{' '}
+              failed
             </div>
           </div>
-          
+
           <div className="divide-y divide-gray-100">
             {execution.results.map((result) => (
-              <div 
+              <div
                 key={result.id}
                 className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between"
                 onClick={() => handleViewTestCase(result.id)}
@@ -411,33 +527,39 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                   <div className="font-medium">{result.name}</div>
                   <div className="flex items-center text-sm text-gray-500 mt-1">
                     <FaClock className="mr-1 h-3 w-3" /> {result.duration}
-                    
                     {/* Show assertion info */}
-                    {result.assertionSummary && result.assertionSummary.total > 0 && (
-                      <>
-                        <span className="mx-2 text-gray-300">•</span>
-                        <FaBullseye className="mr-1 h-3 w-3" />
-                        <span className="text-green-600">{result.assertionSummary.passed}</span>
-                        {result.assertionSummary.failed > 0 && (
-                          <>
-                            <span className="text-gray-400">/</span>
-                            <span className="text-red-600">{result.assertionSummary.failed}</span>
-                          </>
-                        )}
-                        <span className="text-gray-400 ml-1">assertions</span>
-                      </>
-                    )}
+                    {result.assertionSummary &&
+                      result.assertionSummary.total > 0 && (
+                        <>
+                          <span className="mx-2 text-gray-300">•</span>
+                          <FaBullseye className="mr-1 h-3 w-3" />
+                          <span className="text-green-600">
+                            {result.assertionSummary.passed}
+                          </span>
+                          {result.assertionSummary.failed > 0 && (
+                            <>
+                              <span className="text-gray-400">/</span>
+                              <span className="text-red-600">
+                                {result.assertionSummary.failed}
+                              </span>
+                            </>
+                          )}
+                          <span className="text-gray-400 ml-1">assertions</span>
+                        </>
+                      )}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
-                  <div className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    result.status === 'Passed' 
-                      ? 'bg-green-100 text-green-800' 
-                      : result.status === 'Executed'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
+                  <div
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      result.status === 'Passed'
+                        ? 'bg-green-100 text-green-800'
+                        : result.status === 'Executed'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-red-100 text-red-800'
+                    }`}
+                  >
                     {result.status === 'Passed' ? (
                       <span className="flex items-center">
                         <FaCheck className="mr-1 h-3 w-3" /> Passed
@@ -452,8 +574,8 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
                       </span>
                     )}
                   </div>
-                  
-                  <button 
+
+                  <button
                     onClick={(e) => {
                       e.stopPropagation(); // Prevent the row click
                       handleViewTestCase(result.id);
@@ -470,32 +592,36 @@ const ExecutionDetailsView = ({ execution, onBack, onViewTestCase }) => {
       )}
 
       {/* Assertions Tab */}
-      {activeTab === 'assertions' && assertionSummary && assertionSummary.total > 0 && (
-        <div className="space-y-6">
-          <AssertionSummaryCard 
-            summary={assertionSummary}
-            showDetails={true}
-            compact={false}
-          />
-          
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="bg-gray-50 p-4 border-b border-gray-200">
-              <h2 className="font-semibold text-gray-800">All Assertion Results</h2>
-            </div>
-            <div className="p-4">
-              <AssertionResultsList 
-                results={allAssertionResults}
-                groupBy="testCase"
-                showExecutionTime={true}
-                compact={false}
-                searchable={true}
-                filterable={true}
-                sortable={true}
-              />
+      {activeTab === 'assertions' &&
+        assertionSummary &&
+        assertionSummary.total > 0 && (
+          <div className="space-y-6">
+            <AssertionSummaryCard
+              summary={assertionSummary}
+              showDetails={true}
+              compact={false}
+            />
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-gray-50 p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-gray-800">
+                  All Assertion Results
+                </h2>
+              </div>
+              <div className="p-4">
+                <AssertionResultsList
+                  results={allAssertionResults}
+                  groupBy="testCase"
+                  showExecutionTime={true}
+                  compact={false}
+                  searchable={true}
+                  filterable={true}
+                  sortable={true}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 };

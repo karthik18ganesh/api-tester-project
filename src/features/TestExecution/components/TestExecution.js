@@ -8,13 +8,20 @@ import {
   FaCheck,
   FaTimes,
 } from 'react-icons/fa';
+import { FiLayers, FiDownload } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import EnhancedTestHierarchy from '../components/EnhancedTestHierarchy';
 import ExecutionResultsCard from './ExecutionResultsCard';
 import TestCaseDetailsNavigator from './TestCaseDetailsNavigator';
 import Breadcrumb from '../../../components/common/Breadcrumb';
-import { api, testExecution, environments, testSuites } from '../../../utils/api';
+import {
+  api,
+  testExecution,
+  environments,
+  testSuites,
+  testPackages,
+} from '../../../utils/api';
 import { useAuthStore } from '../../../stores/authStore';
 import { useProjectStore } from '../../../stores/projectStore';
 import Button from '../../../components/common/Button';
@@ -27,6 +34,9 @@ import {
 import ExecutionConfigurationErrorModal from './ExecutionConfigurationErrorModal';
 import ExecutionErrorNotification from './ExecutionErrorNotification';
 import ConfigurationErrorResultsView from './ConfigurationErrorResultsView';
+import BulkDataUploader from './BulkDataUploader';
+import { bulkExecutionService } from '../services/bulkExecutionService';
+import Badge from '../../../components/UI/Badge';
 import '../styles/execution-error-styles.css'; // Optional enhanced styling
 import '../styles/execution-order-styles.css'; // Execution order management styles
 
@@ -63,13 +73,17 @@ const ModernTestExecution = () => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [currentEditingSuiteId, setCurrentEditingSuiteId] = useState(null);
 
+  // Bulk execution state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkData, setBulkData] = useState(null);
+
   // Fetch the hierarchy from the API
   const fetchHierarchy = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await api('/api/v1/packages/hierarchy', 'GET');
+      const response = await testPackages.getHierarchy();
 
       // Handle different response formats
       let data;
@@ -361,7 +375,8 @@ const ModernTestExecution = () => {
     const handleBeforeUnload = (e) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        e.returnValue =
+          'You have unsaved changes. Are you sure you want to leave?';
         return e.returnValue;
       }
     };
@@ -394,6 +409,12 @@ const ModernTestExecution = () => {
 
   const handleRun = async () => {
     if (!selectedItem) return;
+
+    // Check if bulk mode is enabled for test cases
+    if (bulkMode && selectedItem?.type === 'case') {
+      await handleBulkExecution();
+      return;
+    }
 
     setExecuting(true);
     setExecutionResult(null);
@@ -646,7 +667,9 @@ const ModernTestExecution = () => {
   // Execution order management handlers
   const handleEditOrder = (suiteId) => {
     if (isEditingOrder && currentEditingSuiteId !== suiteId) {
-      toast.warning('Please save or cancel current changes before editing another suite');
+      toast.warning(
+        'Please save or cancel current changes before editing another suite'
+      );
       return;
     }
 
@@ -658,35 +681,59 @@ const ModernTestExecution = () => {
     setHasUnsavedChanges(false);
   };
 
+  // Save hierarchy using the new API
+  const saveHierarchy = async (hierarchyData) => {
+    try {
+      const response = await testPackages.saveHierarchy(hierarchyData);
+      return response;
+    } catch (error) {
+      console.error('Error saving hierarchy:', error);
+      throw error;
+    }
+  };
+
   const handleSaveOrder = async () => {
     if (!modifiedHierarchy || !currentEditingSuiteId) return;
 
     try {
       // Find the suite being edited
       const suite = modifiedHierarchy.children
-        .flatMap(pkg => pkg.children)
-        .find(s => s.suiteId === currentEditingSuiteId);
-      
+        .flatMap((pkg) => pkg.children)
+        .find((s) => s.suiteId === currentEditingSuiteId);
+
       if (!suite) {
         toast.error('Suite not found');
         return;
       }
 
-      // Extract ordered test case IDs
-      const orderedCaseIds = suite.children
-        .sort((a, b) => a.executionOrder - b.executionOrder)
-        .map(tc => tc.caseId);
+      // Convert the modified hierarchy back to the API format
+      const apiFormat = modifiedHierarchy.children.map((pkg) => ({
+        id: pkg.packageId,
+        packageName: pkg.name,
+        testSuites: pkg.children.map((suite) => ({
+          id: suite.suiteId,
+          suiteName: suite.name,
+          testCases: suite.children
+            .sort((a, b) => a.executionOrder - b.executionOrder)
+            .map((tc) => ({
+              id: tc.caseId,
+              caseName: tc.name,
+              httpMethod: tc.httpMethod || 'GET', // Add default if not present
+              apiUrl: tc.apiUrl || '', // Add default if not present
+            })),
+        })),
+      }));
 
-      // Call API to save order
-      await testSuites.updateTestCaseOrder(currentEditingSuiteId, orderedCaseIds);
-      
+      // Call the new save hierarchy API
+      await saveHierarchy(apiFormat);
+
       // Update the main hierarchy with modified data
       setTestHierarchy(modifiedHierarchy);
       setHasUnsavedChanges(false);
       setIsEditingOrder(false);
       setCurrentEditingSuiteId(null);
       setModifiedHierarchy(null);
-      
+
       toast.success('Test case execution order saved successfully!');
     } catch (error) {
       console.error('Error saving order:', error);
@@ -708,9 +755,9 @@ const ModernTestExecution = () => {
     // Update the modified hierarchy with new order
     const updatedHierarchy = JSON.parse(JSON.stringify(modifiedHierarchy));
     const suite = updatedHierarchy.children
-      .flatMap(pkg => pkg.children)
-      .find(s => s.suiteId === suiteId);
-    
+      .flatMap((pkg) => pkg.children)
+      .find((s) => s.suiteId === suiteId);
+
     if (suite) {
       suite.children = updatedTestCases;
       setModifiedHierarchy(updatedHierarchy);
@@ -854,6 +901,132 @@ const ModernTestExecution = () => {
       // errorReporting.captureException(new Error(`${errorCode}: ${errorMessage}`), {
       //   extra: { testSuite, executionSettings: settings }
       // });
+    }
+  };
+
+  // Bulk execution handlers
+  const handleTemplateDownload = () => {
+    bulkExecutionService.downloadTemplate();
+    toast.info('Template downloaded successfully');
+  };
+
+  const handleBulkFileUpload = (file, data) => {
+    setBulkData(data);
+  };
+
+  const handleBulkValidation = (validation) => {
+    if (validation.warnings.length > 0) {
+      validation.warnings.forEach((warning) => toast.warning(warning));
+    }
+  };
+
+  const handleBulkExecution = async () => {
+    if (!bulkData || bulkData.length === 0) {
+      toast.error('No bulk data loaded');
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      const executionSettings = {
+        environment: settings.environment,
+        executionStrategy: settings.executionStrategy,
+        executedBy: user?.username || 'current_user',
+      };
+
+      const results = await bulkExecutionService.executeBulkTestCase(
+        selectedItem.id,
+        bulkData,
+        executionSettings,
+        {
+          url: selectedItem.url,
+          method: selectedItem.method,
+        }
+      );
+
+      // Store bulk results in session storage for Test Results module
+      sessionStorage.setItem(
+        `bulk-execution-${results.executionId}`,
+        JSON.stringify(results)
+      );
+
+      // Transform bulk results to match the expected execution format
+      const transformedExecution = {
+        id: results.executionId,
+        status: results.passed > results.failed ? 'PASSED' : 'FAILED',
+        executionStatus: results.passed > results.failed ? 'PASSED' : 'FAILED',
+        executionType: 'BULK',
+        executedBy: results.executedBy,
+        executedAt: results.timestamp,
+        environment: results.environment,
+        totalTests: results.totalTests,
+        passedTests: results.passed,
+        failedTests: results.failed,
+        executionTime: results.totalDuration,
+        successRate: Math.round((results.passed / results.totalTests) * 100),
+        results: results.results.map((r) => ({
+          id: `tc-${r.rowId}`,
+          name: r.testName,
+          status: r.status,
+          duration: `${r.executionTime}ms`,
+          request: {
+            method: r.method,
+            url: r.url,
+            headers: {},
+            body: {},
+          },
+          response: {
+            status: r.statusCode,
+            data: r.response,
+            headers: {},
+          },
+          assertionResults: r.assertionResults || [],
+          assertionSummary: r.assertionSummary || {
+            total: 0,
+            passed: 0,
+            failed: 0,
+          },
+          executionId: results.executionId,
+          testCaseId: r.rowId,
+          testSuiteId: null,
+          testSuiteName: 'Bulk Execution',
+          environment: results.environment,
+        })),
+        assertionSummary: {
+          total: results.results.reduce(
+            (acc, r) => acc + (r.assertionSummary?.total || 0),
+            0
+          ),
+          passed: results.results.reduce(
+            (acc, r) => acc + (r.assertionSummary?.passed || 0),
+            0
+          ),
+          failed: results.results.reduce(
+            (acc, r) => acc + (r.assertionSummary?.failed || 0),
+            0
+          ),
+          skipped: 0,
+          successRate: Math.round((results.passed / results.totalTests) * 100),
+        },
+      };
+
+      // Set the execution data to show in the right panel
+      setExecutionResult(transformedExecution);
+      setViewMode('execution');
+
+      toast.success(
+        <div>
+          <div className="font-medium">Bulk Execution Complete!</div>
+          <div className="text-sm mt-1">
+            {results.passed}/{results.totalTests} tests passed (
+            {((results.passed / results.totalTests) * 100).toFixed(0)}%)
+          </div>
+        </div>
+      );
+    } catch (error) {
+      toast.error(`Bulk execution failed: ${error.message}`);
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -1054,6 +1227,54 @@ const ModernTestExecution = () => {
           </button>
         </div>
       </div>
+
+      {/* Bulk Execution Toggle - Only show for test cases */}
+      {selectedItem?.type === 'case' && (
+        <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 mb-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="bulkMode"
+              checked={bulkMode}
+              onChange={(e) => setBulkMode(e.target.checked)}
+              className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <label
+              htmlFor="bulkMode"
+              className="text-sm font-medium text-gray-700"
+            >
+              <span className="flex items-center gap-2">
+                <FiLayers className="h-4 w-4 text-blue-600" />
+                Bulk Execution Mode
+              </span>
+            </label>
+            <Badge className="bg-blue-100 text-blue-700 text-xs">Beta</Badge>
+          </div>
+
+          {bulkMode && (
+            <>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleTemplateDownload}
+                  className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  <FiDownload className="h-4 w-4" />
+                  Download Data Template
+                </button>
+              </div>
+
+              <div className="flex-1">
+                <BulkDataUploader
+                  onFileUpload={handleBulkFileUpload}
+                  onValidation={handleBulkValidation}
+                  testCaseId={selectedItem.id}
+                  testCaseName={selectedItem.name}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Test Hierarchy Panel */}
