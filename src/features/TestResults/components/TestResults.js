@@ -131,11 +131,27 @@ const ModernTestResults = () => {
           const correctedFailedTests =
             correctedTotalTests - correctedPassedTests;
 
+          // Store the raw numeric execution ID for API calls
+          // API returns numeric executionId (e.g., 503, 492)
+          const rawExecutionId = execution.executionId;
+          
+          // Format the display ID: for bulk executions with SEQUENTIAL strategy, keep as exec-ID
+          // Otherwise format as exec-{id}
+          const isBulkLike = execution.executionStrategy === 'SEQUENTIAL' || 
+                           execution.executionStrategy === 'SEQUENTIAL' ||
+                           (execution.testCaseResults && execution.testCaseResults.length > 0 && 
+                            execution.testCaseResults.some(tc => tc.rowId));
+          
           return {
-            id: `exec-${execution.executionId}`,
-            executionId: execution.executionId,
+            // For display: format as exec-{id} for regular, or keep numeric for bulk
+            id: isBulkLike && rawExecutionId?.toString().startsWith('bulk-')
+              ? rawExecutionId 
+              : `exec-${rawExecutionId}`,
+            executionId: rawExecutionId, // Store numeric ID from API (e.g., 503, 492)
+            rawExecutionId: rawExecutionId, // Also store as rawExecutionId for API calls
             status: execution.executionStatus || 'FAILED', // Use backend executionStatus directly
             executionStatus: execution.executionStatus, // Store original backend status
+            executionStrategy: execution.executionStrategy, // Store execution strategy
             passedFailed: `${correctedPassedTests}/${correctedTotalTests}`,
             executedAt: formatExecutionDate(execution.executionDate),
             executedBy: execution.executedBy || 'Unknown',
@@ -378,247 +394,267 @@ const ModernTestResults = () => {
     });
   }, [executionHistory, dateRange, filters, customDateRange]);
 
+  // Helper function to extract assertion results from test case data
+  // Handles both bulk execution (assertionResults) and regular execution (assertionResultsDto) structures
+  const extractAssertionResults = (testCase) => {
+    // Check for assertionResults (used in bulk execution responses)
+    if (testCase.assertionResults && Array.isArray(testCase.assertionResults)) {
+      return testCase.assertionResults.map((assertion) => ({
+        id: assertion.assertionId,
+        name: assertion.assertionName || 'Assertion',
+        type: 'custom',
+        status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+        actualValue: assertion.actualValue,
+        expectedValue: assertion.expectedValue,
+        executionTime: assertion.executionTime || 0,
+        ...(assertion.status !== 'PASSED' &&
+          assertion.errorMessage && {
+            error: assertion.errorMessage,
+          }),
+      }));
+    }
+    
+    // Check for assertionResultsDto (used in regular execution responses)
+    if (testCase.assertionResultsDto && Array.isArray(testCase.assertionResultsDto)) {
+      return testCase.assertionResultsDto.map((assertion) => ({
+        id: assertion.assertionId,
+        name: assertion.assertionName || 'Assertion',
+        type: 'custom',
+        status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+        actualValue: assertion.actualValue,
+        expectedValue: assertion.expectedValue,
+        executionTime: assertion.executionTime || 0,
+        ...(assertion.status !== 'PASSED' &&
+          assertion.errorMessage && {
+            error: assertion.errorMessage,
+          }),
+      }));
+    }
+    
+    // Return empty array if no assertions found
+    return [];
+  };
+
+  // Helper function to extract numeric execution ID from various formats
+  const extractNumericExecutionId = (executionId) => {
+    if (!executionId) return null;
+    
+    const idStr = String(executionId).trim();
+    
+    // If it's already a number, return it
+    if (!isNaN(idStr) && !isNaN(parseFloat(idStr))) {
+      return idStr;
+    }
+    
+    // For bulk executions: "bulk-exec-503" -> "503"
+    if (idStr.includes('bulk-exec-')) {
+      const match = idStr.match(/bulk-exec-(\d+)/);
+      if (match) return match[1];
+      const replaced = idStr.replace(/bulk-exec-/g, '');
+      return replaced || null;
+    }
+    
+    // For regular executions: "exec-492" -> "492"
+    if (idStr.startsWith('exec-')) {
+      const extracted = idStr.replace('exec-', '');
+      // Validate it's numeric
+      if (!isNaN(extracted) && !isNaN(parseFloat(extracted))) {
+        return extracted;
+      }
+    }
+    
+    // Try to extract any numeric part
+    const numMatch = idStr.match(/(\d+)/);
+    if (numMatch) return numMatch[1];
+    
+    // If nothing matches, return null
+    return null;
+  };
+
   // Create detailed execution data from API response using backend assertion data
   const createDetailedExecutionData = async (execution) => {
     try {
-      // Check if we have detailed test case results in the current data
-      if (execution.testCaseResults && execution.testCaseResults.length > 0) {
-        // Transform the existing testCaseResults using backend assertion data
-        const results = execution.testCaseResults.map((testCase) => {
-          // Use assertion results directly from backend when available
-          const assertions =
-            testCase.assertionResults &&
-            Array.isArray(testCase.assertionResults)
-              ? testCase.assertionResults.map((assertion) => ({
-                  id: assertion.assertionId,
-                  name: assertion.assertionName || 'Assertion',
-                  type: 'custom',
-                  status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
-                  actualValue: assertion.actualValue,
-                  expectedValue: assertion.expectedValue,
-                  executionTime: assertion.executionTime || 0,
-                  ...(assertion.status !== 'PASSED' &&
-                    assertion.errorMessage && {
-                      error: assertion.errorMessage,
-                    }),
-                }))
-              : []; // Empty array when no assertions available
+      console.log('createDetailedExecutionData called with execution:', {
+        id: execution.id,
+        executionId: execution.executionId,
+        rawExecutionId: execution.rawExecutionId
+      });
+      
+      // Always fetch from details endpoint to get the most up-to-date data
+      // Extract the numeric execution ID for the API call
+      // Try rawExecutionId first (if available), then executionId, then id
+      const executionIdToExtract = execution.rawExecutionId || execution.executionId || execution.id;
+      
+      console.log('Attempting to extract numeric execution ID from:', {
+        rawExecutionId: execution.rawExecutionId,
+        executionId: execution.executionId,
+        id: execution.id,
+        executionIdToExtract
+      });
+      
+      const numericExecutionId = extractNumericExecutionId(executionIdToExtract);
+      
+      console.log('Extracted numeric execution ID:', {
+        original: executionIdToExtract,
+        extracted: numericExecutionId
+      });
+      
+      if (!numericExecutionId) {
+        console.error('Cannot extract numeric execution ID. Execution object:', execution);
+        console.error('Available fields:', Object.keys(execution));
+        toast.error(`Cannot extract execution ID from: ${executionIdToExtract}`);
+        return createFallbackExecutionData(execution);
+      }
+      
+      console.log('Fetching execution details from API for ID:', numericExecutionId);
+      // Fetch execution details from API
+      let detailedResponse;
+      try {
+        detailedResponse = await testExecution.getExecutionDetails(numericExecutionId);
+        console.log('API response received:', detailedResponse);
+      } catch (apiError) {
+        console.error('API call failed:', apiError);
+        throw apiError; // Re-throw to be caught by outer catch
+      }
+      
+      // Handle both response formats: direct response or wrapped in result.data
+      let executionData;
+      if (detailedResponse && detailedResponse.result && detailedResponse.result.code === '200') {
+        // Wrapped format: { result: { code: '200', data: {...} } }
+        console.log('Using wrapped response format');
+        executionData = detailedResponse.result.data;
+      } else if (detailedResponse && (detailedResponse.executionId !== undefined || detailedResponse.testCaseResults !== undefined)) {
+        // Direct format: { executionId: 503, testCaseResults: [...], ... }
+        console.log('Using direct response format');
+        executionData = detailedResponse;
+      } else {
+        console.error('Unexpected response format:', detailedResponse);
+        return createFallbackExecutionData(execution);
+      }
+      
+      console.log('Extracted execution data:', {
+        executionId: executionData.executionId,
+        testCaseResultsCount: executionData.testCaseResults?.length || executionData.testCaseResult?.length || 0
+      });
+      
+      // Extract test case results from the response
+      // Handle both testCaseResults (bulk) and testCaseResult (regular) structures
+      const testCaseResults = executionData.testCaseResults || executionData.testCaseResult || [];
+      
+      if (!testCaseResults || testCaseResults.length === 0) {
+        console.warn('No test case results found in execution details');
+        return createFallbackExecutionData(execution);
+      }
 
-          // Use assertion summary directly from backend when available
-          const assertionSummary = testCase.assertionSummary || {
-            total: assertions.length,
-            passed: assertions.filter((a) => a.status === 'Passed').length,
-            failed: assertions.filter((a) => a.status === 'Failed').length,
-            skipped: 0,
-            successRate: 0,
-          };
+      // Transform test case results using backend assertion data
+      const results = testCaseResults.map((testCase) => {
+        // Use helper function to extract assertions (handles both structures)
+        const assertions = extractAssertionResults(testCase);
 
-          // Calculate success rate if not provided
-          if (assertionSummary.total > 0 && !assertionSummary.successRate) {
-            assertionSummary.successRate = Math.round(
-              (assertionSummary.passed / assertionSummary.total) * 100
-            );
-          }
+        // Use assertion summary directly from backend when available
+        const assertionSummary = testCase.assertionSummary || {
+          total: assertions.length,
+          passed: assertions.filter((a) => a.status === 'Passed').length,
+          failed: assertions.filter((a) => a.status === 'Failed').length,
+          skipped: 0,
+          successRate: 0,
+        };
 
-          // Determine overall status based on assertions or HTTP status when no assertions
-          let overallStatus;
-          if (assertionSummary.total === 0) {
-            // No assertions - check HTTP status code for success
-            const httpStatus = testCase.statusCode;
-            overallStatus =
-              httpStatus >= 200 && httpStatus < 400 ? 'Executed' : 'Failed';
-          } else {
-            // Has assertions - use assertion results
-            overallStatus =
-              assertionSummary.failed === 0 && assertionSummary.passed > 0
-                ? 'Passed'
-                : 'Failed';
-          }
+        // Calculate success rate if not provided
+        if (assertionSummary.total > 0 && !assertionSummary.successRate) {
+          assertionSummary.successRate = Math.round(
+            (assertionSummary.passed / assertionSummary.total) * 100
+          );
+        }
 
-          return {
-            id: `tc-${testCase.testCaseId}`,
-            name: testCase.testCaseName || 'API Test Case',
-            status: overallStatus,
-            duration: `${testCase.executionTimeMs}ms`,
-            request: {
-              method: testCase.httpMethod,
-              url: testCase.url,
-              headers: testCase.requestHeaders || {},
-              body: testCase.requestBody,
-            },
-            response: {
-              status: testCase.statusCode,
-              data: testCase.responseBody,
-              headers: testCase.responseHeaders || {},
-            },
-            assertions: assertions,
-            assertionSummary: assertionSummary,
-            testSuiteId: testCase.testSuiteId,
-            testSuiteName: testCase.testSuiteName,
-            testCaseId: testCase.testCaseId,
-            resultId: testCase.resultId,
-          };
-        });
-
-        // Recalculate counts based on the updated statuses
-        const passedCount = results.filter((r) => r.status === 'Passed').length;
-        const executedCount = results.filter(
-          (r) => r.status === 'Executed'
-        ).length;
-        const failedCount = results.filter((r) => r.status === 'Failed').length;
-        const successfulCount = passedCount + executedCount;
-        const newSuccessRate =
-          results.length > 0
-            ? Math.round((successfulCount / results.length) * 100)
-            : 0;
+        // Determine overall status based on assertions or HTTP status when no assertions
+        let overallStatus;
+        if (assertionSummary.total === 0) {
+          // No assertions - check HTTP status code for success
+          const httpStatus = testCase.statusCode;
+          overallStatus =
+            httpStatus >= 200 && httpStatus < 400 ? 'Executed' : 'Failed';
+        } else {
+          // Has assertions - use assertion results
+          overallStatus =
+            assertionSummary.failed === 0 && assertionSummary.passed > 0
+              ? 'Passed'
+              : 'Failed';
+        }
 
         return {
-          id: execution.id,
-          status: execution.status,
-          executionStatus: execution.executionStatus, // Add backend execution status
-          instanceId: execution.id,
-          executedBy: execution.executedBy,
-          environment: execution.environmentName,
-          executedAt: execution.executedAt,
-          passedCount: passedCount,
-          failedCount: failedCount,
-          executedCount: executedCount,
-          errorCount: execution.errorTests,
-          totalTests: results.length,
-          executionTime: execution.executionTime,
-          successRate: newSuccessRate,
-          results: results,
-          rawExecutionId: execution.executionId,
+          id: `tc-${testCase.testCaseId || testCase.resultId || testCase.rowId}`,
+          name: testCase.testCaseName || 'API Test Case',
+          status: overallStatus,
+          duration: `${testCase.executionTimeMs}ms`,
+          request: {
+            method: testCase.httpMethod,
+            url: testCase.url,
+            headers: testCase.requestHeaders || {},
+            body: testCase.requestBody,
+          },
+          response: {
+            status: testCase.statusCode,
+            data: testCase.responseBody,
+            headers: testCase.responseHeaders || {},
+          },
+          assertions: assertions,
+          assertionResults: assertions, // Also set assertionResults for consistency
+          assertionSummary: assertionSummary,
+          testSuiteId: testCase.testSuiteId,
+          testSuiteName: testCase.testSuiteName,
+          testCaseId: testCase.testCaseId,
+          resultId: testCase.resultId,
+          rowId: testCase.rowId, // Include rowId for bulk executions
         };
-      } else {
-        // If no detailed results, try to fetch from the details endpoint
-        const detailedResponse = await testExecution.getExecutionDetails(
-          execution.executionId
+      });
+
+      // Recalculate counts based on the updated statuses
+      const passedCount = results.filter((r) => r.status === 'Passed').length;
+      const executedCount = results.filter((r) => r.status === 'Executed').length;
+      const failedCount = results.filter((r) => r.status === 'Failed').length;
+      const successfulCount = passedCount + executedCount;
+      const newSuccessRate =
+        results.length > 0
+          ? Math.round((successfulCount / results.length) * 100)
+          : 0;
+
+      // Calculate overall assertion summary
+      const overallAssertionSummary = executionData.executionSummary?.assertionSummary || 
+        results.reduce(
+          (acc, r) => ({
+            total: acc.total + (r.assertionSummary?.total || 0),
+            passed: acc.passed + (r.assertionSummary?.passed || 0),
+            failed: acc.failed + (r.assertionSummary?.failed || 0),
+            skipped: acc.skipped + (r.assertionSummary?.skipped || 0),
+          }),
+          { total: 0, passed: 0, failed: 0, skipped: 0 }
         );
 
-        if (
-          detailedResponse &&
-          detailedResponse.result &&
-          detailedResponse.result.code === '200'
-        ) {
-          const detailsData = detailedResponse.result.data;
-          const testCaseResults = detailsData.testCaseResult || [];
-
-          const results = testCaseResults.map((testCase) => {
-            // Use assertion results directly from backend when available
-            const assertions =
-              testCase.assertionResults &&
-              Array.isArray(testCase.assertionResults)
-                ? testCase.assertionResults.map((assertion) => ({
-                    id: assertion.assertionId,
-                    name: assertion.assertionName || 'Assertion',
-                    type: 'custom',
-                    status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
-                    actualValue: assertion.actualValue,
-                    expectedValue: assertion.expectedValue,
-                    executionTime: assertion.executionTime || 0,
-                    ...(assertion.status !== 'PASSED' &&
-                      assertion.errorMessage && {
-                        error: assertion.errorMessage,
-                      }),
-                  }))
-                : []; // Empty array when no assertions available
-
-            // Use assertion summary directly from backend when available
-            const assertionSummary = testCase.assertionSummary || {
-              total: assertions.length,
-              passed: assertions.filter((a) => a.status === 'Passed').length,
-              failed: assertions.filter((a) => a.status === 'Failed').length,
-              skipped: 0,
-              successRate: 0,
-            };
-
-            // Calculate success rate if not provided
-            if (assertionSummary.total > 0 && !assertionSummary.successRate) {
-              assertionSummary.successRate = Math.round(
-                (assertionSummary.passed / assertionSummary.total) * 100
-              );
-            }
-
-            // Determine overall status based on assertions or HTTP status when no assertions
-            let overallStatus;
-            if (assertionSummary.total === 0) {
-              // No assertions - check HTTP status code for success
-              const httpStatus = testCase.statusCode;
-              overallStatus =
-                httpStatus >= 200 && httpStatus < 400 ? 'Executed' : 'Failed';
-            } else {
-              // Has assertions - use assertion results
-              overallStatus =
-                assertionSummary.failed === 0 && assertionSummary.passed > 0
-                  ? 'Passed'
-                  : 'Failed';
-            }
-
-            return {
-              id: `tc-${testCase.testCaseId}`,
-              name: testCase.testCaseName || 'API Test Case',
-              status: overallStatus,
-              duration: `${testCase.executionTimeMs}ms`,
-              request: {
-                method: testCase.httpMethod,
-                url: testCase.url,
-                headers: testCase.requestHeaders || {},
-                body: testCase.requestBody,
-              },
-              response: {
-                status: testCase.statusCode,
-                data: testCase.responseBody,
-                headers: testCase.responseHeaders || {},
-              },
-              assertions: assertions,
-              assertionSummary: assertionSummary,
-              testSuiteId: testCase.testSuiteId,
-              testSuiteName: testCase.testSuiteName,
-              testCaseId: testCase.testCaseId,
-              resultId: testCase.resultId,
-            };
-          });
-
-          // Recalculate counts based on the updated statuses
-          const passedCount = results.filter(
-            (r) => r.status === 'Passed'
-          ).length;
-          const executedCount = results.filter(
-            (r) => r.status === 'Executed'
-          ).length;
-          const failedCount = results.filter(
-            (r) => r.status === 'Failed'
-          ).length;
-          const successfulCount = passedCount + executedCount;
-          const newSuccessRate =
-            results.length > 0
-              ? Math.round((successfulCount / results.length) * 100)
-              : 0;
-
-          return {
-            id: execution.id,
-            status: execution.status,
-            executionStatus: execution.executionStatus, // Add backend execution status
-            instanceId: execution.id,
-            executedBy: execution.executedBy,
-            environment: execution.environmentName,
-            executedAt: execution.executedAt,
-            passedCount: passedCount,
-            failedCount: failedCount,
-            executedCount: executedCount,
-            errorCount: execution.errorTests,
-            totalTests: results.length,
-            executionTime: execution.executionTime,
-            successRate: newSuccessRate,
-            results: results,
-            rawExecutionId: execution.executionId,
-          };
-        } else {
-          // Fallback to basic data
-          return createFallbackExecutionData(execution);
-        }
-      }
+      return {
+        id: execution.id || `exec-${numericExecutionId}`,
+        status: executionData.executionStatus === 'PASSED' ? 'PASSED' : 
+                executionData.executionStatus === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+        executionStatus: executionData.executionStatus || execution.executionStatus,
+        executionType: execution.executionType || (execution.executionId?.toString().startsWith('bulk-') ? 'BULK' : 'REGULAR'),
+        instanceId: execution.id || `exec-${numericExecutionId}`,
+        executedBy: executionData.executedBy || execution.executedBy,
+        environment: executionData.environmentName || execution.environmentName,
+        executedAt: executionData.executionDate 
+          ? formatExecutionDate(executionData.executionDate)
+          : execution.executedAt,
+        passedCount: executionData.executionSummary?.passedTests || passedCount,
+        failedCount: executionData.executionSummary?.failedTests || failedCount,
+        executedCount: executedCount,
+        errorCount: executionData.executionSummary?.errorTests || 0,
+        totalTests: executionData.executionSummary?.totalTests || results.length,
+        executionTime: executionData.executionTimeMs || execution.executionTime,
+        successRate: executionData.executionSummary?.successRate || newSuccessRate,
+        results: results,
+        rawExecutionId: numericExecutionId,
+        executionId: numericExecutionId,
+        assertionSummary: overallAssertionSummary,
+      };
     } catch (error) {
       console.error('Error creating detailed execution data:', error);
       return createFallbackExecutionData(execution);
@@ -645,6 +681,7 @@ const ModernTestResults = () => {
   };
 
   const handleViewExecution = async (executionId) => {
+    console.log('handleViewExecution called with executionId:', executionId);
     setLoading(true);
 
     try {
@@ -652,11 +689,24 @@ const ModernTestResults = () => {
       const execution = executionHistory.find((e) => e.id === executionId);
 
       if (!execution) {
+        console.error('Execution not found in history:', {
+          executionId,
+          executionHistoryIds: executionHistory.map(e => e.id)
+        });
         toast.error('Execution not found');
         return;
       }
 
+      console.log('Found execution in history:', {
+        id: execution.id,
+        executionId: execution.executionId,
+        rawExecutionId: execution.rawExecutionId
+      });
+
+      console.log('Calling createDetailedExecutionData...');
       const detailedExecution = await createDetailedExecutionData(execution);
+      console.log('Received detailed execution:', detailedExecution);
+      
       setSelectedExecution(detailedExecution);
       setViewMode('execution');
     } catch (error) {

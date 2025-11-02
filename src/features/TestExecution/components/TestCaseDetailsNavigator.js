@@ -33,11 +33,34 @@ const TestCaseDetailsNavigator = ({ executionId, testCases, currentTestCaseId, o
   
   // Find current test case and next/previous test cases
   useEffect(() => {
-    if (!testCases || testCases.length === 0) return;
+    if (!testCases || testCases.length === 0) {
+      console.log('TestCaseDetailsNavigator - No test cases available');
+      return;
+    }
+    
+    console.log('TestCaseDetailsNavigator - Finding test case:', {
+      currentTestCaseId,
+      availableIds: testCases.map(tc => tc.id),
+      testCasesCount: testCases.length
+    });
     
     const currentIndex = testCases.findIndex(tc => tc.id === currentTestCaseId);
+    console.log('TestCaseDetailsNavigator - Found index:', currentIndex);
+    
     if (currentIndex !== -1) {
-      setTestCase(testCases[currentIndex]);
+      const foundTestCase = testCases[currentIndex];
+      // Ensure assertions property exists (use assertionResults if assertions is missing)
+      if (!foundTestCase.assertions && foundTestCase.assertionResults) {
+        foundTestCase.assertions = foundTestCase.assertionResults;
+      }
+      setTestCase(foundTestCase);
+      console.log('TestCaseDetailsNavigator - Test case set:', foundTestCase.name);
+    } else {
+      console.error('TestCaseDetailsNavigator - Test case not found:', {
+        currentTestCaseId,
+        availableIds: testCases.map(tc => tc.id)
+      });
+      setTestCase(null);
     }
   }, [testCases, currentTestCaseId]);
 
@@ -65,13 +88,16 @@ const TestCaseDetailsNavigator = ({ executionId, testCases, currentTestCaseId, o
 
   // Calculate progress percentage
   const calculateProgress = () => {
-    if (!testCase?.assertions || testCase.assertions.length === 0) {
+    // Use assertions or assertionResults (whichever is available)
+    const assertions = testCase?.assertions || testCase?.assertionResults || [];
+    
+    if (assertions.length === 0) {
       // For test cases without assertions, check if they executed successfully
       const displayStatus = getTestCaseDisplayStatus(testCase);
       return displayStatus.isExecutedWithoutAssertions ? 100 : 0;
     }
-    const passedCount = testCase.assertions.filter(a => a.status === 'Passed').length;
-    return Math.round((passedCount / testCase.assertions.length) * 100);
+    const passedCount = assertions.filter(a => a.status === 'Passed').length;
+    return Math.round((passedCount / assertions.length) * 100);
   };
 
   if (!testCase) {
@@ -240,7 +266,10 @@ const TestCaseDetailsNavigator = ({ executionId, testCases, currentTestCaseId, o
           <h2 className="font-semibold text-lg text-gray-800">Assertions</h2>
         </div>
         <div className="divide-y divide-gray-100">
-          {testCase.assertions && testCase.assertions.map((assertion) => (
+          {(() => {
+            // Use assertions or assertionResults (whichever is available)
+            const assertions = testCase.assertions || testCase.assertionResults || [];
+            return assertions.map((assertion) => (
             <div key={assertion.id} className="p-4 hover:bg-gray-50">
               <div className="flex items-start justify-between">
                 <div className="flex items-start">
@@ -279,9 +308,13 @@ const TestCaseDetailsNavigator = ({ executionId, testCases, currentTestCaseId, o
                 </div>
               </div>
             </div>
-          ))}
+            ));
+          })()}
 
-          {(!testCase.assertions || testCase.assertions.length === 0) && (
+          {(() => {
+            const assertions = testCase.assertions || testCase.assertionResults || [];
+            return assertions.length === 0;
+          })() && (
             <div className="p-4 text-center text-gray-500">
               <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
                 <h3 className="text-lg font-medium text-blue-900 mb-2">Test Executed Successfully</h3>

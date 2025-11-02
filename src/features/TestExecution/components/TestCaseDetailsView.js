@@ -72,66 +72,138 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
           }
         } else {
           // Extract the actual execution ID from the client execution ID
-          const actualExecutionId = executionId.replace('exec-', '');
+          // Handle both regular (exec-123) and bulk (bulk-exec-498) formats
+          let actualExecutionId;
+          if (executionId.startsWith('bulk-')) {
+            // Bulk execution ID is already in the correct format (e.g., "bulk-exec-498")
+            actualExecutionId = executionId;
+          } else if (executionId.startsWith('exec-')) {
+            // Regular execution ID needs the "exec-" prefix removed (e.g., "exec-496" -> "496")
+            actualExecutionId = executionId.replace('exec-', '');
+          } else {
+            // If executionId is just a number, use it as-is
+            actualExecutionId = executionId;
+          }
           
           try {
             // Fetch real execution data from API
-            const executionData = await testExecution.getExecutionDetails(actualExecutionId);
+            const executionResponse = await testExecution.getExecutionDetails(actualExecutionId);
+            
+            // Extract data from API response structure
+            // API response format: { result: { code: '200', data: {...} } }
+            const executionData = executionResponse?.result?.data || executionResponse || {};
             
             // Transform API data to component format
-            const testCaseResults = executionData.testCaseResults || [];
+            // Handle both testCaseResults (bulk) and testCaseResult (regular) structures
+            const testCaseResults = executionData.testCaseResults || executionData.testCaseResult || [];
             
-            // Find the specific test case by matching testCaseId
-            const targetTestCase = testCaseResults.find(tc => `tc-${tc.testCaseId}` === testCaseId);
+            // Extract the numeric ID from testCaseId (e.g., "tc-1" -> "1")
+            const numericId = testCaseId.replace('tc-', '');
+            
+            // Find the specific test case by matching testCaseId, resultId, rowId, or testCaseName
+            // For bulk executions, test case IDs are like "tc-1" where 1 is the rowId
+            const targetTestCase = testCaseResults.find(tc => {
+              const matches = 
+                (tc.testCaseId && `tc-${tc.testCaseId}` === testCaseId) ||
+                (tc.resultId && `tc-${tc.resultId}` === testCaseId) ||
+                (tc.rowId && `tc-${tc.rowId}` === testCaseId) ||
+                (tc.rowId && String(tc.rowId) === numericId) ||
+                (tc.resultId && String(tc.resultId) === numericId) ||
+                tc.testCaseName === testCaseId.replace('tc-', '');
+              
+              return matches;
+            });
             
             if (!targetTestCase) {
+              console.error('TestCaseDetailsView - Test case not found:', {
+                testCaseId,
+                numericId,
+                availableTestCases: testCaseResults.map(tc => ({
+                  testCaseId: tc.testCaseId,
+                  resultId: tc.resultId,
+                  rowId: tc.rowId,
+                  testCaseName: tc.testCaseName
+                }))
+              });
               setError('Test case not found in execution results');
               return;
             }
             
-                          // Create the test case details with enhanced assertion support
-              const testCaseDetails = {
-                id: testCaseId,
-                name: targetTestCase.testCaseName || 'API Test Case',
-                status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
-                duration: `${targetTestCase.executionTimeMs || 0}ms`,
-                request: {
-                  method: targetTestCase.httpMethod,
-                  url: targetTestCase.url,
-                  headers: targetTestCase.requestHeaders || {},
-                  body: targetTestCase.requestBody
-                },
-                response: {
-                  status: targetTestCase.statusCode,
-                  data: targetTestCase.responseBody,
-                  headers: targetTestCase.responseHeaders || {}
-                },
-                // Backend assertion results - use directly when available
-                assertionResults: targetTestCase.assertionResults && Array.isArray(targetTestCase.assertionResults) 
-                  ? targetTestCase.assertionResults
-                  : [], // Empty array when no assertions available
-                assertionSummary: targetTestCase.assertionSummary || {
-                  total: 0,
-                  passed: 0,
-                  failed: 0,
-                  skipped: 0
-                },
-                // Legacy compatibility - use backend data or fallback to execution status
-                assertions: targetTestCase.assertionResults && Array.isArray(targetTestCase.assertionResults)
-                  ? targetTestCase.assertionResults.map((assertion, index) => ({
-                      id: assertion.assertionId || index + 1,
-                      description: assertion.assertionName || 'Assertion',
-                      status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
-                      ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
-                        error: assertion.errorMessage
-                      })
-                    }))
-                  : [], // Empty array when no assertions available
-                executedBy: executionData.executedBy,
-                executionDate: executionData.executionDate,
-                testSuiteId: targetTestCase.testSuiteId,
-                testSuiteName: targetTestCase.testSuiteName
-              };
+            // Helper function to extract assertion results (handles both structures)
+            const extractAssertions = (testCase) => {
+              // Check for assertionResults (bulk execution)
+              if (testCase.assertionResults && Array.isArray(testCase.assertionResults)) {
+                return testCase.assertionResults.map((assertion, index) => ({
+                  id: assertion.assertionId || index + 1,
+                  assertionId: assertion.assertionId,
+                  assertionName: assertion.assertionName || 'Assertion',
+                  name: assertion.assertionName || 'Assertion',
+                  description: assertion.assertionName || 'Assertion',
+                  status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+                  actualValue: assertion.actualValue,
+                  expectedValue: assertion.expectedValue,
+                  executionTime: assertion.executionTime || 0,
+                  ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+                    error: assertion.errorMessage
+                  })
+                }));
+              }
+              
+              // Check for assertionResultsDto (regular execution)
+              if (testCase.assertionResultsDto && Array.isArray(testCase.assertionResultsDto)) {
+                return testCase.assertionResultsDto.map((assertion, index) => ({
+                  id: assertion.assertionId || index + 1,
+                  assertionId: assertion.assertionId,
+                  assertionName: assertion.assertionName || 'Assertion',
+                  name: assertion.assertionName || 'Assertion',
+                  description: assertion.assertionName || 'Assertion',
+                  status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+                  actualValue: assertion.actualValue,
+                  expectedValue: assertion.expectedValue,
+                  executionTime: assertion.executionTime || 0,
+                  ...(assertion.status !== 'PASSED' && assertion.errorMessage && {
+                    error: assertion.errorMessage
+                  })
+                }));
+              }
+              
+              return [];
+            };
+            
+            const extractedAssertions = extractAssertions(targetTestCase);
+            
+            // Create the test case details with enhanced assertion support
+            const testCaseDetails = {
+              id: testCaseId,
+              name: targetTestCase.testCaseName || 'API Test Case',
+              status: targetTestCase.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
+              duration: `${targetTestCase.executionTimeMs || 0}ms`,
+              request: {
+                method: targetTestCase.httpMethod,
+                url: targetTestCase.url,
+                headers: targetTestCase.requestHeaders || {},
+                body: targetTestCase.requestBody
+              },
+              response: {
+                status: targetTestCase.statusCode,
+                data: targetTestCase.responseBody,
+                headers: targetTestCase.responseHeaders || {}
+              },
+              // Backend assertion results - use extracted assertions
+              assertionResults: extractedAssertions,
+              assertionSummary: targetTestCase.assertionSummary || {
+                total: extractedAssertions.length,
+                passed: extractedAssertions.filter(a => a.status === 'Passed').length,
+                failed: extractedAssertions.filter(a => a.status === 'Failed').length,
+                skipped: 0
+              },
+              // Legacy compatibility
+              assertions: extractedAssertions,
+              executedBy: executionData.executedBy,
+              executionDate: executionData.executionDate,
+              testSuiteId: targetTestCase.testSuiteId,
+              testSuiteName: targetTestCase.testSuiteName
+            };
             
             // Create execution summary
             const transformedExecution = {
@@ -144,7 +216,7 @@ const TestCaseDetailsView = ({ executionId, testCaseId, onBack }) => {
               passedCount: executionData.executionSummary?.passedTests || 0,
               failedCount: executionData.executionSummary?.failedTests || 0,
               results: testCaseResults.map((tc, index) => ({
-                id: `tc-${tc.testCaseId}`,
+                id: `tc-${tc.testCaseId || tc.resultId || tc.rowId}`,
                 name: tc.testCaseName || `Test Case ${index + 1}`,
                 status: tc.executionStatus === 'PASSED' ? 'Passed' : 'Failed',
                 duration: `${tc.executionTimeMs || 0}ms`

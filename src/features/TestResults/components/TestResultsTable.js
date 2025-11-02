@@ -294,9 +294,16 @@ const TestResultsTable = ({
                       <div className="flex items-center gap-2">
                         <button
                           className="text-indigo-600 hover:text-indigo-800 font-medium hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
-                          onClick={() =>
-                            onViewExecution && onViewExecution(execution.id)
-                          }
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('View Details clicked for execution:', execution.id, execution);
+                            if (onViewExecution) {
+                              onViewExecution(execution.id);
+                            } else {
+                              console.error('onViewExecution handler not provided!');
+                            }
+                          }}
                         >
                           {execution.id}
                         </button>

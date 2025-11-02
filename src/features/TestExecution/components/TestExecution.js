@@ -180,7 +180,11 @@ const ModernTestExecution = () => {
       }
 
       return {
-        id: `tc-${testCase.testCaseId}`,
+        // Use resultId for unique ID when multiple results have same testCaseId
+        // For bulk executions, use rowId; for regular executions, use resultId if available
+        id: testCase.resultId 
+          ? `tc-${testCase.resultId}` 
+          : `tc-${testCase.testCaseId}`,
         name: testCase.testCaseName || `Test Case ${testCase.testCaseId}`,
         status: overallStatus,
         duration: `${testCase.executionTimeMs}ms`,
@@ -616,16 +620,396 @@ const ModernTestExecution = () => {
     }
   };
 
-  const handleViewDetails = (testCaseId) => {
-    setSelectedTestCaseId(testCaseId);
-    setViewMode('testcase');
+  // Helper function to extract numeric execution ID from various formats
+  const extractNumericExecutionId = (executionId) => {
+    if (!executionId) return null;
+    
+    const idStr = String(executionId).trim();
+    
+    // If it's already a number, return it
+    if (!isNaN(idStr) && !isNaN(parseFloat(idStr))) {
+      return idStr;
+    }
+    
+    // For bulk executions: "bulk-exec-503" -> "503"
+    if (idStr.includes('bulk-exec-')) {
+      const match = idStr.match(/bulk-exec-(\d+)/);
+      if (match) return match[1];
+      const replaced = idStr.replace(/bulk-exec-/g, '');
+      return replaced || null;
+    }
+    
+    // For regular executions: "exec-492" -> "492"
+    if (idStr.startsWith('exec-')) {
+      const extracted = idStr.replace('exec-', '');
+      // Validate it's numeric
+      if (!isNaN(extracted) && !isNaN(parseFloat(extracted))) {
+        return extracted;
+      }
+    }
+    
+    // Try to extract any numeric part
+    const numMatch = idStr.match(/(\d+)/);
+    if (numMatch) return numMatch[1];
+    
+    // If nothing matches, return null
+    return null;
+  };
 
-    if (executionResult) {
-      window.history.pushState(
-        null,
-        '',
-        `/test-execution/results/${executionResult.id}/${testCaseId}`
-      );
+  const handleViewDetails = async (testCaseId) => {
+    if (!executionResult) {
+      console.error('No execution result available');
+      return;
+    }
+
+    try {
+      // Extract the numeric execution ID for the API call
+      // Try actualExecutionId first (raw numeric ID), then extract from id
+      const executionIdToExtract = executionResult.actualExecutionId || executionResult.id || executionResult.executionId;
+      const numericExecutionId = extractNumericExecutionId(executionIdToExtract);
+      
+      console.log('handleViewDetails - Fetching execution details:', {
+        testCaseId,
+        executionResultId: executionResult.id,
+        actualExecutionId: executionResult.actualExecutionId,
+        executionIdToExtract,
+        numericExecutionId
+      });
+
+      if (!numericExecutionId) {
+        console.error('Cannot extract numeric execution ID from:', executionIdToExtract);
+        toast.error('Cannot determine execution ID');
+        return;
+      }
+
+      // Fetch execution details from API
+      console.log('Fetching execution details from API for ID:', numericExecutionId);
+      const detailedResponse = await testExecution.getExecutionDetails(numericExecutionId);
+      console.log('API response received:', detailedResponse);
+
+      // Handle both response formats: direct response or wrapped in result.data
+      let executionData;
+      if (detailedResponse && detailedResponse.result && detailedResponse.result.code === '200') {
+        // Wrapped format: { result: { code: '200', data: {...} } }
+        console.log('Using wrapped response format');
+        executionData = detailedResponse.result.data;
+      } else if (detailedResponse && (detailedResponse.executionId !== undefined || detailedResponse.testCaseResults !== undefined)) {
+        // Direct format: { executionId: 503, testCaseResults: [...], ... }
+        console.log('Using direct response format');
+        executionData = detailedResponse;
+      } else {
+        console.error('Unexpected response format:', detailedResponse);
+        toast.error('Invalid response format from API');
+        // Continue with existing execution result
+      }
+
+      // If we got execution data from API, update the execution result
+      if (executionData) {
+        // Extract test case results from the response
+        const testCaseResults = executionData.testCaseResults || executionData.testCaseResult || [];
+        
+        // Check if this is a bulk execution (has multiple test case results with rowId)
+        const isBulkExecution = testCaseResults.some(tc => tc.rowId !== undefined && tc.rowId !== null);
+        
+        console.log('handleViewDetails - Processing execution data:', {
+          isBulkExecution,
+          testCaseResultsCount: testCaseResults.length,
+          sampleTestCase: testCaseResults[0],
+          testCaseId: testCaseId,
+          firstTestCaseKeys: testCaseResults[0] ? Object.keys(testCaseResults[0]) : []
+        });
+        
+        // Helper function to extract assertion results (same as in TestResults.js)
+        const extractAssertionResults = (testCase) => {
+          // Check for assertionResults (bulk execution)
+          if (testCase.assertionResults && Array.isArray(testCase.assertionResults)) {
+            return testCase.assertionResults.map((assertion) => ({
+              id: assertion.assertionId,
+              name: assertion.assertionName || 'Assertion',
+              type: 'custom',
+              status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+              actualValue: assertion.actualValue,
+              expectedValue: assertion.expectedValue,
+              executionTime: assertion.executionTime || 0,
+              ...(assertion.status !== 'PASSED' &&
+                assertion.errorMessage && {
+                  error: assertion.errorMessage,
+                }),
+            }));
+          }
+          
+          // Check for assertionResultsDto (regular execution)
+          if (testCase.assertionResultsDto && Array.isArray(testCase.assertionResultsDto)) {
+            return testCase.assertionResultsDto.map((assertion) => ({
+              id: assertion.assertionId,
+              name: assertion.assertionName || 'Assertion',
+              type: 'custom',
+              status: assertion.status === 'PASSED' ? 'Passed' : 'Failed',
+              actualValue: assertion.actualValue,
+              expectedValue: assertion.expectedValue,
+              executionTime: assertion.executionTime || 0,
+              ...(assertion.status !== 'PASSED' &&
+                assertion.errorMessage && {
+                  error: assertion.errorMessage,
+                }),
+            }));
+          }
+          
+          return [];
+        };
+
+        // Transform test case results with assertion data from API
+        const updatedResults = testCaseResults.map((testCase) => {
+          const assertions = extractAssertionResults(testCase);
+          const assertionSummary = testCase.assertionSummary || {
+            total: assertions.length,
+            passed: assertions.filter((a) => a.status === 'Passed').length,
+            failed: assertions.filter((a) => a.status === 'Failed').length,
+            skipped: 0,
+          };
+
+          // Determine overall status based on assertions
+          let overallStatus;
+          if (assertionSummary.total === 0) {
+            const httpStatus = testCase.statusCode;
+            overallStatus = httpStatus >= 200 && httpStatus < 400 ? 'Executed' : 'Failed';
+          } else {
+            overallStatus = assertionSummary.failed === 0 && assertionSummary.passed > 0 ? 'Passed' : 'Failed';
+          }
+
+          // For bulk executions, prioritize rowId; for regular executions, use testCaseId/resultId
+          // This ensures IDs match what ExecutionResultsCard generated
+          // IMPORTANT: For bulk executions, the initial ID is `tc-${r.rowId}`, so we must use rowId
+          let testCaseIdValue;
+          if (isBulkExecution) {
+            // For bulk: MUST use rowId (same as handleBulkExecution line 1371)
+            // The rowId might be a number or string, convert to string for consistency
+            testCaseIdValue = testCase.rowId !== undefined && testCase.rowId !== null 
+              ? String(testCase.rowId) 
+              : (testCase.resultId !== undefined && testCase.resultId !== null 
+                  ? String(testCase.resultId) 
+                  : String(testCase.testCaseId || ''));
+          } else {
+            // For regular executions: use resultId for uniqueness when multiple results share same testCaseId
+            // This matches the ID generation in transformExecutionResults
+            testCaseIdValue = testCase.resultId !== undefined && testCase.resultId !== null
+              ? String(testCase.resultId)
+              : (testCase.testCaseId !== undefined && testCase.testCaseId !== null
+                  ? String(testCase.testCaseId)
+                  : '');
+          }
+          
+          const generatedId = `tc-${testCaseIdValue}`;
+          
+          console.log('handleViewDetails - Creating test case data:', {
+            isBulkExecution,
+            rowId: testCase.rowId,
+            resultId: testCase.resultId,
+            testCaseId: testCase.testCaseId,
+            testCaseIdValue,
+            generatedId,
+            targetTestCaseId: testCaseId
+          });
+          
+          const testCaseData = {
+            id: generatedId,
+            name: testCase.testCaseName || 'API Test Case',
+            status: overallStatus,
+            duration: `${testCase.executionTimeMs}ms`,
+            request: {
+              method: testCase.httpMethod,
+              url: testCase.url,
+              headers: testCase.requestHeaders || {},
+              body: testCase.requestBody,
+            },
+            response: {
+              status: testCase.statusCode,
+              data: testCase.responseBody,
+              headers: testCase.responseHeaders || {},
+            },
+            assertions: assertions, // Set assertions for TestCaseDetailsNavigator compatibility
+            assertionResults: assertions, // Also set assertionResults for consistency
+            assertionSummary: assertionSummary,
+            testSuiteId: testCase.testSuiteId,
+            testSuiteName: testCase.testSuiteName,
+            testCaseId: testCase.testCaseId,
+            resultId: testCase.resultId,
+            rowId: testCase.rowId,
+          };
+          
+          // Debug log to verify test case structure
+          console.log('Created test case data:', {
+            id: testCaseData.id,
+            name: testCaseData.name,
+            assertionsCount: assertions.length,
+            hasAssertions: !!testCaseData.assertions,
+            hasAssertionResults: !!testCaseData.assertionResults
+          });
+          
+          return testCaseData;
+        });
+
+        // Update execution result with fetched data
+        const updatedExecutionResult = {
+          ...executionResult,
+          results: updatedResults,
+          assertionSummary: executionData.executionSummary?.assertionSummary || 
+            updatedResults.reduce(
+              (acc, r) => ({
+                total: acc.total + (r.assertionSummary?.total || 0),
+                passed: acc.passed + (r.assertionSummary?.passed || 0),
+                failed: acc.failed + (r.assertionSummary?.failed || 0),
+                skipped: acc.skipped + (r.assertionSummary?.skipped || 0),
+              }),
+              { total: 0, passed: 0, failed: 0, skipped: 0 }
+            ),
+        };
+
+        // Extract the numeric part from the testCaseId we're looking for
+        const targetNumericId = testCaseId.replace('tc-', '');
+        const targetNumericIdInt = parseInt(targetNumericId, 10);
+        
+        // Check if targetNumericId is a small number (1, 2, 3) which suggests index-based ID
+        // In that case, match by array index
+        const isIndexBasedId = !isNaN(targetNumericIdInt) && targetNumericIdInt > 0 && targetNumericIdInt <= updatedResults.length;
+        
+        // Find the matching test case - try multiple strategies
+        let matchedTestCase = null;
+        
+        if (isIndexBasedId) {
+          // Strategy 0: If the ID looks like an index (1, 2, 3), try matching by array index
+          // This handles cases where initial IDs were generated by index
+          const indexMatch = updatedResults[targetNumericIdInt - 1];
+          if (indexMatch) {
+            console.log('Matched test case by array index:', {
+              targetNumericId,
+              index: targetNumericIdInt - 1,
+              matchedId: indexMatch.id
+            });
+            matchedTestCase = indexMatch;
+          }
+        }
+        
+        // If index-based matching didn't work, try other strategies
+        if (!matchedTestCase) {
+          matchedTestCase = updatedResults.find(tc => {
+            // Strategy 1: Exact ID match
+            if (tc.id === testCaseId) return true;
+            
+            // Strategy 2: Match by numeric ID extracted from ID
+            const tcNumericId = String(tc.id || '').replace('tc-', '');
+            if (tcNumericId === targetNumericId) return true;
+            
+            // Strategy 3: For bulk executions, match by rowId
+            if (isBulkExecution && tc.rowId !== undefined && tc.rowId !== null) {
+              if (String(tc.rowId) === targetNumericId) return true;
+            }
+            
+            // Strategy 4: Match by resultId (most reliable for regular executions)
+            if (tc.resultId !== undefined && tc.resultId !== null) {
+              if (String(tc.resultId) === targetNumericId) return true;
+            }
+            
+            // Strategy 5: Match by testCaseId
+            if (tc.testCaseId !== undefined && tc.testCaseId !== null) {
+              if (String(tc.testCaseId) === targetNumericId) return true;
+            }
+            
+            return false;
+          });
+        }
+        
+        if (!matchedTestCase) {
+          console.error('Test case not found in updated results:', {
+            testCaseId,
+            targetNumericId,
+            availableIds: updatedResults.map(tc => ({ 
+              id: tc.id, 
+              name: tc.name,
+              rowId: tc.rowId,
+              resultId: tc.resultId,
+              testCaseId: tc.testCaseId
+            })),
+            isBulkExecution,
+            firstTestCaseData: updatedResults[0]
+          });
+          toast.error(`Test case ${testCaseId} not found in execution results`);
+          return;
+        }
+        
+        // Use the matched test case's ID (which is the canonical ID from our generation)
+        const matchedTestCaseId = matchedTestCase.id;
+        if (matchedTestCaseId !== testCaseId) {
+          console.log('Matched test case by alternative strategy:', {
+            originalTestCaseId: testCaseId,
+            matchedTestCaseId,
+            matchedBy: {
+              exactId: matchedTestCase.id === testCaseId,
+              numericId: String(matchedTestCase.id || '').replace('tc-', '') === targetNumericId,
+              rowId: String(matchedTestCase.rowId) === targetNumericId,
+              resultId: String(matchedTestCase.resultId) === targetNumericId,
+              testCaseId: String(matchedTestCase.testCaseId) === targetNumericId
+            }
+          });
+          // Use the matched ID instead
+          testCaseId = matchedTestCaseId;
+        }
+        
+        // Update execution result with fetched data
+        // Update the state first, then navigate
+        setExecutionResult(updatedExecutionResult);
+        console.log('Updated execution result with API data:', {
+          executionId: updatedExecutionResult.id,
+          testCasesCount: updatedResults.length,
+          testCaseId,
+          availableIds: updatedResults.map(tc => tc.id)
+        });
+        
+        // Navigate to test case details view using updated execution result
+        // Use a callback to ensure state is updated before component uses it
+        setSelectedTestCaseId(testCaseId);
+        setViewMode('testcase');
+        window.history.pushState(
+          null,
+          '',
+          `/test-execution/results/${updatedExecutionResult.id}/${testCaseId}`
+        );
+      } else {
+        // Navigate to test case details view with existing execution result
+        // Verify the test case exists before navigating
+        const testCaseExists = executionResult?.results?.find(tc => tc.id === testCaseId);
+        if (!testCaseExists) {
+          console.error('Test case not found in existing results:', {
+            testCaseId,
+            availableIds: executionResult?.results?.map(tc => tc.id) || []
+          });
+          toast.error(`Test case ${testCaseId} not found in execution results`);
+          return;
+        }
+        
+        setSelectedTestCaseId(testCaseId);
+        setViewMode('testcase');
+        if (executionResult) {
+          window.history.pushState(
+            null,
+            '',
+            `/test-execution/results/${executionResult.id}/${testCaseId}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching execution details:', error);
+      toast.error('Failed to load execution details from API');
+      // Still navigate to test case details with existing data
+      setSelectedTestCaseId(testCaseId);
+      setViewMode('testcase');
+      if (executionResult) {
+        window.history.pushState(
+          null,
+          '',
+          `/test-execution/results/${executionResult.id}/${testCaseId}`
+        );
+      }
     }
   };
 
@@ -639,12 +1023,35 @@ const ModernTestExecution = () => {
   };
 
   const handleNavigateTestCase = (executionId, testCaseId) => {
+    // Verify the test case exists in current execution results
+    if (!executionResult || !executionResult.results) {
+      console.error('No execution results available for navigation');
+      return;
+    }
+    
+    const testCaseExists = executionResult.results.find(tc => tc.id === testCaseId);
+    if (!testCaseExists) {
+      console.error('Test case not found in execution results:', {
+        testCaseId,
+        availableIds: executionResult.results.map(tc => tc.id)
+      });
+      toast.error(`Test case ${testCaseId} not found`);
+      return;
+    }
+    
+    // Update selected test case ID and navigate
     setSelectedTestCaseId(testCaseId);
     window.history.pushState(
       null,
       '',
       `/test-execution/results/${executionId}/${testCaseId}`
     );
+    
+    console.log('Navigated to test case:', {
+      testCaseId,
+      executionId,
+      availableTestCases: executionResult.results.length
+    });
   };
 
   const handleBackToExecution = () => {
@@ -966,6 +1373,7 @@ const ModernTestExecution = () => {
         executedAt: apiResp.executionDate,
         environment: apiResp.environmentName,
         instanceId: apiResp.executionId, // Use executionId for instanceId
+        actualExecutionId: apiResp.executionId, // Store numeric execution ID for API calls
         totalTests:
           summary.totalTests ?? apiResp.totalTests ?? rowResults.length,
         passedTests:
